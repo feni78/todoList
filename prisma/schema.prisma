@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members  GroupMember[]
+  wishes   Wish[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  nickname  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  wishes    Wish[]
+  histories WishHistory[]
+
+  @@unique([groupId, nickname])
+  @@map("group_members")
+}
+
+model Wish {
+  id        String    @id @default(uuid())
+  groupId   String    @map("group_id")
+  memberId  String    @map("member_id")
+  title     String
+  priority  Priority  @default(GOLD)
+  situation Situation @default(EITHER)
+  status    Status    @default(PENDING)
+  memo      String?
+  budget    Budget?
+  duration  Duration?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  group     Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member    GroupMember   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  seasons   WishSeason[]
+  histories WishHistory[]
+
+  @@map("wishes")
+}
+
+model WishSeason {
+  id     String @id @default(uuid())
+  wishId String @map("wish_id")
+  season Season
+
+  wish Wish @relation(fields: [wishId], references: [id], onDelete: Cascade)
+
+  @@unique([wishId, season])
+  @@map("wish_seasons")
+}
+
+model WishHistory {
+  id        String   @id @default(uuid())
+  wishId    String   @map("wish_id")
+  memberId  String   @map("member_id")
+  doneAt    DateTime @map("done_at")
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  wish   Wish        @relation(fields: [wishId], references: [id], onDelete: Cascade)
+  member GroupMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("wish_histories")
+}
+
+model RouletteSettings {
+  id            String @id @default(uuid())
+  groupId       String @unique @map("group_id")
+  considerLevel Int    @default(50) @map("consider_level")
+  weightMax     Int    @default(100) @map("weight_max")
+  weightGold    Int    @default(30) @map("weight_gold")
+  weightSilver  Int    @default(10) @map("weight_silver")
+  weightBronze  Int    @default(5) @map("weight_bronze")
+
+  @@map("roulette_settings")
+}
+
+enum Priority {
+  MAX
+  GOLD
+  SILVER
+  BRONZE
+
+  @@map("priority")
+}
+
+enum Situation {
+  HOME
+  OUTSIDE
+  EITHER
+
+  @@map("situation")
+}
+
+enum Status {
+  PENDING
+  DONE
+  HOLD
+
+  @@map("status")
+}
+
+enum Budget {
+  FREE
+  UNDER_3000
+  UNDER_10000
+  OVER_10000
+
+  @@map("budget")
+}
+
+enum Duration {
+  WITHIN_30MIN
+  ONE_TWO_HOUR
+  HALF_DAY
+  FULL_DAY
+
+  @@map("duration")
+}
+
+enum Season {
+  SPRING
+  SUMMER
+  AUTUMN
+  WINTER
+
+  @@map("season")
+}

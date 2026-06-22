@@ -1,0 +1,155 @@
+"use client";
+
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import {
+  GroupMember,
+  Situation,
+  Budget,
+  Duration,
+  Season,
+  SITUATION_LABELS,
+  BUDGET_LABELS,
+  DURATION_LABELS,
+  SEASON_LABELS,
+} from "@/types";
+import { useFilterStore } from "@/lib/store/filterStore";
+import { cn } from "@/lib/utils";
+
+interface FilterPanelProps {
+  open: boolean;
+  onClose: () => void;
+  members: GroupMember[];
+}
+
+function FilterChip({
+  selected,
+  onClick,
+  label,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+        selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+const SITUATIONS: Situation[] = ["HOME", "OUTSIDE", "EITHER"];
+const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
+const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
+const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
+
+function toggle<T>(arr: T[], val: T): T[] {
+  return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
+}
+
+export function FilterPanel({ open, onClose, members }: FilterPanelProps) {
+  const store = useFilterStore();
+
+  const hasFilters =
+    store.memberIds.length > 0 ||
+    store.situations.length > 0 ||
+    store.budgets.length > 0 ||
+    store.durations.length > 0 ||
+    store.seasons.length > 0;
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
+        <SheetHeader className="mb-4">
+          <SheetTitle>絞り込み</SheetTitle>
+        </SheetHeader>
+
+        <div className="flex flex-col gap-5">
+          {members.length > 0 && (
+            <FilterSection title="登録者">
+              {members.map((m) => (
+                <FilterChip
+                  key={m.id}
+                  selected={store.memberIds.includes(m.id)}
+                  onClick={() => store.setMemberIds(toggle(store.memberIds, m.id))}
+                  label={m.nickname}
+                />
+              ))}
+            </FilterSection>
+          )}
+
+          <FilterSection title="シチュエーション">
+            {SITUATIONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.situations.includes(s)}
+                onClick={() => store.setSituations(toggle(store.situations, s))}
+                label={SITUATION_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="予算">
+            {BUDGETS.map((b) => (
+              <FilterChip
+                key={b}
+                selected={store.budgets.includes(b)}
+                onClick={() => store.setBudgets(toggle(store.budgets, b))}
+                label={BUDGET_LABELS[b]}
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="所要時間">
+            {DURATIONS.map((d) => (
+              <FilterChip
+                key={d}
+                selected={store.durations.includes(d)}
+                onClick={() => store.setDurations(toggle(store.durations, d))}
+                label={DURATION_LABELS[d]}
+              />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="季節タグ">
+            {SEASONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.seasons.includes(s)}
+                onClick={() => store.setSeasons(toggle(store.seasons, s))}
+                label={SEASON_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+        </div>
+
+        <div className="flex gap-2 mt-6 pb-safe">
+          {hasFilters && (
+            <Button variant="outline" onClick={store.reset} className="flex-1">
+              リセット
+            </Button>
+          )}
+          <Button onClick={onClose} className="flex-1">
+            適用
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
