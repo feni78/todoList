@@ -8,37 +8,42 @@ interface RouletteSpecialProps {
   wishes: Wish[];
   isSpinning: boolean;
   result: Wish | null;
+  pendingResult: Wish | null;
 }
 
 const ITEM_HEIGHT = 64;
 const VISIBLE = 5;
+const REPEATS = 8;
 
-export function RouletteSpecial({ wishes, isSpinning, result }: RouletteSpecialProps) {
+export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: RouletteSpecialProps) {
   const controls = useAnimation();
   const prevSpinning = useRef(false);
-
-  const items = wishes.length > 0 ? wishes : [];
+  const count = wishes.length;
 
   useEffect(() => {
-    if (isSpinning && !prevSpinning.current && items.length > 0) {
+    if (isSpinning && !prevSpinning.current && count > 0 && pendingResult) {
       prevSpinning.current = true;
-      const loops = 5;
-      const totalDistance = loops * items.length * ITEM_HEIGHT + Math.random() * items.length * ITEM_HEIGHT;
+
+      const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
+      if (resultIndex < 0) return;
+
+      // 4周目のresultIndexのアイテムを中央スロット（index 2）に合わせる
+      const targetItemIndex = 4 * count + resultIndex;
+      const centerOffset = Math.floor(VISIBLE / 2);
+      const targetY = -((targetItemIndex - centerOffset) * ITEM_HEIGHT);
+
+      controls.set({ y: 0 });
       controls.start({
-        y: [-totalDistance],
+        y: targetY,
         transition: { duration: 3.5, ease: [0.2, 0.8, 0.4, 1] },
       });
     }
     if (!isSpinning) {
       prevSpinning.current = false;
-      if (result) {
-        controls.stop();
-        controls.set({ y: 0 });
-      }
     }
-  }, [isSpinning, result, items.length, controls]);
+  }, [isSpinning, pendingResult, wishes, count, controls]);
 
-  if (items.length === 0) {
+  if (count === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
         <span className="text-4xl mb-2">🎰</span>
@@ -47,7 +52,7 @@ export function RouletteSpecial({ wishes, isSpinning, result }: RouletteSpecialP
     );
   }
 
-  const repeatedItems = [...items, ...items, ...items, ...items, ...items, ...items];
+  const repeatedItems = Array.from({ length: REPEATS }, () => wishes).flat();
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -64,7 +69,7 @@ export function RouletteSpecial({ wishes, isSpinning, result }: RouletteSpecialP
           />
         </div>
 
-        <motion.div animate={controls} style={{ y: 0 }}>
+        <motion.div animate={controls} style={{ willChange: "transform" }}>
           {repeatedItems.map((wish, i) => (
             <div
               key={`${wish.id}-${i}`}

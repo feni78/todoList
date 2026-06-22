@@ -23,7 +23,7 @@ export default function RoulettePage() {
   const group = useGroupStore((s) => s.group);
   const { wishes, changeStatus } = useWishes(uuid);
   const { mode, setMode } = useRouletteStore();
-  const { spin, result, isSpinning, filteredWishes } = useRoulette(wishes);
+  const { spin, result, isSpinning, filteredWishes, pendingResult } = useRoulette(wishes);
   const [filterOpen, setFilterOpen] = useState(false);
 
   const handleSpin = () => {
@@ -81,12 +81,14 @@ export default function RoulettePage() {
             wishes={filteredWishes}
             isSpinning={isSpinning}
             result={result}
+            pendingResult={pendingResult}
           />
         ) : (
           <RouletteSpecial
             wishes={filteredWishes}
             isSpinning={isSpinning}
             result={result}
+            pendingResult={pendingResult}
           />
         )}
 

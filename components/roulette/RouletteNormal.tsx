@@ -8,6 +8,7 @@ interface RouletteNormalProps {
   wishes: Wish[];
   isSpinning: boolean;
   result: Wish | null;
+  pendingResult: Wish | null;
 }
 
 const COLORS = [
@@ -15,13 +16,10 @@ const COLORS = [
   "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
 ];
 
-export function RouletteNormal({ wishes, isSpinning, result }: RouletteNormalProps) {
-  const controls = useAnimation();
+export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: RouletteNormalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const spinningRef = useRef(false);
-
-  const items = wishes.length > 0 ? wishes : [{ id: "empty", title: "アイテムなし" }];
-  const count = items.length;
+  const controls = useAnimation();
+  const count = wishes.length;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -33,7 +31,8 @@ export function RouletteNormal({ wishes, isSpinning, result }: RouletteNormalPro
     const cx = size / 2;
     const cy = size / 2;
     const r = size / 2 - 4;
-    const arc = (2 * Math.PI) / count;
+    const items = wishes.length > 0 ? wishes : [{ id: "empty", title: "アイテムなし" }];
+    const arc = (2 * Math.PI) / items.length;
 
     ctx.clearRect(0, 0, size, size);
 
@@ -56,7 +55,7 @@ export function RouletteNormal({ wishes, isSpinning, result }: RouletteNormalPro
       ctx.rotate(startAngle + arc / 2);
       ctx.textAlign = "right";
       ctx.fillStyle = "#fff";
-      ctx.font = `bold ${Math.max(10, 14 - count)}px sans-serif`;
+      ctx.font = `bold ${Math.max(10, 14 - items.length)}px sans-serif`;
       const title = "title" in item ? (item as { title: string }).title : "";
       ctx.fillText(title.length > 8 ? title.slice(0, 8) + "…" : title, r - 10, 5);
       ctx.restore();
@@ -66,20 +65,24 @@ export function RouletteNormal({ wishes, isSpinning, result }: RouletteNormalPro
     ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
     ctx.fillStyle = "#fff";
     ctx.fill();
-  }, [items, count]);
+  }, [wishes]);
 
   useEffect(() => {
-    if (isSpinning && !spinningRef.current) {
-      spinningRef.current = true;
+    if (isSpinning && pendingResult && count > 0) {
+      const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
+      if (resultIndex < 0) return;
+
+      const segmentAngle = 360 / count;
+      const segmentCenter = (resultIndex + 0.5) * segmentAngle;
+      const target = 3 * 360 + (360 - (segmentCenter % 360));
+
+      controls.set({ rotate: 0 });
       controls.start({
-        rotate: [0, 720 + Math.random() * 720],
+        rotate: target,
         transition: { duration: 3.5, ease: [0.2, 0.8, 0.4, 1] },
       });
     }
-    if (!isSpinning) {
-      spinningRef.current = false;
-    }
-  }, [isSpinning, controls]);
+  }, [isSpinning, pendingResult, wishes, count, controls]);
 
   if (wishes.length === 0) {
     return (

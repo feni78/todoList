@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { drawWish } from "@/lib/utils/roulette";
 import { Wish } from "@/types";
 
 export function useRoulette(wishes: Wish[]) {
   const { settings, filter, setResult, setIsSpinning, isSpinning, result } = useRouletteStore();
+  const [pendingResult, setPendingResult] = useState<Wish | null>(null);
 
   const filteredWishes = wishes.filter((w) => {
     if (filter.memberIds.length > 0 && !filter.memberIds.includes(w.memberId)) return false;
@@ -27,15 +28,17 @@ export function useRoulette(wishes: Wish[]) {
       const drawn = drawWish(filteredWishes, settings);
       setIsSpinning(true);
       setResult(null);
+      setPendingResult(drawn); // アニメーション用に即公開
 
       setTimeout(() => {
         setResult(drawn);
         setIsSpinning(false);
+        setPendingResult(null);
         onComplete?.(drawn);
       }, 3500);
     },
     [filteredWishes, settings, isSpinning, setIsSpinning, setResult]
   );
 
-  return { spin, result, isSpinning, filteredWishes };
+  return { spin, result, isSpinning, filteredWishes, pendingResult };
 }
