@@ -164,13 +164,13 @@ export default function ListPage() {
 
       <StatusTabs value={statusTab} onChange={setStatusTab} />
 
-      <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 overflow-x-auto scrollbar-none">
         {SITUATION_TABS.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setSituationTab(tab.value)}
             className={cn(
-              "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+              "shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors",
               situationTab === tab.value
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/70"
@@ -181,11 +181,11 @@ export default function ListPage() {
         ))}
       </div>
 
-      <div className="flex items-center gap-2 px-4 py-1 mb-2">
+      <div className="flex items-center gap-1.5 px-3 py-1 mb-1">
         <button
           onClick={() => setFilterOpen(true)}
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+            "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors",
             hasActiveFilters
               ? "bg-primary text-primary-foreground"
               : "bg-muted text-muted-foreground hover:bg-muted/70"
@@ -196,9 +196,9 @@ export default function ListPage() {
         </button>
         <button
           onClick={() => setSortOrder((s) => s === "priority" ? "createdAt" : "priority")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
         >
-          <ArrowUpDown size={12} />
+          <ArrowUpDown size={11} />
           {sortOrder === "priority" ? "やりたい度順" : "新着順"}
         </button>
       </div>

@@ -58,13 +58,13 @@ export default function RoulettePage() {
         }
       />
 
-      <div className="flex items-center justify-center gap-2 px-4 py-3 border-b border-border">
+      <div className="flex items-center justify-center gap-2 px-4 py-2 border-b border-border">
         {(["normal", "special"] as RouletteMode[]).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
             className={cn(
-              "w-32 py-2 rounded-lg text-sm font-medium transition-colors",
+              "w-28 py-1.5 rounded-lg text-xs font-medium transition-colors",
               mode === m
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground"
