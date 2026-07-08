@@ -200,10 +200,7 @@ export default function ListPage() {
         <button
           onClick={() => setSortOrder((s) => s === "priority" ? "createdAt" : "priority")}
           className={cn(
-            "shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-            sortOrder === "createdAt"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-muted/70"
+            "shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
           )}
         >
           <ArrowUpDown size={11} />
