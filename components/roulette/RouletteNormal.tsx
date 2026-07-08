@@ -19,6 +19,7 @@ const COLORS = [
 export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: RouletteNormalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controls = useAnimation();
+  const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
 
   useEffect(() => {
@@ -68,7 +69,8 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: Ro
   }, [wishes]);
 
   useEffect(() => {
-    if (isSpinning && pendingResult && count > 0) {
+    if (isSpinning && !prevSpinning.current && pendingResult && count > 0) {
+      prevSpinning.current = true;
       const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
       if (resultIndex < 0) return;
 
@@ -82,6 +84,10 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: Ro
         transition: { duration: 3.5, ease: [0.2, 0.8, 0.4, 1] },
       });
     }
+    if (!isSpinning) {
+      prevSpinning.current = false;
+      controls.stop();
+    }
   }, [isSpinning, pendingResult, wishes, count, controls]);
 
   if (wishes.length === 0) {
@@ -93,15 +99,31 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: Ro
     );
   }
 
+  // 結果確定後：静的にresultの角度を表示
+  const staticRotate = (() => {
+    if (!result || isSpinning) return null;
+    const resultIndex = wishes.findIndex((w) => w.id === result.id);
+    if (resultIndex < 0) return null;
+    const segmentAngle = 360 / count;
+    const segmentCenter = (resultIndex + 0.5) * segmentAngle;
+    return 360 - (segmentCenter % 360);
+  })();
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative" style={{ width: 280, height: 280 }}>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10">
           <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground" />
         </div>
-        <motion.div animate={controls} style={{ willChange: "transform" }}>
-          <canvas ref={canvasRef} width={280} height={280} className="rounded-full shadow-lg" />
-        </motion.div>
+        {staticRotate !== null ? (
+          <div style={{ transform: `rotate(${staticRotate}deg)` }}>
+            <canvas ref={canvasRef} width={280} height={280} className="rounded-full shadow-lg" />
+          </div>
+        ) : (
+          <motion.div animate={controls} style={{ willChange: "transform" }}>
+            <canvas ref={canvasRef} width={280} height={280} className="rounded-full shadow-lg" />
+          </motion.div>
+        )}
       </div>
 
       {result && !isSpinning && (

@@ -17,7 +17,7 @@ const REPEATS = 22;
 
 export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: RouletteSpecialProps) {
   const controls = useAnimation();
-  const prevSpinning = useRef(false);
+  const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
 
   useEffect(() => {
@@ -27,8 +27,6 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
       const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
       if (resultIndex < 0) return;
 
-      // 上から下に流れる：startY（大きな負値）→ targetY（小さな負値）
-      // 3周分オフセットして上下に確実にアイテムが表示されるようにする
       const centerOffset = Math.floor(VISIBLE / 2);
       const targetY = -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
       const startY = targetY - 14 * count * ITEM_HEIGHT;
@@ -41,6 +39,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
     }
     if (!isSpinning) {
       prevSpinning.current = false;
+      controls.stop();
     }
   }, [isSpinning, pendingResult, wishes, count, controls]);
 
@@ -54,6 +53,25 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
   }
 
   const repeatedItems = Array.from({ length: REPEATS }, () => wishes).flat();
+
+  // 結果確定後：静的にresultを中央に表示
+  const staticY = (() => {
+    if (!result || isSpinning) return null;
+    const resultIndex = wishes.findIndex((w) => w.id === result.id);
+    if (resultIndex < 0) return null;
+    const centerOffset = Math.floor(VISIBLE / 2);
+    return -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
+  })();
+
+  const slotItems = repeatedItems.map((wish, i) => (
+    <div key={`${wish.id}-${i}`} className="flex items-center gap-3 px-4" style={{ height: ITEM_HEIGHT }}>
+      <span className="text-2xl">{scoreToIcon(wish.avgScore)}</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{wish.title}</p>
+        <p className="text-xs text-muted-foreground">{wish.member.nickname}</p>
+      </div>
+    </div>
+  ));
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -70,21 +88,15 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
           />
         </div>
 
-        <motion.div animate={controls} style={{ willChange: "transform" }}>
-          {repeatedItems.map((wish, i) => (
-            <div
-              key={`${wish.id}-${i}`}
-              className="flex items-center gap-3 px-4"
-              style={{ height: ITEM_HEIGHT }}
-            >
-              <span className="text-2xl">{scoreToIcon(wish.avgScore)}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{wish.title}</p>
-                <p className="text-xs text-muted-foreground">{wish.member.nickname}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
+        {staticY !== null ? (
+          <div style={{ transform: `translateY(${staticY}px)` }}>
+            {slotItems}
+          </div>
+        ) : (
+          <motion.div animate={controls} style={{ willChange: "transform" }}>
+            {slotItems}
+          </motion.div>
+        )}
       </div>
 
       {result && !isSpinning && (

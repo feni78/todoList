@@ -23,8 +23,13 @@ export default function RoulettePage() {
   const group = useGroupStore((s) => s.group);
   const { wishes, changeStatus } = useWishes(uuid);
   const { mode, setMode } = useRouletteStore();
-  const { spin, result, isSpinning, filteredWishes, pendingResult } = useRoulette(wishes);
+  const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes);
   const [filterOpen, setFilterOpen] = useState(false);
+
+  const handleSetMode = (m: RouletteMode) => {
+    if (isSpinning) completeNow();
+    setMode(m);
+  };
 
   const handleSpin = () => {
     if (filteredWishes.length === 0) {
@@ -63,7 +68,7 @@ export default function RoulettePage() {
         {(["normal", "special"] as RouletteMode[]).map((m) => (
           <button
             key={m}
-            onClick={() => setMode(m)}
+            onClick={() => handleSetMode(m)}
             className={cn(
               "w-28 py-1.5 rounded-lg text-xs font-medium transition-colors",
               mode === m

@@ -13,11 +13,17 @@ interface RouletteState {
   filter: RouletteFilter;
   result: Wish | null;
   isSpinning: boolean;
+  pendingResult: Wish | null;
+  spinEndAt: number | null;
+  spinId: number;
   setMode: (mode: RouletteMode) => void;
   setSettings: (settings: RouletteSettings) => void;
   setFilter: (filter: Partial<RouletteFilter>) => void;
   setResult: (wish: Wish | null) => void;
   setIsSpinning: (spinning: boolean) => void;
+  setPendingResult: (wish: Wish | null) => void;
+  setSpinEndAt: (ts: number | null) => void;
+  setSpinId: (id: number) => void;
 }
 
 const defaultSettings: RouletteSettings = {
@@ -39,9 +45,15 @@ export const useRouletteStore = create<RouletteState>((set) => ({
   filter: defaultFilter,
   result: null,
   isSpinning: false,
+  pendingResult: null,
+  spinEndAt: null,
+  spinId: 0,
   setMode: (mode) => set({ mode }),
   setSettings: (settings) => set({ settings }),
   setFilter: (filter) => set((s) => ({ filter: { ...s.filter, ...filter } })),
   setResult: (result) => set({ result }),
   setIsSpinning: (isSpinning) => set({ isSpinning }),
+  setPendingResult: (pendingResult) => set({ pendingResult }),
+  setSpinEndAt: (spinEndAt) => set({ spinEndAt }),
+  setSpinId: (spinId) => set({ spinId }),
 }));
