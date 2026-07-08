@@ -10,6 +10,7 @@ import { RouletteFilter } from "@/components/roulette/RouletteFilter";
 import { Button } from "@/components/ui/button";
 import { useWishes } from "@/hooks/useWishes";
 import { useRoulette } from "@/hooks/useRoulette";
+import { useGenres } from "@/hooks/useGenres";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { SlidersHorizontal, RefreshCw } from "lucide-react";
@@ -23,6 +24,7 @@ export default function RoulettePage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
   const { wishes, changeStatus } = useWishes(uuid);
+  const { genres } = useGenres(uuid);
   const { mode, setMode, settings, devMode } = useRouletteStore();
   const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes);
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
@@ -134,6 +136,7 @@ export default function RoulettePage() {
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
         members={group?.members ?? []}
+        genres={genres}
       />
 
       <BottomNav groupId={uuid} />

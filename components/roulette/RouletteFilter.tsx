@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import {
   GroupMember,
+  Genre,
   Situation,
   Budget,
   Duration,
@@ -20,6 +21,7 @@ interface RouletteFilterProps {
   open: boolean;
   onClose: () => void;
   members: GroupMember[];
+  genres?: Genre[];
 }
 
 function FilterChip({
@@ -63,7 +65,7 @@ const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
 
-export function RouletteFilter({ open, onClose, members }: RouletteFilterProps) {
+export function RouletteFilter({ open, onClose, members, genres = [] }: RouletteFilterProps) {
   const { filter, setFilter } = useRouletteStore();
 
   return (
@@ -132,6 +134,19 @@ export function RouletteFilter({ open, onClose, members }: RouletteFilterProps) 
               />
             ))}
           </Section>
+
+          {genres.length > 0 && (
+            <Section title="ジャンル">
+              {genres.map((g) => (
+                <FilterChip
+                  key={g.id}
+                  selected={filter.genreIds.includes(g.id)}
+                  onClick={() => setFilter({ genreIds: toggle(filter.genreIds, g.id) })}
+                  label={g.name}
+                />
+              ))}
+            </Section>
+          )}
         </div>
 
         <div className="mt-6 pb-8">

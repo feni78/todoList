@@ -26,6 +26,9 @@ export function useRoulette(wishes: Wish[]) {
     if (filter.seasons.length > 0) {
       if (!w.seasons.some((s) => filter.seasons.includes(s))) return false;
     }
+    if (filter.genreIds.length > 0) {
+      if (!w.genres.some((g) => filter.genreIds.includes(g.id))) return false;
+    }
     return true;
   });
 
