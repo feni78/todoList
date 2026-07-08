@@ -32,7 +32,7 @@ export default function SettingsPage() {
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings } = useRouletteStore();
   const { wishes, createWish } = useWishes(uuid);
-  const group = useGroupStore((s) => s.group);
+  const { group, setGroup } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -151,7 +151,9 @@ export default function SettingsPage() {
       toast.error("削除に失敗しました");
     } else {
       toast.success(`「${nickname}」を削除しました`);
-      window.location.reload();
+      if (group) {
+        setGroup({ ...group, members: group.members.filter((m) => m.id !== memberId) });
+      }
     }
   };
 
