@@ -75,8 +75,8 @@ export function FilterPanel({ open, onClose, members }: FilterPanelProps) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
-        <SheetHeader className="mb-4">
+      <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl px-6">
+        <SheetHeader className="mt-6 mb-4 p-0">
           <SheetTitle>絞り込み</SheetTitle>
         </SheetHeader>
 
@@ -139,7 +139,7 @@ export function FilterPanel({ open, onClose, members }: FilterPanelProps) {
           </FilterSection>
         </div>
 
-        <div className="flex gap-2 mt-6 pb-safe">
+        <div className="flex gap-2 mt-6 pb-8">
           {hasFilters && (
             <Button variant="outline" onClick={store.reset} className="flex-1">
               リセット
