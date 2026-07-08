@@ -71,7 +71,7 @@ export function CreateGroupForm() {
         <Label htmlFor="groupName">グループ名</Label>
         <Input
           id="groupName"
-          placeholder="例：ふたりのやりたいことリスト"
+          placeholder="例：やりたいことリスト"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
           required
