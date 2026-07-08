@@ -94,6 +94,9 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className="text-xs text-muted-foreground">{wish.member.nickname}</span>
+            {wish.status === "DONE" && (
+              <span className="text-xs text-muted-foreground">{new Date(wish.updatedAt).toLocaleDateString("ja-JP")}</span>
+            )}
             {wish.seasons.length > 0 && (
               <>
                 {wish.seasons.map((s) => (
