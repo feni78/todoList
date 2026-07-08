@@ -125,9 +125,11 @@
     @apply bg-background text-foreground;
     overflow-x: hidden;
     scrollbar-gutter: stable;
-    touch-action: manipulation;
   }
   html {
     @apply font-sans;
+  }
+  a, button {
+    touch-action: manipulation;
   }
 }
