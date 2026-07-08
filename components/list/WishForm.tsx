@@ -45,7 +45,7 @@ interface WishFormProps {
     budget?: Budget;
     duration?: Duration;
     seasons: Season[];
-    myScore?: ScoreValue;
+    myScore?: ScoreValue | null;
   }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
@@ -124,7 +124,7 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
       budget: form.budget || undefined,
       duration: form.duration || undefined,
       seasons: form.seasons,
-      myScore: form.myScore ?? undefined,
+      myScore: form.myScore,
     });
   };
 

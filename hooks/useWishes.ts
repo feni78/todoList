@@ -132,7 +132,7 @@ export function useWishes(groupId: string) {
       budget?: Wish["budget"];
       duration?: Wish["duration"];
       seasons: Wish["seasons"];
-      myScore?: ScoreValue;
+      myScore?: ScoreValue | null;
     }) => {
       const entry = getGroupMember(groupId);
       if (!entry) throw new Error("メンバー情報が見つかりません");
@@ -161,7 +161,7 @@ export function useWishes(groupId: string) {
         );
       }
 
-      if (data.myScore) {
+      if (data.myScore != null) {
         await saveVote(supabase, wish.id, entry.memberId, data.myScore);
       }
 
