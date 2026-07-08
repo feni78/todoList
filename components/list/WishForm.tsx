@@ -192,6 +192,7 @@ export function WishForm({ initial, onSubmit, onCancel, loading }: WishFormProps
           value={form.memo}
           onChange={(e) => setForm((f) => ({ ...f, memo: e.target.value }))}
           rows={3}
+          className="break-all"
         />
       </div>
 

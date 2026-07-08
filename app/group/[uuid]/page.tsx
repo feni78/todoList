@@ -244,7 +244,7 @@ export default function ListPage() {
       </button>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>やりたいことを追加</DialogTitle>
           </DialogHeader>
