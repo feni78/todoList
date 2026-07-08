@@ -31,6 +31,7 @@ export function BottomNav({ groupId }: BottomNavProps) {
             <Link
               key={href}
               href={href}
+              style={{ touchAction: "manipulation" }}
               className={cn(
                 "flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors",
                 active
