@@ -52,7 +52,7 @@ interface WishFormProps {
 }
 
 const PRIORITIES: Priority[] = ["MAX", "GOLD", "SILVER", "BRONZE"];
-const SITUATIONS: Situation[] = ["HOME", "OUTSIDE", "EITHER"];
+const SITUATIONS: Situation[] = ["HOME", "OUTSIDE"];
 const STATUSES: Status[] = ["PENDING", "DONE", "HOLD"];
 const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
@@ -92,7 +92,7 @@ export function WishForm({ initial, onSubmit, onCancel, loading }: WishFormProps
   const [form, setForm] = useState<WishFormData>({
     title: initial?.title ?? "",
     priority: initial?.priority ?? "GOLD",
-    situation: initial?.situation ?? "EITHER",
+    situation: initial?.situation ?? "HOME",
     status: initial?.status ?? "PENDING",
     memo: initial?.memo ?? "",
     budget: initial?.budget ?? "",

@@ -98,10 +98,10 @@ export const STATUS_LABELS: Record<Status, string> = {
 };
 
 export const BUDGET_LABELS: Record<Budget, string> = {
-  FREE: "無料",
-  UNDER_3000: "〜3,000円",
-  UNDER_10000: "〜10,000円",
-  OVER_10000: "10,000円以上",
+  FREE: "0円",
+  UNDER_3000: "〜1,000円",
+  UNDER_10000: "〜5,000円",
+  OVER_10000: "5,000円以上",
 };
 
 export const DURATION_LABELS: Record<Duration, string> = {
