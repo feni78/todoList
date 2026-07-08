@@ -10,9 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
+import { useWishes } from "@/hooks/useWishes";
 import { getDarkMode, setDarkMode } from "@/lib/utils/localStorage";
-import { RouletteSettings, Priority, PRIORITY_LABELS, PRIORITY_ICONS } from "@/types";
-import { Copy, Check } from "lucide-react";
+import { RouletteSettings, Priority, PRIORITY_LABELS, PRIORITY_ICONS, Wish } from "@/types";
+import { Copy, Check, Download, Upload } from "lucide-react";
+import { useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -27,9 +29,12 @@ export default function SettingsPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings } = useRouletteStore();
+  const { wishes, createWish } = useWishes(uuid);
   const [darkMode, setDarkModeState] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setDarkModeState(getDarkMode());
@@ -65,6 +70,72 @@ export default function SettingsPage() {
       toast.error("保存に失敗しました");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExport = () => {
+    const data = wishes.map((w) => ({
+      title: w.title,
+      priority: w.priority,
+      situation: w.situation,
+      status: w.status,
+      memo: w.memo,
+      budget: w.budget,
+      duration: w.duration,
+      seasons: w.seasons,
+    }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `yaritai_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("エクスポートしました");
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as Partial<Wish>[];
+      if (!Array.isArray(data)) throw new Error("不正なフォーマットです");
+      let imported = 0;
+      let skipped = 0;
+      for (const item of data) {
+        if (!item.title) continue;
+        const isDuplicate = wishes.some(
+          (w) =>
+            w.title === item.title &&
+            w.priority === (item.priority ?? "GOLD") &&
+            w.situation === (item.situation ?? "HOME") &&
+            w.status === (item.status ?? "PENDING") &&
+            (w.memo ?? "") === (item.memo ?? "") &&
+            (w.budget ?? "") === (item.budget ?? "") &&
+            (w.duration ?? "") === (item.duration ?? "") &&
+            JSON.stringify([...(w.seasons ?? [])].sort()) === JSON.stringify([...(item.seasons ?? [])].sort())
+        );
+        if (isDuplicate) { skipped++; continue; }
+        await createWish({
+          title: item.title,
+          priority: item.priority ?? "GOLD",
+          situation: item.situation ?? "HOME",
+          status: item.status ?? "PENDING",
+          memo: item.memo,
+          budget: item.budget,
+          duration: item.duration,
+          seasons: item.seasons ?? [],
+        });
+        imported++;
+      }
+      toast.success(`${imported}件インポート${skipped > 0 ? `（重複${skipped}件スキップ）` : ""}`);
+    } catch {
+      toast.error("インポートに失敗しました");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -143,6 +214,27 @@ export default function SettingsPage() {
               checked={darkMode}
               onCheckedChange={handleDarkMode}
             />
+          </div>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <h2 className="font-semibold">データ</h2>
+          <p className="text-sm text-muted-foreground">タスクをJSONファイルでエクスポート・インポートできます</p>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={handleExport} className="w-full gap-2">
+              <Download size={16} />
+              エクスポート（{wishes.length}件）
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importing}
+              className="w-full gap-2"
+            >
+              <Upload size={16} />
+              {importing ? "インポート中..." : "インポート"}
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
           </div>
         </section>
 
