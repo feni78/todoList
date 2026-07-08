@@ -66,13 +66,9 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
         exit={{ opacity: 0, y: -10 }}
         className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 active:bg-muted/50 transition-colors"
       >
-        <button
-          onClick={cyclicStatus}
-          className="text-2xl shrink-0 w-8 h-8 flex items-center justify-center"
-          title={PRIORITY_LABELS[wish.priority]}
-        >
+        <span className="text-2xl shrink-0 w-8 h-8 flex items-center justify-center">
           {PRIORITY_ICONS[wish.priority]}
-        </button>
+        </span>
 
         <button
           className="flex-1 text-left min-w-0"
