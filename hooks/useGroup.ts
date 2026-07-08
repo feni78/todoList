@@ -131,7 +131,7 @@ export function useGroup() {
         weight_gold: settings.weightGold,
         weight_silver: settings.weightSilver,
         weight_bronze: settings.weightBronze,
-      });
+      }, { onConflict: "group_id" });
     },
     []
   );
