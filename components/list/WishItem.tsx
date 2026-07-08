@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Wish, SITUATION_ICONS, SEASON_LABELS, scoreToIcon } from "@/types";
+import { Wish, Genre, SITUATION_ICONS, SEASON_LABELS, scoreToIcon } from "@/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,12 +13,13 @@ import { useGroupStore } from "@/lib/store/groupStore";
 
 interface WishItemProps {
   wish: Wish;
+  genres?: Genre[];
   onUpdate: (id: string, data: Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
 }
 
-export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemProps) {
+export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange }: WishItemProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const currentMemberId = getGroupMember(wish.groupId)?.memberId;
@@ -80,9 +81,14 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
             {wish.status === "DONE" && (
               <span className="text-xs text-muted-foreground">{new Date(wish.updatedAt).toLocaleDateString("ja-JP")}</span>
             )}
-            {wish.seasons.length > 0 && wish.seasons.map((s) => (
+            {wish.seasons.map((s) => (
               <Badge key={s} variant="outline" className="text-[10px] px-1 py-0 h-4">
                 {SEASON_LABELS[s]}
+              </Badge>
+            ))}
+            {wish.genres.map((g) => (
+              <Badge key={g.id} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                {g.name}
               </Badge>
             ))}
           </div>
@@ -125,6 +131,7 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
           <WishForm
             initial={wish}
             currentMemberId={currentMemberId}
+            genres={genres}
             onSubmit={handleUpdate}
             onCancel={() => setEditOpen(false)}
             loading={saving}

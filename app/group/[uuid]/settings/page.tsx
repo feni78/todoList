@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
+import { useGenres } from "@/hooks/useGenres";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
@@ -39,6 +40,11 @@ export default function SettingsPage() {
   const [editingNickname, setEditingNickname] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [newNickname, setNewNickname] = useState("");
+  const { genres, createGenre, updateGenre, deleteGenre } = useGenres(uuid);
+  const [editingGenreId, setEditingGenreId] = useState<string | null>(null);
+  const [editingGenreName, setEditingGenreName] = useState("");
+  const [addingGenre, setAddingGenre] = useState(false);
+  const [newGenreName, setNewGenreName] = useState("");
 
   useEffect(() => {
     setDarkModeState(getDarkMode());
@@ -198,6 +204,39 @@ export default function SettingsPage() {
     setCurrentMember({ id: member.id, groupId: uuid, nickname: member.nickname });
     setSwitchingUser(false);
     toast.success(`「${member.nickname}」に切り替えました`);
+  };
+
+  const handleAddGenre = async () => {
+    if (!newGenreName.trim()) return;
+    try {
+      await createGenre(newGenreName.trim());
+      setAddingGenre(false);
+      setNewGenreName("");
+      toast.success("ジャンルを追加しました");
+    } catch {
+      toast.error("追加に失敗しました");
+    }
+  };
+
+  const handleEditGenre = async (id: string) => {
+    if (!editingGenreName.trim()) return;
+    try {
+      await updateGenre(id, editingGenreName.trim());
+      setEditingGenreId(null);
+      toast.success("ジャンルを更新しました");
+    } catch {
+      toast.error("更新に失敗しました");
+    }
+  };
+
+  const handleDeleteGenre = async (id: string, name: string) => {
+    if (!confirm(`「${name}」を削除しますか？このジャンルが設定されたタスクからも外れます。`)) return;
+    try {
+      await deleteGenre(id);
+      toast.success("ジャンルを削除しました");
+    } catch {
+      toast.error("削除に失敗しました");
+    }
   };
 
   const handleCopyUrl = async () => {
@@ -381,6 +420,72 @@ export default function SettingsPage() {
                   <X size={15} />
                 </button>
               </div>
+            )}
+          </div>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">ジャンル管理</h2>
+            <button
+              onClick={() => { setAddingGenre(true); setNewGenreName(""); }}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {genres.map((g) => (
+              <div key={g.id} className="flex items-center gap-2 py-1">
+                {editingGenreId === g.id ? (
+                  <>
+                    <input
+                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                      value={editingGenreName}
+                      onChange={(e) => setEditingGenreName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleEditGenre(g.id); if (e.key === "Escape") setEditingGenreId(null); }}
+                      autoFocus
+                    />
+                    <button onClick={() => handleEditGenre(g.id)} className="p-1.5 text-primary transition-colors">
+                      <Check size={15} />
+                    </button>
+                    <button onClick={() => setEditingGenreId(null)} className="p-1.5 text-muted-foreground transition-colors">
+                      <X size={15} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm">{g.name}</span>
+                    <button onClick={() => { setEditingGenreId(g.id); setEditingGenreName(g.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => handleDeleteGenre(g.id, g.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                      <Trash2 size={15} />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {addingGenre && (
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                  placeholder="ジャンル名"
+                  value={newGenreName}
+                  onChange={(e) => setNewGenreName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddGenre(); if (e.key === "Escape") setAddingGenre(false); }}
+                  autoFocus
+                />
+                <button onClick={handleAddGenre} className="p-1.5 text-primary transition-colors">
+                  <Check size={15} />
+                </button>
+                <button onClick={() => setAddingGenre(false)} className="p-1.5 text-muted-foreground transition-colors">
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+            {genres.length === 0 && !addingGenre && (
+              <p className="text-sm text-muted-foreground">+ボタンでジャンルを追加できます</p>
             )}
           </div>
         </section>

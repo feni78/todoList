@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useWishes } from "@/hooks/useWishes";
+import { useGenres } from "@/hooks/useGenres";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { getGroupMember } from "@/lib/utils/localStorage";
@@ -50,6 +51,7 @@ export default function ListPage() {
   const group = useGroupStore((s) => s.group);
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const { wishes, loading, createWish, updateWish, deleteWish, changeStatus } = useWishes(uuid);
+  const { genres } = useGenres(uuid);
   const filterStore = useFilterStore();
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
@@ -93,6 +95,9 @@ export default function ListPage() {
     }
     if (filterStore.seasons.length > 0) {
       result = result.filter((w) => w.seasons.some((s) => filterStore.seasons.includes(s)));
+    }
+    if (filterStore.genreIds.length > 0) {
+      result = result.filter((w) => w.genres.some((g) => filterStore.genreIds.includes(g.id)));
     }
     if (filterStore.searchQuery) {
       const q = filterStore.searchQuery.toLowerCase();
@@ -169,7 +174,8 @@ export default function ListPage() {
     filterStore.statuses.length > 0 ||
     filterStore.budgets.length > 0 ||
     filterStore.durations.length > 0 ||
-    filterStore.seasons.length > 0;
+    filterStore.seasons.length > 0 ||
+    filterStore.genreIds.length > 0;
 
   return (
     <div className="flex flex-col min-h-screen pb-16">
@@ -244,6 +250,7 @@ export default function ListPage() {
       ) : (
         <WishList
           wishes={filtered}
+          genres={genres}
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
@@ -276,6 +283,7 @@ export default function ListPage() {
           </DialogHeader>
           <WishForm
             currentMemberId={currentMemberId}
+            genres={genres}
             onSubmit={handleCreate}
             onCancel={() => setAddOpen(false)}
             loading={adding}
@@ -320,6 +328,7 @@ export default function ListPage() {
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
         members={group?.members ?? []}
+        genres={genres}
       />
 
       <BottomNav groupId={uuid} />

@@ -39,6 +39,7 @@ const defaultFilter: RouletteFilter = {
   budgets: [],
   durations: [],
   seasons: [],
+  genreIds: [],
 };
 
 export const useRouletteStore = create<RouletteState>((set) => ({

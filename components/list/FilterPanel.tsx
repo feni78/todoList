@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import {
   GroupMember,
+  Genre,
   Situation,
   Budget,
   Duration,
@@ -20,6 +21,7 @@ interface FilterPanelProps {
   open: boolean;
   onClose: () => void;
   members: GroupMember[];
+  genres?: Genre[];
 }
 
 function FilterChip({
@@ -63,7 +65,7 @@ function toggle<T>(arr: T[], val: T): T[] {
   return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 }
 
-export function FilterPanel({ open, onClose, members }: FilterPanelProps) {
+export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanelProps) {
   const store = useFilterStore();
 
   const hasFilters =
@@ -71,7 +73,8 @@ export function FilterPanel({ open, onClose, members }: FilterPanelProps) {
     store.situations.length > 0 ||
     store.budgets.length > 0 ||
     store.durations.length > 0 ||
-    store.seasons.length > 0;
+    store.seasons.length > 0 ||
+    store.genreIds.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -137,6 +140,19 @@ export function FilterPanel({ open, onClose, members }: FilterPanelProps) {
               />
             ))}
           </FilterSection>
+
+          {genres.length > 0 && (
+            <FilterSection title="ジャンル">
+              {genres.map((g) => (
+                <FilterChip
+                  key={g.id}
+                  selected={store.genreIds.includes(g.id)}
+                  onClick={() => store.setGenreIds(toggle(store.genreIds, g.id))}
+                  label={g.name}
+                />
+              ))}
+            </FilterSection>
+          )}
         </div>
 
         <div className="flex gap-2 mt-6 pb-8">

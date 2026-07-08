@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Wish,
+  Genre,
   Situation,
   Status,
   Budget,
@@ -31,12 +32,14 @@ interface WishFormData {
   budget: Budget | "";
   duration: Duration | "";
   seasons: Season[];
+  genreIds: string[];
   myScore: ScoreValue | null;
 }
 
 interface WishFormProps {
   initial?: Wish;
   currentMemberId?: string;
+  genres?: Genre[];
   onSubmit: (data: {
     title: string;
     situation: Situation;
@@ -45,6 +48,7 @@ interface WishFormProps {
     budget?: Budget;
     duration?: Duration;
     seasons: Season[];
+    genreIds?: string[];
     myScore?: ScoreValue | null;
   }) => Promise<void>;
   onCancel: () => void;
@@ -87,7 +91,7 @@ function SegmentButton<T extends string>({
   );
 }
 
-export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading }: WishFormProps) {
+export function WishForm({ initial, currentMemberId, genres = [], onSubmit, onCancel, loading }: WishFormProps) {
   const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
   // 新規作成 or 自分が登録したものの編集 → 必須
   const scoreRequired = !initial || initial.memberId === currentMemberId;
@@ -100,6 +104,7 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
     budget: initial?.budget ?? "",
     duration: initial?.duration ?? "",
     seasons: initial?.seasons ?? [],
+    genreIds: initial?.genres.map((g) => g.id) ?? [],
     myScore: existingVote?.score ?? null,
   });
 
@@ -109,6 +114,15 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
       seasons: f.seasons.includes(season)
         ? f.seasons.filter((s) => s !== season)
         : [...f.seasons, season],
+    }));
+  };
+
+  const toggleGenre = (genreId: string) => {
+    setForm((f) => ({
+      ...f,
+      genreIds: f.genreIds.includes(genreId)
+        ? f.genreIds.filter((id) => id !== genreId)
+        : [...f.genreIds, genreId],
     }));
   };
 
@@ -124,6 +138,7 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
       budget: form.budget || undefined,
       duration: form.duration || undefined,
       seasons: form.seasons,
+      genreIds: form.genreIds,
       myScore: form.myScore,
     });
   };
@@ -272,6 +287,29 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
           ))}
         </div>
       </div>
+
+      {genres.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <Label>ジャンル（任意・複数選択可）</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {genres.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => toggleGenre(g.id)}
+                className={cn(
+                  "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                  form.genreIds.includes(g.id)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2 mt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">

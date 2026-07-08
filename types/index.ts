@@ -29,6 +29,12 @@ export function scoreToLabel(score: number): string {
   return "未評価";
 }
 
+export interface Genre {
+  id: string;
+  groupId: string;
+  name: string;
+}
+
 export interface WishVote {
   id: string;
   wishId: string;
@@ -47,6 +53,7 @@ export interface Wish {
   budget?: Budget;
   duration?: Duration;
   seasons: Season[];
+  genres: Genre[];
   createdAt: string;
   updatedAt: string;
   member: {
@@ -91,6 +98,7 @@ export interface FilterState {
   budgets: Budget[];
   durations: Duration[];
   seasons: Season[];
+  genreIds: string[];
   searchQuery: string;
 }
 

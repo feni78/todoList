@@ -1,18 +1,19 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { Wish } from "@/types";
+import { Wish, Genre } from "@/types";
 import { WishItem } from "./WishItem";
 
 interface WishListProps {
   wishes: Wish[];
+  genres?: Genre[];
   onUpdate: (id: string, data: Parameters<Parameters<typeof WishItem>[0]["onUpdate"]>[1]) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
   emptyMessage?: string;
 }
 
-export function WishList({ wishes, onUpdate, onDelete, onStatusChange, emptyMessage }: WishListProps) {
+export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChange, emptyMessage }: WishListProps) {
   if (wishes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
@@ -29,6 +30,7 @@ export function WishList({ wishes, onUpdate, onDelete, onStatusChange, emptyMess
           <WishItem
             key={wish.id}
             wish={wish}
+            genres={genres}
             onUpdate={onUpdate}
             onDelete={onDelete}
             onStatusChange={onStatusChange}
