@@ -11,10 +11,12 @@ import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useWishes } from "@/hooks/useWishes";
-import { getDarkMode, setDarkMode } from "@/lib/utils/localStorage";
+import { useGroupStore } from "@/lib/store/groupStore";
+import { getDarkMode, setDarkMode, getGroupMember } from "@/lib/utils/localStorage";
 import { RouletteSettings, Priority, PRIORITY_LABELS, PRIORITY_ICONS, Wish } from "@/types";
-import { Copy, Check, Download, Upload } from "lucide-react";
+import { Copy, Check, Download, Upload, Trash2 } from "lucide-react";
 import { useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +32,8 @@ export default function SettingsPage() {
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings } = useRouletteStore();
   const { wishes, createWish } = useWishes(uuid);
+  const group = useGroupStore((s) => s.group);
+  const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -139,6 +143,18 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDeleteMember = async (memberId: string, nickname: string) => {
+    if (!confirm(`「${nickname}」を削除してよろしいですか？\nこのユーザーのタスクは残ります。`)) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("group_members").delete().eq("id", memberId);
+    if (error) {
+      toast.error("削除に失敗しました");
+    } else {
+      toast.success(`「${nickname}」を削除しました`);
+      window.location.reload();
+    }
+  };
+
   const handleCopyUrl = async () => {
     const url = `${window.location.origin}/group/${uuid}`;
     await navigator.clipboard.writeText(url);
@@ -235,6 +251,28 @@ export default function SettingsPage() {
               {importing ? "インポート中..." : "インポート"}
             </Button>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+          </div>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <h2 className="font-semibold">メンバー管理</h2>
+          <div className="flex flex-col gap-2">
+            {(group?.members ?? []).map((m) => (
+              <div key={m.id} className="flex items-center justify-between py-1">
+                <span className="text-sm">
+                  {m.nickname}
+                  {m.id === currentMemberId && (
+                    <span className="ml-2 text-xs text-muted-foreground">（あなた）</span>
+                  )}
+                </span>
+                <button
+                  onClick={() => handleDeleteMember(m.id, m.nickname)}
+                  className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            ))}
           </div>
         </section>
 
