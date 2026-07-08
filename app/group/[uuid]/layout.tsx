@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getGroupMember } from "@/lib/utils/localStorage";
+import { getGroupMember, saveGroupMember } from "@/lib/utils/localStorage";
 import { JoinGroupForm } from "@/components/group/JoinGroupForm";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { createClient } from "@/lib/supabase/client";
@@ -71,6 +71,18 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
     setNeedsJoin(false);
   };
 
+  const handleSelectMember = (member: GroupMember) => {
+    saveGroupMember({
+      groupId: uuid,
+      groupName: group?.name ?? "",
+      memberId: member.id,
+      nickname: member.nickname,
+      lastVisitedAt: new Date().toISOString(),
+    });
+    setCurrentMember({ id: member.id, groupId: uuid, nickname: member.nickname });
+    setNeedsJoin(false);
+  };
+
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -86,7 +98,9 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
           <JoinGroupForm
             groupId={uuid}
             groupName={groupName || group?.name || "グループ"}
+            existingMembers={group?.members ?? []}
             onJoined={handleJoined}
+            onSelectMember={handleSelectMember}
           />
         </div>
       </main>
