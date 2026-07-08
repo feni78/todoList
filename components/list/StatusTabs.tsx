@@ -3,7 +3,7 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Status, STATUS_LABELS } from "@/types";
 
-type TabValue = "ALL" | Status;
+type TabValue = "PENDING" | "HOLD";
 
 interface StatusTabsProps {
   value: TabValue;
@@ -11,9 +11,7 @@ interface StatusTabsProps {
 }
 
 const TABS: { value: TabValue; label: string }[] = [
-  { value: "ALL", label: "全て" },
   { value: "PENDING", label: STATUS_LABELS.PENDING },
-  { value: "DONE", label: STATUS_LABELS.DONE },
   { value: "HOLD", label: STATUS_LABELS.HOLD },
 ];
 

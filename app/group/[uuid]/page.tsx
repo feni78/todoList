@@ -19,7 +19,7 @@ import { Plus, SlidersHorizontal, Search, X, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type TabValue = "ALL" | Status;
+type TabValue = "PENDING" | "HOLD";
 type SortOrder = "priority" | "createdAt";
 
 const SITUATION_TABS: { value: Situation | "ALL" | "SEASONAL"; label: string }[] = [
@@ -43,6 +43,7 @@ export default function ListPage() {
   const filterStore = useFilterStore();
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
+
   const [situationTab, setSituationTab] = useState<"ALL" | Situation | "SEASONAL">("ALL");
   const [sortOrder, setSortOrder] = useState<SortOrder>("priority");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -53,7 +54,7 @@ export default function ListPage() {
   const filtered = useMemo(() => {
     let result = [...wishes];
 
-    if (statusTab !== "ALL") result = result.filter((w) => w.status === statusTab);
+    result = result.filter((w) => w.status === statusTab);
 
     if (situationTab === "SEASONAL") {
       result = result.filter((w) => w.seasons.length > 0);
@@ -213,7 +214,7 @@ export default function ListPage() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
-          emptyMessage={statusTab === "PENDING" ? "やりたいことを追加しよう！" : "該当するアイテムがありません"}
+          emptyMessage={statusTab === "PENDING" ? "やりたいことを追加しよう！" : "保留中のアイテムはありません"}
         />
       )}
 

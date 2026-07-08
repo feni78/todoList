@@ -105,13 +105,33 @@ export default function HistoryPage() {
     <div className="flex flex-col min-h-screen pb-16">
       <TopBar title="実施履歴" />
 
-      <div className="flex-1 py-4">
+      <div className="flex-1 py-4 flex flex-col gap-6">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
         ) : (
-          <HistoryList histories={histories} onUpdate={handleUpdate} />
+          <>
+            {doneWishes.length > 0 && (
+              <div className="px-4 flex flex-col gap-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">実施済み ({doneWishes.length})</p>
+                <div className="flex flex-col gap-2">
+                  {doneWishes.map((w) => (
+                    <div key={w.id} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
+                      <span className="text-sm flex-1">{w.title}</span>
+                      <span className="text-xs text-muted-foreground">{w.member?.nickname}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-2">
+              {histories.length > 0 && (
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4">実施記録</p>
+              )}
+              <HistoryList histories={histories} onUpdate={handleUpdate} />
+            </div>
+          </>
         )}
       </div>
 
