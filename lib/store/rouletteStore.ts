@@ -16,6 +16,7 @@ interface RouletteState {
   pendingResult: Wish | null;
   spinEndAt: number | null;
   spinId: number;
+  devMode: boolean;
   setMode: (mode: RouletteMode) => void;
   setSettings: (settings: RouletteSettings) => void;
   setFilter: (filter: Partial<RouletteFilter>) => void;
@@ -24,6 +25,7 @@ interface RouletteState {
   setPendingResult: (wish: Wish | null) => void;
   setSpinEndAt: (ts: number | null) => void;
   setSpinId: (id: number) => void;
+  setDevMode: (v: boolean) => void;
 }
 
 const defaultSettings: RouletteSettings = {
@@ -48,6 +50,7 @@ export const useRouletteStore = create<RouletteState>((set) => ({
   pendingResult: null,
   spinEndAt: null,
   spinId: 0,
+  devMode: false,
   setMode: (mode) => set({ mode }),
   setSettings: (settings) => set({ settings }),
   setFilter: (filter) => set((s) => ({ filter: { ...s.filter, ...filter } })),
@@ -56,4 +59,5 @@ export const useRouletteStore = create<RouletteState>((set) => ({
   setPendingResult: (pendingResult) => set({ pendingResult }),
   setSpinEndAt: (spinEndAt) => set({ spinEndAt }),
   setSpinId: (spinId) => set({ spinId }),
+  setDevMode: (devMode) => set({ devMode }),
 }));

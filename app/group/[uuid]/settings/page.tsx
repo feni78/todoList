@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
+import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember } from "@/lib/utils/localStorage";
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 export default function SettingsPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
-  const { settings, setSettings } = useRouletteStore();
+  const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
   const { wishes, createWish } = useWishes(uuid);
   const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
@@ -381,6 +382,17 @@ export default function SettingsPage() {
                 </button>
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Code2 size={16} className="text-muted-foreground" />
+            <h2 className="font-semibold text-muted-foreground">開発者向け</h2>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="dev-mode">ルーレット確率を表示</Label>
+            <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} />
           </div>
         </section>
 

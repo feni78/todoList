@@ -9,13 +9,14 @@ interface RouletteSpecialProps {
   isSpinning: boolean;
   result: Wish | null;
   pendingResult: Wish | null;
+  probabilities?: Map<string, number> | null;
 }
 
 const ITEM_HEIGHT = 64;
 const VISIBLE = 5;
 const REPEATS = 22;
 
-export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: RouletteSpecialProps) {
+export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, probabilities }: RouletteSpecialProps) {
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
@@ -68,7 +69,14 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
       <span className="text-2xl">{scoreToIcon(wish.avgScore)}</span>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{wish.title}</p>
-        <p className="text-xs text-muted-foreground">{wish.member.nickname}</p>
+        <p className="text-xs text-muted-foreground">
+          {wish.member.nickname}
+          {probabilities && (
+            <span className="ml-1.5 text-primary font-mono">
+              {((probabilities.get(wish.id) ?? 0) * 100).toFixed(1)}%
+            </span>
+          )}
+        </p>
       </div>
     </div>
   ));

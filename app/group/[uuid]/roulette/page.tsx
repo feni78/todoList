@@ -15,6 +15,7 @@ import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { SlidersHorizontal, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { computeProbabilities } from "@/lib/utils/roulette";
 
 type RouletteMode = "normal" | "special";
 
@@ -22,8 +23,9 @@ export default function RoulettePage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
   const { wishes, changeStatus } = useWishes(uuid);
-  const { mode, setMode } = useRouletteStore();
+  const { mode, setMode, settings, devMode } = useRouletteStore();
   const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes);
+  const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
   const [filterOpen, setFilterOpen] = useState(false);
 
   const handleSetMode = (m: RouletteMode) => {
@@ -88,6 +90,7 @@ export default function RoulettePage() {
             isSpinning={isSpinning}
             result={result}
             pendingResult={pendingResult}
+            probabilities={probabilities}
           />
         ) : (
           <RouletteSpecial
@@ -95,6 +98,7 @@ export default function RoulettePage() {
             isSpinning={isSpinning}
             result={result}
             pendingResult={pendingResult}
+            probabilities={probabilities}
           />
         )}
 

@@ -9,6 +9,7 @@ interface RouletteNormalProps {
   isSpinning: boolean;
   result: Wish | null;
   pendingResult: Wish | null;
+  probabilities?: Map<string, number> | null;
 }
 
 const COLORS = [
@@ -16,7 +17,7 @@ const COLORS = [
   "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
 ];
 
-export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: RouletteNormalProps) {
+export function RouletteNormal({ wishes, isSpinning, result, pendingResult, probabilities }: RouletteNormalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
@@ -56,9 +57,16 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: Ro
       ctx.rotate(startAngle + arc / 2);
       ctx.textAlign = "right";
       ctx.fillStyle = "#fff";
-      ctx.font = `bold ${Math.max(10, 14 - items.length)}px sans-serif`;
+      const fontSize = Math.max(10, 14 - items.length);
+      ctx.font = `bold ${fontSize}px sans-serif`;
       const title = "title" in item ? (item as { title: string }).title : "";
-      ctx.fillText(title.length > 8 ? title.slice(0, 8) + "…" : title, r - 10, 5);
+      const prob = probabilities?.get("id" in item ? (item as { id: string }).id : "") ?? null;
+      const titleY = prob !== null ? -2 : 5;
+      ctx.fillText(title.length > 8 ? title.slice(0, 8) + "…" : title, r - 10, titleY);
+      if (prob !== null) {
+        ctx.font = `${Math.max(8, fontSize - 2)}px sans-serif`;
+        ctx.fillText(`${(prob * 100).toFixed(1)}%`, r - 10, titleY + fontSize);
+      }
       ctx.restore();
     });
 
@@ -66,7 +74,7 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: Ro
     ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
     ctx.fillStyle = "#fff";
     ctx.fill();
-  }, [wishes]);
+  }, [wishes, probabilities]);
 
   useEffect(() => {
     if (isSpinning && !prevSpinning.current && pendingResult && count > 0) {
