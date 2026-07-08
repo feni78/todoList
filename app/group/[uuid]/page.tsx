@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
-import { Wish, Status, Situation, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
+import { Wish, Status, Situation, Season, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -22,11 +22,26 @@ import { toast } from "sonner";
 type TabValue = "PENDING" | "HOLD";
 type SortOrder = "priority" | "createdAt";
 
+function getCurrentSeason(): Season {
+  const month = new Date().getMonth() + 1;
+  if (month >= 3 && month <= 5) return "SPRING";
+  if (month >= 6 && month <= 9) return "SUMMER";
+  if (month >= 10 && month <= 11) return "AUTUMN";
+  return "WINTER";
+}
+
+const SEASON_ICONS: Record<Season, string> = {
+  SPRING: "🌸",
+  SUMMER: "🍉",
+  AUTUMN: "🍁",
+  WINTER: "⛄",
+};
+
 const SITUATION_TABS: { value: Situation | "ALL" | "SEASONAL"; label: string }[] = [
   { value: "ALL", label: "すべて" },
   { value: "HOME", label: `${SITUATION_ICONS.HOME} ${SITUATION_LABELS.HOME}` },
   { value: "OUTSIDE", label: `${SITUATION_ICONS.OUTSIDE} ${SITUATION_LABELS.OUTSIDE}` },
-  { value: "SEASONAL", label: "🌸 季節限定" },
+  { value: "SEASONAL", label: `${SEASON_ICONS[getCurrentSeason()]} 季節限定` },
 ];
 
 const PRIORITY_ORDER: Record<Wish["priority"], number> = {
@@ -57,7 +72,8 @@ export default function ListPage() {
     result = result.filter((w) => w.status === statusTab);
 
     if (situationTab === "SEASONAL") {
-      result = result.filter((w) => w.seasons.length > 0);
+      const season = getCurrentSeason();
+      result = result.filter((w) => w.seasons.includes(season));
     } else if (situationTab !== "ALL") {
       result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
     }
