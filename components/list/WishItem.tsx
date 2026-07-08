@@ -24,6 +24,7 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
   const currentMemberId = getGroupMember(wish.groupId)?.memberId;
   const { group } = useGroupStore();
   const members = group?.members ?? [];
+  const hasMyVote = wish.votes.some((v) => v.memberId === currentMemberId);
 
   const handleUpdate = async (data: Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) => {
     setSaving(true);
@@ -69,6 +70,9 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
             </span>
             {wish.situation === "OUTSIDE" && (
               <span className="text-xs shrink-0">{SITUATION_ICONS.OUTSIDE}</span>
+            )}
+            {!hasMyVote && wish.status !== "DONE" && (
+              <span className="text-xs shrink-0" title="やりたい度が未設定">⚠️</span>
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">

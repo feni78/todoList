@@ -58,6 +58,9 @@ export default function ListPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("priority");
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkAdding, setBulkAdding] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -113,6 +116,24 @@ export default function ListPage() {
       toast.error("追加に失敗しました");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleBulkCreate = async () => {
+    const titles = bulkText.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (titles.length === 0) return;
+    setBulkAdding(true);
+    try {
+      for (const title of titles) {
+        await createWish({ title, situation: "OUTSIDE", status: "PENDING", seasons: [] });
+      }
+      setBulkOpen(false);
+      setBulkText("");
+      toast.success(`${titles.length}件追加しました！`);
+    } catch {
+      toast.error("追加に失敗しました");
+    } finally {
+      setBulkAdding(false);
     }
   };
 
@@ -230,13 +251,23 @@ export default function ListPage() {
         />
       )}
 
-      <button
-        onClick={() => setAddOpen(true)}
-        className="fixed bottom-24 right-4 z-50 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
-        aria-label="追加"
-      >
-        <Plus size={24} />
-      </button>
+      <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+        <button
+          onClick={() => setBulkOpen(true)}
+          className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-xs font-bold"
+          aria-label="一括追加"
+          title="一括追加"
+        >
+          一括
+        </button>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
+          aria-label="追加"
+        >
+          <Plus size={24} />
+        </button>
+      </div>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain">
@@ -249,6 +280,39 @@ export default function ListPage() {
             onCancel={() => setAddOpen(false)}
             loading={adding}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkOpen} onOpenChange={(v) => { setBulkOpen(v); if (!v) setBulkText(""); }}>
+        <DialogContent className="max-w-md w-full">
+          <DialogHeader>
+            <DialogTitle>一括追加</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">1行に1件ずつ入力してください。シチュエーションは「外」、やりたい度は後で設定できます。</p>
+            <textarea
+              className="w-full h-48 rounded-xl border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder={"温泉旅行\n映画を見る\nディズニーランド"}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              {bulkText.split("\n").filter((l) => l.trim()).length}件
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setBulkOpen(false); setBulkText(""); }}>
+                キャンセル
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleBulkCreate}
+                disabled={bulkAdding || !bulkText.trim()}
+              >
+                {bulkAdding ? "追加中..." : "一括登録"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
