@@ -2,25 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Wish,
-  PRIORITY_ICONS,
-  PRIORITY_LABELS,
-  SITUATION_ICONS,
-  STATUS_LABELS,
-  SEASON_LABELS,
-} from "@/types";
+import { Wish, SITUATION_ICONS, SEASON_LABELS, scoreToIcon } from "@/types";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WishForm } from "./WishForm";
 import { Trash2, Pencil } from "lucide-react";
+import { getGroupMember } from "@/lib/utils/localStorage";
+import { useGroupStore } from "@/lib/store/groupStore";
 
 interface WishItemProps {
   wish: Wish;
@@ -32,6 +21,9 @@ interface WishItemProps {
 export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const currentMemberId = getGroupMember(wish.groupId)?.memberId;
+  const { group } = useGroupStore();
+  const members = group?.members ?? [];
 
   const handleUpdate = async (data: Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) => {
     setSaving(true);
@@ -48,15 +40,6 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
     await onDelete(wish.id);
   };
 
-  const cyclicStatus = async () => {
-    const next: Record<Wish["status"], Wish["status"]> = {
-      PENDING: "DONE",
-      DONE: "HOLD",
-      HOLD: "PENDING",
-    };
-    await onStatusChange(wish.id, next[wish.status]);
-  };
-
   return (
     <>
       <motion.div
@@ -67,7 +50,7 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
         className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 active:bg-muted/50 transition-colors"
       >
         <span className="text-2xl shrink-0 w-8 h-8 flex items-center justify-center">
-          {PRIORITY_ICONS[wish.priority]}
+          {wish.avgScore > 0 ? scoreToIcon(wish.avgScore) : "ー"}
         </span>
 
         <button
@@ -93,16 +76,25 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
             {wish.status === "DONE" && (
               <span className="text-xs text-muted-foreground">{new Date(wish.updatedAt).toLocaleDateString("ja-JP")}</span>
             )}
-            {wish.seasons.length > 0 && (
-              <>
-                {wish.seasons.map((s) => (
-                  <Badge key={s} variant="outline" className="text-[10px] px-1 py-0 h-4">
-                    {SEASON_LABELS[s]}
-                  </Badge>
-                ))}
-              </>
-            )}
+            {wish.seasons.length > 0 && wish.seasons.map((s) => (
+              <Badge key={s} variant="outline" className="text-[10px] px-1 py-0 h-4">
+                {SEASON_LABELS[s]}
+              </Badge>
+            ))}
           </div>
+          {wish.votes.length > 0 && (
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {wish.votes.map((vote) => {
+                const m = members.find((mm) => mm.id === vote.memberId);
+                const name = m?.nickname ?? vote.memberId.slice(0, 4);
+                return (
+                  <span key={vote.memberId} className="text-[11px] text-muted-foreground leading-none">
+                    {scoreToIcon(vote.score)}{name}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </button>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -122,12 +114,13 @@ export function WishItem({ wish, onUpdate, onDelete, onStatusChange }: WishItemP
       </motion.div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain">
           <DialogHeader>
             <DialogTitle>編集</DialogTitle>
           </DialogHeader>
           <WishForm
             initial={wish}
+            currentMemberId={currentMemberId}
             onSubmit={handleUpdate}
             onCancel={() => setEditOpen(false)}
             loading={saving}

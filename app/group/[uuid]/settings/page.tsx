@@ -13,19 +13,13 @@ import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { getDarkMode, setDarkMode, getGroupMember } from "@/lib/utils/localStorage";
-import { RouletteSettings, Priority, PRIORITY_LABELS, PRIORITY_ICONS, Wish } from "@/types";
+import { RouletteSettings, Wish } from "@/types";
 import { Copy, Check, Download, Upload, Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const WEIGHT_PRIORITIES: { key: keyof RouletteSettings; priority: Priority }[] = [
-  { key: "weightMax", priority: "MAX" },
-  { key: "weightGold", priority: "GOLD" },
-  { key: "weightSilver", priority: "SILVER" },
-  { key: "weightBronze", priority: "BRONZE" },
-];
 
 export default function SettingsPage() {
   const { uuid } = useParams<{ uuid: string }>();
@@ -46,10 +40,6 @@ export default function SettingsPage() {
       if (data) {
         setSettings({
           considerLevel: (data as { consider_level: number }).consider_level,
-          weightMax: (data as { weight_max: number }).weight_max,
-          weightGold: (data as { weight_gold: number }).weight_gold,
-          weightSilver: (data as { weight_silver: number }).weight_silver,
-          weightBronze: (data as { weight_bronze: number }).weight_bronze,
         });
       }
     });
@@ -80,7 +70,6 @@ export default function SettingsPage() {
   const handleExport = () => {
     const data = wishes.map((w) => ({
       title: w.title,
-      priority: w.priority,
       situation: w.situation,
       status: w.status,
       memo: w.memo,
@@ -113,7 +102,6 @@ export default function SettingsPage() {
         const isDuplicate = wishes.some(
           (w) =>
             w.title === item.title &&
-            w.priority === (item.priority ?? "GOLD") &&
             w.situation === (item.situation ?? "HOME") &&
             w.status === (item.status ?? "PENDING") &&
             (w.memo ?? "") === (item.memo ?? "") &&
@@ -124,7 +112,6 @@ export default function SettingsPage() {
         if (isDuplicate) { skipped++; continue; }
         await createWish({
           title: item.title,
-          priority: item.priority ?? "GOLD",
           situation: item.situation ?? "HOME",
           status: item.status ?? "PENDING",
           memo: item.memo,
@@ -192,30 +179,6 @@ export default function SettingsPage() {
               <span>完全ランダム</span>
               <span>MAXのみ</span>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-3 pt-2 border-t border-border">
-            <Label>やりたい度の重み</Label>
-            {WEIGHT_PRIORITIES.map(({ key, priority }) => (
-              <div key={key} className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">
-                    {PRIORITY_ICONS[priority]} {PRIORITY_LABELS[priority]}
-                  </span>
-                  <span className="text-sm font-mono text-muted-foreground">{settings[key]}</span>
-                </div>
-                <Slider
-                  min={1}
-                  max={100}
-                  step={1}
-                  value={[settings[key] as number]}
-                  onValueChange={(vals) => {
-                    const v = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
-                    setSettings({ ...settings, [key]: v });
-                  }}
-                />
-              </div>
-            ))}
           </div>
 
           <Button onClick={handleSave} disabled={saving} className="w-full">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { Wish, PRIORITY_ICONS } from "@/types";
+import { Wish, scoreToIcon } from "@/types";
 
 interface RouletteNormalProps {
   wishes: Wish[];
@@ -113,7 +113,7 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult }: Ro
           <p className="text-xs text-muted-foreground mb-1">結果</p>
           <p className="text-lg font-bold">{result.title}</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {PRIORITY_ICONS[result.priority]} {result.member.nickname}
+            {scoreToIcon(result.avgScore)} {result.member.nickname}
           </p>
         </motion.div>
       )}

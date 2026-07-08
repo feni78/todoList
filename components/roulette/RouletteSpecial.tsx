@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
-import { Wish, PRIORITY_ICONS } from "@/types";
+import { Wish, scoreToIcon } from "@/types";
 
 interface RouletteSpecialProps {
   wishes: Wish[];
@@ -77,7 +77,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
               className="flex items-center gap-3 px-4"
               style={{ height: ITEM_HEIGHT }}
             >
-              <span className="text-2xl">{PRIORITY_ICONS[wish.priority]}</span>
+              <span className="text-2xl">{scoreToIcon(wish.avgScore)}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{wish.title}</p>
                 <p className="text-xs text-muted-foreground">{wish.member.nickname}</p>
@@ -96,7 +96,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
           <p className="text-xs text-muted-foreground mb-1">結果</p>
           <p className="text-lg font-bold">{result.title}</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {PRIORITY_ICONS[result.priority]} {result.member.nickname}
+            {scoreToIcon(result.avgScore)} {result.member.nickname}
           </p>
         </motion.div>
       )}

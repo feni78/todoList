@@ -7,51 +7,50 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Wish,
-  Priority,
   Situation,
   Status,
   Budget,
   Duration,
   Season,
-  PRIORITY_LABELS,
-  PRIORITY_ICONS,
   SITUATION_LABELS,
   SITUATION_ICONS,
   STATUS_LABELS,
   BUDGET_LABELS,
   DURATION_LABELS,
   SEASON_LABELS,
+  SCORE_OPTIONS,
+  ScoreValue,
 } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface WishFormData {
   title: string;
-  priority: Priority;
   situation: Situation;
   status: Status;
   memo: string;
   budget: Budget | "";
   duration: Duration | "";
   seasons: Season[];
+  myScore: ScoreValue | null;
 }
 
 interface WishFormProps {
   initial?: Wish;
+  currentMemberId?: string;
   onSubmit: (data: {
     title: string;
-    priority: Priority;
     situation: Situation;
     status: Status;
     memo?: string;
     budget?: Budget;
     duration?: Duration;
     seasons: Season[];
+    myScore?: ScoreValue;
   }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
 }
 
-const PRIORITIES: Priority[] = ["MAX", "GOLD", "SILVER", "BRONZE"];
 const SITUATIONS: Situation[] = ["HOME", "OUTSIDE"];
 const STATUSES: Status[] = ["PENDING", "DONE", "HOLD"];
 const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
@@ -88,16 +87,18 @@ function SegmentButton<T extends string>({
   );
 }
 
-export function WishForm({ initial, onSubmit, onCancel, loading }: WishFormProps) {
+export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading }: WishFormProps) {
+  const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
+
   const [form, setForm] = useState<WishFormData>({
     title: initial?.title ?? "",
-    priority: initial?.priority ?? "GOLD",
     situation: initial?.situation ?? "HOME",
     status: initial?.status ?? "PENDING",
     memo: initial?.memo ?? "",
     budget: initial?.budget ?? "",
     duration: initial?.duration ?? "",
     seasons: initial?.seasons ?? [],
+    myScore: existingVote?.score ?? null,
   });
 
   const toggleSeason = (season: Season) => {
@@ -114,13 +115,13 @@ export function WishForm({ initial, onSubmit, onCancel, loading }: WishFormProps
     if (!form.title.trim()) return;
     await onSubmit({
       title: form.title.trim(),
-      priority: form.priority,
       situation: form.situation,
       status: form.status,
       memo: form.memo.trim() || undefined,
       budget: form.budget || undefined,
       duration: form.duration || undefined,
       seasons: form.seasons,
+      myScore: form.myScore ?? undefined,
     });
   };
 
@@ -138,19 +139,26 @@ export function WishForm({ initial, onSubmit, onCancel, loading }: WishFormProps
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>やりたい度 *</Label>
+        <Label>やりたい度（あなたの評価）</Label>
         <div className="flex gap-1.5">
-          {PRIORITIES.map((p) => (
-            <SegmentButton
-              key={p}
-              value={p}
-              selected={form.priority === p}
-              onClick={(v) => setForm((f) => ({ ...f, priority: v }))}
-              label={PRIORITY_LABELS[p]}
-              icon={PRIORITY_ICONS[p]}
-            />
+          {SCORE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, myScore: f.myScore === opt.value ? null : opt.value as ScoreValue }))}
+              className={cn(
+                "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg text-xs font-medium transition-colors",
+                form.myScore === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              <span>{opt.icon}</span>
+              <span>{opt.label}</span>
+            </button>
           ))}
         </div>
+        <p className="text-[11px] text-muted-foreground">タップで選択・もう一度タップで解除</p>
       </div>
 
       <div className="flex flex-col gap-1.5">

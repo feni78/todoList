@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { RouletteSettings, FilterState, Wish, Situation, Status, Budget, Duration, Season } from "@/types";
+import { RouletteSettings, FilterState, Wish, Status, Budget, Duration, Season } from "@/types";
 
 type RouletteMode = "normal" | "special";
 
@@ -22,10 +22,6 @@ interface RouletteState {
 
 const defaultSettings: RouletteSettings = {
   considerLevel: 50,
-  weightMax: 100,
-  weightGold: 30,
-  weightSilver: 10,
-  weightBronze: 5,
 };
 
 const defaultFilter: RouletteFilter = {

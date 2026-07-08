@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
-import { Wish, Status, Situation, Season, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
+import { getGroupMember } from "@/lib/utils/localStorage";
+import { Status, Situation, Season, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -44,16 +45,10 @@ const SITUATION_TABS: { value: Situation | "ALL" | "SEASONAL"; label: string }[]
   { value: "SEASONAL", label: `${SEASON_ICONS[getCurrentSeason()]} 季節限定` },
 ];
 
-const PRIORITY_ORDER: Record<Wish["priority"], number> = {
-  MAX: 0,
-  GOLD: 1,
-  SILVER: 2,
-  BRONZE: 3,
-};
-
 export default function ListPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
+  const currentMemberId = getGroupMember(uuid)?.memberId;
   const { wishes, loading, createWish, updateWish, deleteWish, changeStatus } = useWishes(uuid);
   const filterStore = useFilterStore();
 
@@ -102,7 +97,7 @@ export default function ListPage() {
     }
 
     if (sortOrder === "priority") {
-      result.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
+      result.sort((a, b) => b.avgScore - a.avgScore);
     }
 
     return result;
@@ -249,6 +244,7 @@ export default function ListPage() {
             <DialogTitle>やりたいことを追加</DialogTitle>
           </DialogHeader>
           <WishForm
+            currentMemberId={currentMemberId}
             onSubmit={handleCreate}
             onCancel={() => setAddOpen(false)}
             loading={adding}

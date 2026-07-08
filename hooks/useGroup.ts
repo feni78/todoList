@@ -113,24 +113,11 @@ export function useGroup() {
   }, []);
 
   const saveRouletteSettings = useCallback(
-    async (
-      groupId: string,
-      settings: {
-        considerLevel: number;
-        weightMax: number;
-        weightGold: number;
-        weightSilver: number;
-        weightBronze: number;
-      }
-    ) => {
+    async (groupId: string, settings: { considerLevel: number }) => {
       const supabase = createClient();
       await supabase.from("roulette_settings").upsert({
         group_id: groupId,
         consider_level: settings.considerLevel,
-        weight_max: settings.weightMax,
-        weight_gold: settings.weightGold,
-        weight_silver: settings.weightSilver,
-        weight_bronze: settings.weightBronze,
       }, { onConflict: "group_id" });
     },
     []

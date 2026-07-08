@@ -1,16 +1,46 @@
-export type Priority = "MAX" | "GOLD" | "SILVER" | "BRONZE";
 export type Situation = "HOME" | "OUTSIDE" | "EITHER";
 export type Status = "PENDING" | "DONE" | "HOLD";
 export type Budget = "FREE" | "UNDER_3000" | "UNDER_10000" | "OVER_10000";
 export type Duration = "WITHIN_30MIN" | "ONE_TWO_HOUR" | "HALF_DAY" | "FULL_DAY";
 export type Season = "SPRING" | "SUMMER" | "AUTUMN" | "WINTER";
 
+export const SCORE_OPTIONS = [
+  { label: "MAX", value: 100, icon: "🏆" },
+  { label: "金", value: 30, icon: "🥇" },
+  { label: "銀", value: 10, icon: "🥈" },
+  { label: "銅", value: 5, icon: "🥉" },
+] as const;
+
+export type ScoreValue = 100 | 30 | 10 | 5;
+
+export function scoreToIcon(score: number): string {
+  if (score >= 65) return "🏆";
+  if (score >= 20) return "🥇";
+  if (score >= 7.5) return "🥈";
+  if (score > 0) return "🥉";
+  return "ー";
+}
+
+export function scoreToLabel(score: number): string {
+  if (score >= 65) return "MAX";
+  if (score >= 20) return "金";
+  if (score >= 7.5) return "銀";
+  if (score > 0) return "銅";
+  return "未評価";
+}
+
+export interface WishVote {
+  id: string;
+  wishId: string;
+  memberId: string;
+  score: ScoreValue;
+}
+
 export interface Wish {
   id: string;
   groupId: string;
   memberId: string;
   title: string;
-  priority: Priority;
   situation: Situation;
   status: Status;
   memo?: string;
@@ -23,6 +53,9 @@ export interface Wish {
     id: string;
     nickname: string;
   };
+  votes: WishVote[];
+  avgScore: number;
+  hasMaxVote: boolean;
 }
 
 export interface Group {
@@ -49,10 +82,6 @@ export interface WishHistory {
 
 export interface RouletteSettings {
   considerLevel: number;
-  weightMax: number;
-  weightGold: number;
-  weightSilver: number;
-  weightBronze: number;
 }
 
 export interface FilterState {
@@ -64,20 +93,6 @@ export interface FilterState {
   seasons: Season[];
   searchQuery: string;
 }
-
-export const PRIORITY_LABELS: Record<Priority, string> = {
-  MAX: "MAX",
-  GOLD: "金",
-  SILVER: "銀",
-  BRONZE: "銅",
-};
-
-export const PRIORITY_ICONS: Record<Priority, string> = {
-  MAX: "🏆",
-  GOLD: "🥇",
-  SILVER: "🥈",
-  BRONZE: "🥉",
-};
 
 export const SITUATION_LABELS: Record<Situation, string> = {
   HOME: "家",

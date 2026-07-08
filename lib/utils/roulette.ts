@@ -1,26 +1,17 @@
-import { Wish, RouletteSettings, Priority } from "@/types";
+import { Wish, RouletteSettings } from "@/types";
 
 export function drawWish(wishes: Wish[], settings: RouletteSettings): Wish | null {
   if (wishes.length === 0) return null;
+  const { considerLevel } = settings;
 
-  const { considerLevel, weightMax, weightGold, weightSilver, weightBronze } = settings;
+  const blendFactor = considerLevel / 100;
+  const pool = considerLevel === 100 && wishes.some((w) => w.hasMaxVote)
+    ? wishes.filter((w) => w.hasMaxVote)
+    : wishes;
 
-  const customWeights: Record<Priority, number> = {
-    MAX: weightMax,
-    GOLD: weightGold,
-    SILVER: weightSilver,
-    BRONZE: weightBronze,
-  };
-
-  if (considerLevel === 100) {
-    const maxWishes = wishes.filter((w) => w.priority === "MAX");
-    const pool = maxWishes.length > 0 ? maxWishes : wishes;
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-
-  const weighted = wishes.map((wish) => {
-    const blendFactor = considerLevel / 100;
-    const weight = 1 * (1 - blendFactor) + customWeights[wish.priority] * blendFactor;
+  const weighted = pool.map((wish) => {
+    const score = wish.avgScore > 0 ? wish.avgScore : 5;
+    const weight = 1 * (1 - blendFactor) + score * blendFactor;
     return { wish, weight };
   });
 
