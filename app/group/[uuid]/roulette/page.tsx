@@ -34,6 +34,7 @@ export default function RoulettePage() {
     spin(mode === "special" ? 8500 : 3500);
   };
 
+
   const handleDone = async () => {
     if (!result) return;
     try {
@@ -94,32 +95,24 @@ export default function RoulettePage() {
 
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <Button
-            onClick={handleSpin}
+            onClick={() => handleSpin()}
             disabled={isSpinning || filteredWishes.length === 0}
             size="lg"
             className="w-full rounded-full text-base font-bold h-14 shadow-lg"
           >
-            {isSpinning ? "回転中..." : "スタート！"}
+            {isSpinning ? "回転中..." : result ? (
+              <><RefreshCw size={18} className="mr-2" />もう一度</>
+            ) : "スタート！"}
           </Button>
 
           {result && !isSpinning && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleDone}
-                className="flex-1"
-              >
-                実施済みにする
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={handleSpin}
-                className="flex-1"
-              >
-                <RefreshCw size={16} className="mr-1.5" />
-                もう一度
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              onClick={handleDone}
+              className="w-full"
+            >
+              実施済みにする
+            </Button>
           )}
         </div>
 
