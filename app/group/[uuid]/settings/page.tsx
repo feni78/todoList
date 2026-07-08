@@ -212,7 +212,7 @@ export default function SettingsPage() {
     <div className="flex flex-col min-h-screen pb-16">
       <TopBar title="設定" />
 
-      <div className="flex-1 flex flex-col gap-6 p-4 max-w-md mx-auto w-full">
+      <div className="flex-1 flex flex-col gap-6 p-4 pb-8 max-w-md mx-auto w-full">
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">ルーレット設定</h2>
 
