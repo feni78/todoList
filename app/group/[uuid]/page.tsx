@@ -240,7 +240,7 @@ export default function ListPage() {
 
       <button
         onClick={() => setAddOpen(true)}
-        className="fixed bottom-20 right-4 z-50 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
+        className="fixed bottom-24 right-4 z-50 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
         aria-label="追加"
       >
         <Plus size={24} />
