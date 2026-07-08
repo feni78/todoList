@@ -23,19 +23,18 @@ export function useRoulette(wishes: Wish[]) {
   });
 
   const spin = useCallback(
-    (onComplete?: (wish: Wish | null) => void) => {
+    (duration = 3500) => {
       if (isSpinning) return;
       const drawn = drawWish(filteredWishes, settings);
       setIsSpinning(true);
       setResult(null);
-      setPendingResult(drawn); // アニメーション用に即公開
+      setPendingResult(drawn);
 
       setTimeout(() => {
         setResult(drawn);
         setIsSpinning(false);
         setPendingResult(null);
-        onComplete?.(drawn);
-      }, 8500);
+      }, duration);
     },
     [filteredWishes, settings, isSpinning, setIsSpinning, setResult]
   );

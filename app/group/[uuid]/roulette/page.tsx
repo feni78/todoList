@@ -31,7 +31,7 @@ export default function RoulettePage() {
       toast.error("条件に合うアイテムがありません");
       return;
     }
-    spin();
+    spin(mode === "special" ? 8500 : 3500);
   };
 
   const handleDone = async () => {
