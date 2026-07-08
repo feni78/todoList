@@ -89,6 +89,8 @@ function SegmentButton<T extends string>({
 
 export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading }: WishFormProps) {
   const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
+  // 新規作成 or 自分が登録したものの編集 → 必須
+  const scoreRequired = !initial || initial.memberId === currentMemberId;
 
   const [form, setForm] = useState<WishFormData>({
     title: initial?.title ?? "",
@@ -113,6 +115,7 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim()) return;
+    if (scoreRequired && !form.myScore) return;
     await onSubmit({
       title: form.title.trim(),
       situation: form.situation,
@@ -139,13 +142,16 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>やりたい度（あなたの評価）</Label>
+        <Label>{scoreRequired ? "やりたい度（あなたの評価） *" : "やりたい度（あなたの評価）"}</Label>
         <div className="flex gap-1.5">
           {SCORE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => setForm((f) => ({ ...f, myScore: f.myScore === opt.value ? null : opt.value as ScoreValue }))}
+              onClick={() => setForm((f) => ({
+                ...f,
+                myScore: (!scoreRequired && f.myScore === opt.value) ? null : opt.value as ScoreValue,
+              }))}
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg text-xs font-medium transition-colors",
                 form.myScore === opt.value
@@ -158,7 +164,7 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-muted-foreground">タップで選択・もう一度タップで解除</p>
+        {!scoreRequired && <p className="text-[11px] text-muted-foreground">タップで選択・もう一度タップで解除</p>}
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -271,7 +277,7 @@ export function WishForm({ initial, currentMemberId, onSubmit, onCancel, loading
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
           キャンセル
         </Button>
-        <Button type="submit" disabled={loading || !form.title.trim()} className="flex-1">
+        <Button type="submit" disabled={loading || !form.title.trim() || (scoreRequired && !form.myScore)} className="flex-1">
           {loading ? "保存中..." : "保存"}
         </Button>
       </div>

@@ -12,9 +12,9 @@ import { useGroup } from "@/hooks/useGroup";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
-import { getDarkMode, setDarkMode, getGroupMember } from "@/lib/utils/localStorage";
+import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember } from "@/lib/utils/localStorage";
 import { RouletteSettings, Wish } from "@/types";
-import { Copy, Check, Download, Upload, Trash2 } from "lucide-react";
+import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X } from "lucide-react";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -26,13 +26,18 @@ export default function SettingsPage() {
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings } = useRouletteStore();
   const { wishes, createWish } = useWishes(uuid);
-  const { group, setGroup } = useGroupStore();
+  const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [switchingUser, setSwitchingUser] = useState(false);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editingNickname, setEditingNickname] = useState("");
+  const [addingMember, setAddingMember] = useState(false);
+  const [newNickname, setNewNickname] = useState("");
 
   useEffect(() => {
     setDarkModeState(getDarkMode());
@@ -144,6 +149,56 @@ export default function SettingsPage() {
     }
   };
 
+  const handleEditMember = async (memberId: string) => {
+    const name = editingNickname.trim();
+    if (!name) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("group_members").update({ nickname: name }).eq("id", memberId);
+    if (error) {
+      toast.error("更新に失敗しました");
+    } else {
+      toast.success("名前を変更しました");
+      if (group) {
+        setGroup({ ...group, members: group.members.map((m) => m.id === memberId ? { ...m, nickname: name } : m) });
+      }
+      if (memberId === currentMemberId) {
+        const stored = getGroupMember(uuid);
+        if (stored) saveGroupMember({ ...stored, nickname: name });
+      }
+      setEditingMemberId(null);
+    }
+  };
+
+  const handleAddMember = async () => {
+    const name = newNickname.trim();
+    if (!name) return;
+    const supabase = createClient();
+    const { data, error } = await supabase.from("group_members").insert({ group_id: uuid, nickname: name }).select().single();
+    if (error) {
+      toast.error("追加に失敗しました");
+    } else {
+      toast.success(`「${name}」を追加しました`);
+      if (group) {
+        setGroup({ ...group, members: [...group.members, data as { id: string; nickname: string; groupId: string }] });
+      }
+      setNewNickname("");
+      setAddingMember(false);
+    }
+  };
+
+  const handleSwitchMember = (member: { id: string; nickname: string }) => {
+    saveGroupMember({
+      groupId: uuid,
+      groupName: group?.name ?? "",
+      memberId: member.id,
+      nickname: member.nickname,
+      lastVisitedAt: new Date().toISOString(),
+    });
+    setCurrentMember({ id: member.id, groupId: uuid, nickname: member.nickname });
+    setSwitchingUser(false);
+    toast.success(`「${member.nickname}」に切り替えました`);
+  };
+
   const handleCopyUrl = async () => {
     const url = `${window.location.origin}/group/${uuid}`;
     await navigator.clipboard.writeText(url);
@@ -220,24 +275,112 @@ export default function SettingsPage() {
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <h2 className="font-semibold">メンバー管理</h2>
+          <h2 className="font-semibold">ログインユーザー</h2>
+          {switchingUser ? (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground mb-1">切り替えるユーザーを選択</p>
+              {(group?.members ?? []).map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleSwitchMember(m)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-left transition-colors",
+                    m.id === currentMemberId
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  <span className="flex-1">{m.nickname}</span>
+                  {m.id === currentMemberId && <Check size={14} />}
+                </button>
+              ))}
+              <Button variant="ghost" size="sm" onClick={() => setSwitchingUser(false)} className="mt-1">
+                キャンセル
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{group?.members.find((m) => m.id === currentMemberId)?.nickname ?? "不明"}</span>
+              <Button variant="outline" size="sm" onClick={() => setSwitchingUser(true)}>
+                切り替え
+              </Button>
+            </div>
+          )}
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">メンバー管理</h2>
+            <button
+              onClick={() => { setAddingMember(true); setNewNickname(""); }}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
           <div className="flex flex-col gap-2">
             {(group?.members ?? []).map((m) => (
-              <div key={m.id} className="flex items-center justify-between py-1">
-                <span className="text-sm">
-                  {m.nickname}
-                  {m.id === currentMemberId && (
-                    <span className="ml-2 text-xs text-muted-foreground">（あなた）</span>
-                  )}
-                </span>
-                <button
-                  onClick={() => handleDeleteMember(m.id, m.nickname)}
-                  className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <Trash2 size={15} />
-                </button>
+              <div key={m.id} className="flex items-center gap-2 py-1">
+                {editingMemberId === m.id ? (
+                  <>
+                    <input
+                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                      value={editingNickname}
+                      onChange={(e) => setEditingNickname(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleEditMember(m.id); if (e.key === "Escape") setEditingMemberId(null); }}
+                      autoFocus
+                    />
+                    <button onClick={() => handleEditMember(m.id)} className="p-1.5 text-primary transition-colors">
+                      <Check size={15} />
+                    </button>
+                    <button onClick={() => setEditingMemberId(null)} className="p-1.5 text-muted-foreground transition-colors">
+                      <X size={15} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm">
+                      {m.nickname}
+                      {m.id === currentMemberId && (
+                        <span className="ml-2 text-xs text-muted-foreground">（あなた）</span>
+                      )}
+                    </span>
+                    <button
+                      onClick={() => { setEditingMemberId(m.id); setEditingNickname(m.nickname); }}
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    {m.id !== currentMemberId && (
+                      <button
+                        onClick={() => handleDeleteMember(m.id, m.nickname)}
+                        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             ))}
+            {addingMember && (
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                  placeholder="ニックネーム"
+                  value={newNickname}
+                  onChange={(e) => setNewNickname(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddMember(); if (e.key === "Escape") setAddingMember(false); }}
+                  autoFocus
+                />
+                <button onClick={handleAddMember} className="p-1.5 text-primary transition-colors">
+                  <Check size={15} />
+                </button>
+                <button onClick={() => setAddingMember(false)} className="p-1.5 text-muted-foreground transition-colors">
+                  <X size={15} />
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
