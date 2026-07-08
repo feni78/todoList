@@ -13,7 +13,7 @@ interface RouletteSpecialProps {
 
 const ITEM_HEIGHT = 64;
 const VISIBLE = 5;
-const REPEATS = 8;
+const REPEATS = 22;
 
 export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: RouletteSpecialProps) {
   const controls = useAnimation();
@@ -27,15 +27,16 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult }: R
       const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
       if (resultIndex < 0) return;
 
-      // 4周目のresultIndexのアイテムを中央スロット（index 2）に合わせる
-      const targetItemIndex = 4 * count + resultIndex;
+      // 上から下に流れる：startY（大きな負値）→ targetY（小さな負値）
+      // 3周分オフセットして上下に確実にアイテムが表示されるようにする
       const centerOffset = Math.floor(VISIBLE / 2);
-      const targetY = -((targetItemIndex - centerOffset) * ITEM_HEIGHT);
+      const targetY = -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
+      const startY = targetY - 14 * count * ITEM_HEIGHT;
 
-      controls.set({ y: 0 });
+      controls.set({ y: startY });
       controls.start({
         y: targetY,
-        transition: { duration: 3.5, ease: [0.2, 0.8, 0.4, 1] },
+        transition: { duration: 8.5, ease: [0.05, 1.0, 0.95, 1] },
       });
     }
     if (!isSpinning) {

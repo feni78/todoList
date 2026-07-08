@@ -35,7 +35,7 @@ export function useRoulette(wishes: Wish[]) {
         setIsSpinning(false);
         setPendingResult(null);
         onComplete?.(drawn);
-      }, 3500);
+      }, 8500);
     },
     [filteredWishes, settings, isSpinning, setIsSpinning, setResult]
   );
