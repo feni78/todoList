@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WishForm } from "./WishForm";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, ExternalLink } from "lucide-react";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { useGroupStore } from "@/lib/store/groupStore";
 
@@ -26,6 +26,7 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
   const { group } = useGroupStore();
   const members = group?.members ?? [];
   const hasMyVote = wish.votes.some((v) => v.memberId === currentMemberId);
+  const memoUrl = wish.memo?.match(/https?:\/\/[^\s]+/)?.[0] ?? null;
 
   const handleUpdate = async (data: Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) => {
     setSaving(true);
@@ -108,6 +109,17 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
         </button>
 
         <div className="flex items-center gap-1 shrink-0">
+          {memoUrl && (
+            <a
+              href={memoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground hover:text-primary p-1.5 rounded-lg transition-colors"
+            >
+              <ExternalLink size={15} />
+            </a>
+          )}
           <button
             onClick={() => setEditOpen(true)}
             className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg transition-colors"
