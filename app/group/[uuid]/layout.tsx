@@ -34,6 +34,7 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
       const g = groupData as Group & { members: GroupMember[] };
       setGroup({ id: g.id, name: g.name, members: g.members });
       setGroupName(g.name);
+      document.title = g.name;
 
       if (!stored) {
         setNeedsJoin(true);

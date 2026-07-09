@@ -35,6 +35,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editingGroupName, setEditingGroupName] = useState(false);
+  const [groupNameInput, setGroupNameInput] = useState("");
   const [switchingUser, setSwitchingUser] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editingNickname, setEditingNickname] = useState("");
@@ -206,6 +208,17 @@ export default function SettingsPage() {
     toast.success(`「${member.nickname}」に切り替えました`);
   };
 
+  const handleUpdateGroupName = async () => {
+    if (!groupNameInput.trim()) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("groups").update({ name: groupNameInput.trim() }).eq("id", uuid);
+    if (error) { toast.error("更新に失敗しました"); return; }
+    setGroup({ ...group!, name: groupNameInput.trim() });
+    document.title = groupNameInput.trim();
+    setEditingGroupName(false);
+    toast.success("グループ名を更新しました");
+  };
+
   const handleAddGenre = async () => {
     if (!newGenreName.trim()) return;
     try {
@@ -252,6 +265,37 @@ export default function SettingsPage() {
       <TopBar title="設定" />
 
       <div className="flex-1 flex flex-col gap-6 p-4 pb-8 max-w-md mx-auto w-full">
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <h2 className="font-semibold">グループ</h2>
+          {editingGroupName ? (
+            <div className="flex items-center gap-2">
+              <input
+                className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-background"
+                value={groupNameInput}
+                onChange={(e) => setGroupNameInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleUpdateGroupName(); if (e.key === "Escape") setEditingGroupName(false); }}
+                autoFocus
+              />
+              <button onClick={handleUpdateGroupName} className="p-1.5 text-primary transition-colors">
+                <Check size={15} />
+              </button>
+              <button onClick={() => setEditingGroupName(false)} className="p-1.5 text-muted-foreground transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{group?.name}</span>
+              <button
+                onClick={() => { setGroupNameInput(group?.name ?? ""); setEditingGroupName(true); }}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
+          )}
+        </section>
+
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">ルーレット設定</h2>
 
