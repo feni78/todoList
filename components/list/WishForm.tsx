@@ -98,7 +98,7 @@ export function WishForm({ initial, currentMemberId, genres = [], onSubmit, onCa
 
   const [form, setForm] = useState<WishFormData>({
     title: initial?.title ?? "",
-    situation: initial?.situation ?? "HOME",
+    situation: initial?.situation ?? "OUTSIDE",
     status: initial?.status ?? "PENDING",
     memo: initial?.memo ?? "",
     budget: initial?.budget ?? "",
