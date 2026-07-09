@@ -17,7 +17,7 @@ const notoSansJP = Noto_Sans_JP({
 
 export const metadata: Metadata = {
   title: "やりたいことリスト",
-  description: "ふたりでやりたいことを管理するアプリ",
+  description: "やりたいことを管理するアプリ",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

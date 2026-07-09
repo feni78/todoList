@@ -1,7 +1,7 @@
 {
   "name": "やりたいことリスト",
   "short_name": "やりたいリスト",
-  "description": "ふたりでやりたいことを管理するアプリ",
+  "description": "やりたいことを管理するアプリ",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
