@@ -548,7 +548,7 @@ export default function SettingsPage() {
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">共有</h2>
           <p className="text-sm text-muted-foreground">
-            このURLをパートナーに送ってグループに招待しよう
+            このURLをメンバーに送ってグループに招待しよう
           </p>
           <Button
             variant="outline"

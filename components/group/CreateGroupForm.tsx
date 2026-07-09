@@ -50,7 +50,7 @@ export function CreateGroupForm() {
       <div className="flex flex-col gap-4">
         <div className="text-center">
           <p className="text-sm text-muted-foreground mb-1">グループが作成されました</p>
-          <p className="font-semibold">パートナーにURLを共有しよう</p>
+          <p className="font-semibold">メンバーにURLを共有しよう</p>
         </div>
         <div className="flex items-center gap-2 bg-muted rounded-lg p-3">
           <span className="text-xs text-muted-foreground truncate flex-1">{createdUrl}</span>
