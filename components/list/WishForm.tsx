@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import {
   Wish,
   Genre,
+  GroupMember,
   Situation,
   Status,
   Budget,
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 
 interface WishFormData {
   title: string;
+  memberId: string;
   situation: Situation;
   status: Status;
   memo: string;
@@ -39,9 +41,11 @@ interface WishFormData {
 interface WishFormProps {
   initial?: Wish;
   currentMemberId?: string;
+  members?: GroupMember[];
   genres?: Genre[];
   onSubmit: (data: {
     title: string;
+    memberId?: string;
     situation: Situation;
     status: Status;
     memo?: string;
@@ -91,13 +95,14 @@ function SegmentButton<T extends string>({
   );
 }
 
-export function WishForm({ initial, currentMemberId, genres = [], onSubmit, onCancel, loading }: WishFormProps) {
+export function WishForm({ initial, currentMemberId, members = [], genres = [], onSubmit, onCancel, loading }: WishFormProps) {
   const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
   // 新規作成 or 自分が登録したものの編集 → 必須
   const scoreRequired = !initial || initial.memberId === currentMemberId;
 
   const [form, setForm] = useState<WishFormData>({
     title: initial?.title ?? "",
+    memberId: initial?.memberId ?? currentMemberId ?? "",
     situation: initial?.situation ?? "OUTSIDE",
     status: initial?.status ?? "PENDING",
     memo: initial?.memo ?? "",
@@ -132,6 +137,7 @@ export function WishForm({ initial, currentMemberId, genres = [], onSubmit, onCa
     if (scoreRequired && !form.myScore) return;
     await onSubmit({
       title: form.title.trim(),
+      memberId: form.memberId || undefined,
       situation: form.situation,
       status: form.status,
       memo: form.memo.trim() || undefined,
@@ -181,6 +187,29 @@ export function WishForm({ initial, currentMemberId, genres = [], onSubmit, onCa
         </div>
         {!scoreRequired && <p className="text-[11px] text-muted-foreground">タップで選択・もう一度タップで解除</p>}
       </div>
+
+      {initial && members.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <Label>登録者</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {members.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, memberId: m.id }))}
+                className={cn(
+                  "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                  form.memberId === m.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {m.nickname}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label>シチュエーション *</Label>

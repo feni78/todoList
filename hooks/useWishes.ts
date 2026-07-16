@@ -189,6 +189,7 @@ export function useWishes(groupId: string) {
       wishId: string,
       data: {
         title?: string;
+        memberId?: string;
         situation?: Wish["situation"];
         status?: Wish["status"];
         memo?: string;
@@ -204,6 +205,7 @@ export function useWishes(groupId: string) {
       const { seasons, genreIds, myScore, ...rest } = data;
 
       const updatePayload: Record<string, unknown> = {};
+      if (rest.memberId !== undefined) updatePayload.member_id = rest.memberId;
       if (rest.title !== undefined) updatePayload.title = rest.title;
       if (rest.situation !== undefined) updatePayload.situation = rest.situation;
       if (rest.status !== undefined) updatePayload.status = rest.status;

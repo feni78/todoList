@@ -143,6 +143,7 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
           <WishForm
             initial={wish}
             currentMemberId={currentMemberId}
+            members={members}
             genres={genres}
             onSubmit={handleUpdate}
             onCancel={() => setEditOpen(false)}
