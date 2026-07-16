@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
+import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
@@ -43,6 +44,8 @@ export default function SettingsPage() {
   const [addingMember, setAddingMember] = useState(false);
   const [newNickname, setNewNickname] = useState("");
   const { genres, createGenre, updateGenre, deleteGenre } = useGenres(uuid);
+  const { items: trashItems, loading: trashLoading, fetchTrash, restoreWish, permanentDelete, emptyTrash } = useTrash(uuid);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [editingGenreId, setEditingGenreId] = useState<string | null>(null);
   const [editingGenreName, setEditingGenreName] = useState("");
   const [addingGenre, setAddingGenre] = useState(false);
@@ -532,6 +535,67 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground">+ボタンでジャンルを追加できます</p>
             )}
           </div>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">ごみ箱</h2>
+            <button
+              onClick={() => { setTrashOpen((v) => !v); if (!trashOpen) fetchTrash(); }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {trashOpen ? "閉じる" : "開く"}
+            </button>
+          </div>
+          {trashOpen && (
+            <>
+              <p className="text-xs text-muted-foreground">削除後30日間保持されます</p>
+              {trashLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                </div>
+              ) : trashItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">ごみ箱は空です</p>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-1">
+                    {trashItems.map((item) => {
+                      const deletedAt = new Date(item.deletedAt);
+                      const daysLeft = 30 - Math.floor((Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={item.id} className="flex items-center gap-2 py-1.5 border-b border-border last:border-b-0">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm truncate">{item.title}</p>
+                            <p className="text-[11px] text-muted-foreground">残り{daysLeft}日</p>
+                          </div>
+                          <button
+                            onClick={async () => { try { await restoreWish(item.id); toast.success("復元しました"); } catch { toast.error("復元に失敗しました"); } }}
+                            className="text-xs text-primary hover:underline shrink-0"
+                          >
+                            復元
+                          </button>
+                          <button
+                            onClick={async () => { if (!confirm("完全に削除しますか？")) return; try { await permanentDelete(item.id); toast.success("削除しました"); } catch { toast.error("削除に失敗しました"); } }}
+                            className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => { if (!confirm("ごみ箱を空にしますか？元に戻せません。")) return; try { await emptyTrash(); toast.success("ごみ箱を空にしました"); } catch { toast.error("失敗しました"); } }}
+                    className="w-full"
+                  >
+                    ごみ箱を空にする
+                  </Button>
+                </>
+              )}
+            </>
+          )}
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
