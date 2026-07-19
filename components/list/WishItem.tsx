@@ -11,10 +11,12 @@ import { Trash2, Pencil, ExternalLink } from "lucide-react";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { useGroupStore } from "@/lib/store/groupStore";
 
+type WishUpdateData = (Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) & { doneAt?: string | null };
+
 interface WishItemProps {
   wish: Wish;
   genres?: Genre[];
-  onUpdate: (id: string, data: Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) => Promise<void>;
+  onUpdate: (id: string, data: WishUpdateData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
 }
@@ -27,6 +29,19 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
   const members = group?.members ?? [];
   const hasMyVote = wish.votes.some((v) => v.memberId === currentMemberId);
   const memoUrl = wish.memo?.match(/https?:\/\/[^\s]+/)?.[0] ?? null;
+
+  const handleDoneAtChange = async (dateStr: string) => {
+    if (!dateStr) return;
+    try {
+      await onUpdate(wish.id, {
+        title: wish.title,
+        situation: wish.situation,
+        status: wish.status,
+        seasons: wish.seasons,
+        doneAt: new Date(dateStr).toISOString(),
+      });
+    } catch { /* ignore */ }
+  };
 
   const handleUpdate = async (data: Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) => {
     setSaving(true);
@@ -80,7 +95,13 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className="text-xs text-muted-foreground">{wish.member.nickname}</span>
             {wish.status === "DONE" && (
-              <span className="text-xs text-muted-foreground">{new Date(wish.updatedAt).toLocaleDateString("ja-JP")}</span>
+              <input
+                type="date"
+                className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0"
+                value={wish.doneAt ? wish.doneAt.slice(0, 10) : wish.updatedAt.slice(0, 10)}
+                onChange={(e) => handleDoneAtChange(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
             )}
             {wish.seasons.map((s) => (
               <Badge key={s} variant="outline" className="text-[10px] px-1 py-0 h-4">

@@ -7,7 +7,7 @@ import { WishItem } from "./WishItem";
 interface WishListProps {
   wishes: Wish[];
   genres?: Genre[];
-  onUpdate: (id: string, data: Parameters<Parameters<typeof WishItem>[0]["onUpdate"]>[1]) => Promise<void>;
+  onUpdate: Parameters<typeof WishItem>[0]["onUpdate"];
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
   emptyMessage?: string;

@@ -64,6 +64,7 @@ function mapRow(row: Record<string, unknown>): Wish {
     genres,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
+    doneAt: (row.done_at as string | null) ?? null,
     member: member ?? { id: row.member_id as string, nickname: "不明" },
     votes,
     avgScore,
@@ -193,6 +194,7 @@ export function useWishes(groupId: string) {
         memberId?: string;
         situation?: Wish["situation"];
         status?: Wish["status"];
+        doneAt?: string | null;
         memo?: string;
         budget?: Wish["budget"];
         duration?: Wish["duration"];
@@ -210,6 +212,7 @@ export function useWishes(groupId: string) {
       if (rest.title !== undefined) updatePayload.title = rest.title;
       if (rest.situation !== undefined) updatePayload.situation = rest.situation;
       if (rest.status !== undefined) updatePayload.status = rest.status;
+      if (rest.doneAt !== undefined) updatePayload.done_at = rest.doneAt;
       if (rest.memo !== undefined) updatePayload.memo = rest.memo;
       if (rest.budget !== undefined) updatePayload.budget = rest.budget;
       if (rest.duration !== undefined) updatePayload.duration = rest.duration;
@@ -262,7 +265,8 @@ export function useWishes(groupId: string) {
 
   const changeStatus = useCallback(
     async (wishId: string, status: Status) => {
-      await updateWish(wishId, { status });
+      const doneAt = status === "DONE" ? new Date().toISOString() : null;
+      await updateWish(wishId, { status, doneAt });
     },
     [updateWish]
   );

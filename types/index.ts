@@ -56,6 +56,7 @@ export interface Wish {
   genres: Genre[];
   createdAt: string;
   updatedAt: string;
+  doneAt: string | null;
   member: {
     id: string;
     nickname: string;
