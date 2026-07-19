@@ -29,6 +29,9 @@ export function useRoulette(wishes: Wish[]) {
     if (filter.genreIds.length > 0) {
       if (!w.genres.some((g) => filter.genreIds.includes(g.id))) return false;
     }
+    if (filter.excludeGenreIds.length > 0) {
+      if (w.genres.some((g) => filter.excludeGenreIds.includes(g.id))) return false;
+    }
     return true;
   });
 

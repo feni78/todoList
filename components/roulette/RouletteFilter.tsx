@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/types";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface RouletteFilterProps {
   open: boolean;
@@ -24,14 +26,11 @@ interface RouletteFilterProps {
   genres?: Genre[];
 }
 
-function FilterChip({
-  selected,
-  onClick,
-  label,
-}: {
+function FilterChip({ selected, onClick, label, variant = "default" }: {
   selected: boolean;
   onClick: () => void;
   label: string;
+  variant?: "default" | "exclude";
 }) {
   return (
     <button
@@ -39,19 +38,37 @@ function FilterChip({
       onClick={onClick}
       className={cn(
         "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-        selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+        variant === "exclude"
+          ? selected
+            ? "bg-destructive text-destructive-foreground"
+            : "bg-muted text-muted-foreground hover:bg-muted/70"
+          : selected
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-muted-foreground hover:bg-muted/70"
       )}
     >
-      {label}
+      {variant === "exclude" && selected ? `✕ ${label}` : label}
     </button>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, collapsible = false }: {
+  title: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+}) {
+  const [open, setOpen] = useState(!collapsible);
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</p>
-      <div className="flex flex-wrap gap-2">{children}</div>
+      <button
+        type="button"
+        className="flex items-center gap-1 text-left"
+        onClick={() => collapsible && setOpen((v) => !v)}
+      >
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1">{title}</p>
+        {collapsible && (open ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />)}
+      </button>
+      {open && <div className="flex flex-wrap gap-2">{children}</div>}
     </div>
   );
 }
@@ -88,8 +105,6 @@ export function RouletteFilter({ open, onClose, members, genres = [] }: Roulette
               ))}
             </Section>
           )}
-
-          {/* やりたい度フィルターはルーレット重み設定で制御するため省略 */}
 
           <Section title="シチュエーション">
             {SITUATIONS.map((s) => (
@@ -136,13 +151,27 @@ export function RouletteFilter({ open, onClose, members, genres = [] }: Roulette
           </Section>
 
           {genres.length > 0 && (
-            <Section title="ジャンル">
+            <Section title="ジャンル（含む）">
               {genres.map((g) => (
                 <FilterChip
                   key={g.id}
                   selected={filter.genreIds.includes(g.id)}
                   onClick={() => setFilter({ genreIds: toggle(filter.genreIds, g.id) })}
                   label={g.name}
+                />
+              ))}
+            </Section>
+          )}
+
+          {genres.length > 0 && (
+            <Section title="ジャンル（除外）">
+              {genres.map((g) => (
+                <FilterChip
+                  key={g.id}
+                  selected={filter.excludeGenreIds.includes(g.id)}
+                  onClick={() => setFilter({ excludeGenreIds: toggle(filter.excludeGenreIds, g.id) })}
+                  label={g.name}
+                  variant="exclude"
                 />
               ))}
             </Section>

@@ -99,6 +99,9 @@ export default function ListPage() {
     if (filterStore.genreIds.length > 0) {
       result = result.filter((w) => w.genres.some((g) => filterStore.genreIds.includes(g.id)));
     }
+    if (filterStore.excludeGenreIds.length > 0) {
+      result = result.filter((w) => !w.genres.some((g) => filterStore.excludeGenreIds.includes(g.id)));
+    }
     if (filterStore.searchQuery) {
       const q = filterStore.searchQuery.toLowerCase();
       result = result.filter((w) => w.title.toLowerCase().includes(q));
@@ -175,7 +178,8 @@ export default function ListPage() {
     filterStore.budgets.length > 0 ||
     filterStore.durations.length > 0 ||
     filterStore.seasons.length > 0 ||
-    filterStore.genreIds.length > 0;
+    filterStore.genreIds.length > 0 ||
+    filterStore.excludeGenreIds.length > 0;
 
   return (
     <div className="flex flex-col min-h-screen pb-16">

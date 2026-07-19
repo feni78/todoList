@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/types";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface FilterPanelProps {
   open: boolean;
@@ -24,14 +26,11 @@ interface FilterPanelProps {
   genres?: Genre[];
 }
 
-function FilterChip({
-  selected,
-  onClick,
-  label,
-}: {
+function FilterChip({ selected, onClick, label, variant = "default" }: {
   selected: boolean;
   onClick: () => void;
   label: string;
+  variant?: "default" | "exclude";
 }) {
   return (
     <button
@@ -39,31 +38,49 @@ function FilterChip({
       onClick={onClick}
       className={cn(
         "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-        selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+        variant === "exclude"
+          ? selected
+            ? "bg-destructive text-destructive-foreground"
+            : "bg-muted text-muted-foreground hover:bg-muted/70"
+          : selected
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-muted-foreground hover:bg-muted/70"
       )}
     >
-      {label}
+      {variant === "exclude" && selected ? `✕ ${label}` : label}
     </button>
   );
 }
 
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FilterSection({ title, children, collapsible = false }: {
+  title: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+}) {
+  const [open, setOpen] = useState(!collapsible);
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</p>
-      <div className="flex flex-wrap gap-2">{children}</div>
+      <button
+        type="button"
+        className="flex items-center gap-1 text-left"
+        onClick={() => collapsible && setOpen((v) => !v)}
+      >
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1">{title}</p>
+        {collapsible && (open ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />)}
+      </button>
+      {open && <div className="flex flex-wrap gap-2">{children}</div>}
     </div>
   );
+}
+
+function toggle<T>(arr: T[], val: T): T[] {
+  return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 }
 
 const SITUATIONS: Situation[] = ["HOME", "OUTSIDE", "EITHER"];
 const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
-
-function toggle<T>(arr: T[], val: T): T[] {
-  return arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
-}
 
 export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanelProps) {
   const store = useFilterStore();
@@ -74,7 +91,8 @@ export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanel
     store.budgets.length > 0 ||
     store.durations.length > 0 ||
     store.seasons.length > 0 ||
-    store.genreIds.length > 0;
+    store.genreIds.length > 0 ||
+    store.excludeGenreIds.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -142,13 +160,27 @@ export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanel
           </FilterSection>
 
           {genres.length > 0 && (
-            <FilterSection title="ジャンル">
+            <FilterSection title="ジャンル（含む）">
               {genres.map((g) => (
                 <FilterChip
                   key={g.id}
                   selected={store.genreIds.includes(g.id)}
                   onClick={() => store.setGenreIds(toggle(store.genreIds, g.id))}
                   label={g.name}
+                />
+              ))}
+            </FilterSection>
+          )}
+
+          {genres.length > 0 && (
+            <FilterSection title="ジャンル（除外）">
+              {genres.map((g) => (
+                <FilterChip
+                  key={g.id}
+                  selected={store.excludeGenreIds.includes(g.id)}
+                  onClick={() => store.setExcludeGenreIds(toggle(store.excludeGenreIds, g.id))}
+                  label={g.name}
+                  variant="exclude"
                 />
               ))}
             </FilterSection>

@@ -100,6 +100,7 @@ export interface FilterState {
   durations: Duration[];
   seasons: Season[];
   genreIds: string[];
+  excludeGenreIds: string[];
   searchQuery: string;
 }
 

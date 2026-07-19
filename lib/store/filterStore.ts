@@ -9,6 +9,7 @@ interface FilterStore extends FilterState {
   setDurations: (d: Duration[]) => void;
   setSeasons: (s: Season[]) => void;
   setGenreIds: (ids: string[]) => void;
+  setExcludeGenreIds: (ids: string[]) => void;
   setSearchQuery: (q: string) => void;
   reset: () => void;
 }
@@ -21,6 +22,7 @@ const initialState: FilterState = {
   durations: [],
   seasons: [],
   genreIds: [],
+  excludeGenreIds: [],
   searchQuery: "",
 };
 
@@ -33,6 +35,7 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setDurations: (durations) => set({ durations }),
   setSeasons: (seasons) => set({ seasons }),
   setGenreIds: (genreIds) => set({ genreIds }),
+  setExcludeGenreIds: (excludeGenreIds) => set({ excludeGenreIds }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   reset: () => set(initialState),
 }));
