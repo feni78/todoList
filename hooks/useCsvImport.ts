@@ -155,20 +155,28 @@ export function useCsvImport(groupId: string) {
         }
       }
 
-      // インポート開始時にDBから最新データを取得（stale propsに依存しない）
+      // インポート開始時にDBから最新データを取得
       const { data: freshWishes, error: fetchErr } = await supabase
         .from("wishes")
-        .select("id, memo")
+        .select("id, title, memo")
         .eq("group_id", groupId)
         .is("deleted_at", null);
       if (fetchErr) throw fetchErr;
 
-      // Build URL → existing wish id map
-      const urlToWishId = new Map<string, string>();
-      for (const w of freshWishes ?? []) {
-        if (!w.memo) continue;
-        const match = (w.memo as string).match(/https?:\/\/\S+/);
-        if (match) urlToWishId.set(match[0], w.id as string);
+      // URLまたはタイトルで既存wish IDを引けるMapを構築
+      interface ExistingWish { id: string; title: string; memo: string | null; }
+      const existing = (freshWishes ?? []) as ExistingWish[];
+
+      const urlToExisting = new Map<string, ExistingWish>();
+      const titleToExisting = new Map<string, ExistingWish>();
+      for (const w of existing) {
+        if (w.memo) {
+          // buildMemoはURLをメモの末尾に置くため、最後の行からURLを抽出する
+          const lines = w.memo.split("\n");
+          const lastLine = lines[lines.length - 1].trim();
+          if (/^https?:\/\//.test(lastLine)) urlToExisting.set(lastLine, w);
+        }
+        if (w.title) titleToExisting.set(w.title, w);
       }
 
       // Categorize
@@ -178,7 +186,7 @@ export function useCsvImport(groupId: string) {
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
       let skipped = 0;
-      const handledUrls = new Set<string>();
+      const handledKeys = new Set<string>(); // "url:<url>" or "title:<title>"
 
       for (const item of allItems) {
         const { row } = item;
@@ -187,10 +195,24 @@ export function useCsvImport(groupId: string) {
         const score = scoreFromMemo(row.memo);
         const memoText = buildMemo(row.memo, row.url);
 
-        if (row.url && urlToWishId.has(row.url)) {
-          if (handledUrls.has(row.url)) { skipped++; continue; }
-          handledUrls.add(row.url);
-          toUpdate.push({ ...item, wishId: urlToWishId.get(row.url)!, score, memoText });
+        // URLで突合（URLあり優先）
+        const matchByUrl = row.url ? urlToExisting.get(row.url) : undefined;
+        // URLなし or URL未一致の場合はタイトルで突合
+        const matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
+        const existingMatch = matchByUrl ?? matchByTitle;
+        const dedupeKey = row.url ? `url:${row.url}` : `title:${row.title}`;
+
+        if (existingMatch) {
+          if (handledKeys.has(dedupeKey)) { skipped++; continue; }
+          handledKeys.add(dedupeKey);
+
+          // 内容が変わっていなければスキップ
+          const newMemo = memoText ?? null;
+          if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
+            skipped++;
+            continue;
+          }
+          toUpdate.push({ ...item, wishId: existingMatch.id, score, memoText });
         } else {
           toInsert.push({ ...item, score, memoText });
         }
