@@ -607,6 +607,21 @@ export default function SettingsPage() {
             <Label htmlFor="dev-mode">ルーレット確率を表示</Label>
             <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} />
           </div>
+          <div className="flex flex-col gap-2">
+            <Label className="text-destructive">タスク全消去（デバッグ用）</Label>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!confirm("全タスクを完全に削除します。この操作は取り消せません。本当に実行しますか？")) return;
+                const supabase = createClient();
+                const { error } = await supabase.from("wishes").delete().eq("group_id", uuid);
+                if (error) { toast.error("削除に失敗しました"); return; }
+                toast.success("全タスクを削除しました");
+              }}
+            >
+              全タスクを削除
+            </Button>
+          </div>
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
