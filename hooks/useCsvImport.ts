@@ -23,15 +23,39 @@ export interface ImportResult {
 }
 
 function parseCSV(text: string): CsvRow[] {
-  const lines = text.split(/\r?\n/);
-  if (lines.length < 2) return [];
+  // テキスト全体を文字単位で処理し、クォート内の改行も正しく扱う
+  const records: string[][] = [];
+  let cur = "";
+  let inQuote = false;
+  let fields: string[] = [];
 
+  const flush = () => { fields.push(cur); cur = ""; };
+  const newRecord = () => { flush(); records.push(fields); fields = []; };
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (inQuote) {
+      if (ch === '"' && next === '"') { cur += '"'; i++; }
+      else if (ch === '"') { inQuote = false; }
+      else { cur += ch; }
+    } else {
+      if (ch === '"') { inQuote = true; }
+      else if (ch === ',') { flush(); }
+      else if (ch === '\r' && next === '\n') { newRecord(); i++; }
+      else if (ch === '\n' || ch === '\r') { newRecord(); }
+      else { cur += ch; }
+    }
+  }
+  // 末尾に改行がない場合の残りを処理
+  if (cur || fields.length > 0) newRecord();
+
+  // ヘッダー行をスキップ、空行を除外
   const rows: CsvRow[] = [];
-  // skip header line (index 0)
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const cols = parseCsvLine(line);
+  for (let i = 1; i < records.length; i++) {
+    const cols = records[i];
+    if (cols.every((c) => !c.trim())) continue;
     rows.push({
       title: (cols[0] ?? "").trim(),
       memo: (cols[1] ?? "").trim(),
@@ -39,39 +63,6 @@ function parseCSV(text: string): CsvRow[] {
     });
   }
   return rows;
-}
-
-function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
-  let cur = "";
-  let inQuote = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuote) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else {
-          inQuote = false;
-        }
-      } else {
-        cur += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuote = true;
-      } else if (ch === ",") {
-        result.push(cur);
-        cur = "";
-      } else {
-        cur += ch;
-      }
-    }
-  }
-  result.push(cur);
-  return result;
 }
 
 function scoreFromMemo(memo: string): ScoreValue {
