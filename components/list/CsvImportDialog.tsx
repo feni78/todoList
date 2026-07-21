@@ -164,6 +164,30 @@ export function CsvImportDialog({ open, onClose, groupId, genres, wishes }: Prop
               onChange={handleFileChange}
             />
 
+            {/* Global genre */}
+            {genres.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-xs font-medium text-muted-foreground">全ファイル共通ジャンル</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {genres.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => toggleGlobalGenre(g.id)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+                        globalGenreIds.includes(g.id)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/70"
+                      )}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* File list */}
             {entries.length > 0 && (
               <div className="flex flex-col gap-3">
@@ -186,7 +210,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres, wishes }: Prop
 
                     {genres.length > 0 && (
                       <div className="flex flex-col gap-1.5">
-                        <p className="text-xs text-muted-foreground">ジャンル（このファイル全体に適用）</p>
+                        <p className="text-xs text-muted-foreground">ジャンル（このファイル個別）</p>
                         <div className="flex flex-wrap gap-1.5">
                           {genres.map((g) => (
                             <button
@@ -210,30 +234,6 @@ export function CsvImportDialog({ open, onClose, groupId, genres, wishes }: Prop
                 ))}
 
                 <p className="text-xs text-muted-foreground text-center">合計 {totalRows}件</p>
-
-                {/* Global genre */}
-                {genres.length > 0 && (
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">全ファイル共通ジャンル</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {genres.map((g) => (
-                        <button
-                          key={g.id}
-                          type="button"
-                          onClick={() => toggleGlobalGenre(g.id)}
-                          className={cn(
-                            "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-                            globalGenreIds.includes(g.id)
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground hover:bg-muted/70"
-                          )}
-                        >
-                          {g.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
