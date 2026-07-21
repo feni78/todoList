@@ -165,9 +165,9 @@ export function CsvImportDialog({ open, onClose, groupId, genres, wishes }: Prop
             />
 
             {/* Global genre */}
-            {genres.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <p className="text-xs font-medium text-muted-foreground">全ファイル共通ジャンル</p>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-muted-foreground">全ファイル共通ジャンル</p>
+              {genres.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {genres.map((g) => (
                     <button
@@ -185,8 +185,10 @@ export function CsvImportDialog({ open, onClose, groupId, genres, wishes }: Prop
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground">設定からジャンルを追加すると選択できます</p>
+              )}
+            </div>
 
             {/* File list */}
             {entries.length > 0 && (
