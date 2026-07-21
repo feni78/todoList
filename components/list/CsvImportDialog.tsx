@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Genre, Wish } from "@/types";
-import { useCsvImport, FileImportConfig, ImportResult } from "@/hooks/useCsvImport";
+import { useCsvImport, FileImportConfig, ImportResult, parseCsvText } from "@/hooks/useCsvImport";
 import { Upload, X, FileText, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,8 +27,7 @@ async function countRows(file: File): Promise<number> {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = (e.target?.result as string) ?? "";
-      const lines = text.split(/\r?\n/).filter((l) => l.trim());
-      resolve(Math.max(0, lines.length - 1)); // subtract header
+      resolve(parseCsvText(text).length);
     };
     reader.readAsText(file, "UTF-8");
   });

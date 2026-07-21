@@ -22,7 +22,7 @@ export interface ImportResult {
   skipped: number;
 }
 
-function parseCSV(text: string): CsvRow[] {
+export function parseCsvText(text: string): CsvRow[] {
   // テキスト全体を文字単位で処理し、クォート内の改行も正しく扱う
   const records: string[][] = [];
   let cur = "";
@@ -149,7 +149,7 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
       const allItems: ParsedItem[] = [];
       for (const config of configs) {
         const text = await readFileAsText(config.file);
-        const rows = parseCSV(text);
+        const rows = parseCsvText(text);
         for (const row of rows) {
           allItems.push({ row, genreIds: config.genreIds });
         }
