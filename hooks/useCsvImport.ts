@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Wish, ScoreValue } from "@/types";
+import { ScoreValue } from "@/types";
 import { getGroupMember } from "@/lib/utils/localStorage";
 
 export interface CsvRow {
@@ -114,7 +114,9 @@ async function insertVotesBatch(
   const CHUNK = 500;
   for (let i = 0; i < votes.length; i += CHUNK) {
     const chunk = votes.slice(i, i + CHUNK);
-    const { error } = await supabase.from("wish_votes").insert(chunk);
+    const { error } = await supabase
+      .from("wish_votes")
+      .upsert(chunk, { onConflict: "wish_id,member_id" });
     if (error) throw error;
   }
 }
@@ -131,7 +133,7 @@ async function insertGenresBatch(
   }
 }
 
-export function useCsvImport(groupId: string, existingWishes: Wish[]) {
+export function useCsvImport(groupId: string) {
   const importFiles = useCallback(
     async (configs: FileImportConfig[]): Promise<ImportResult> => {
       const entry = getGroupMember(groupId);
@@ -153,22 +155,29 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
         }
       }
 
-      // Build URL → existing wish map
-      const urlToWish = new Map<string, Wish>();
-      for (const w of existingWishes) {
+      // インポート開始時にDBから最新データを取得（stale propsに依存しない）
+      const { data: freshWishes, error: fetchErr } = await supabase
+        .from("wishes")
+        .select("id, memo")
+        .eq("group_id", groupId)
+        .is("deleted_at", null);
+      if (fetchErr) throw fetchErr;
+
+      // Build URL → existing wish id map
+      const urlToWishId = new Map<string, string>();
+      for (const w of freshWishes ?? []) {
         if (!w.memo) continue;
-        const match = w.memo.match(/https?:\/\/\S+/);
-        if (match) urlToWish.set(match[0], w);
+        const match = (w.memo as string).match(/https?:\/\/\S+/);
+        if (match) urlToWishId.set(match[0], w.id as string);
       }
 
       // Categorize
       interface NewItem extends ParsedItem { score: ScoreValue; memoText: string | null; }
-      interface UpdateItem extends ParsedItem { wish: Wish; score: ScoreValue; memoText: string | null; }
+      interface UpdateItem extends ParsedItem { wishId: string; score: ScoreValue; memoText: string | null; }
 
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
       let skipped = 0;
-      // 同一URLを今回のインポート内で重複処理しないよう管理
       const handledUrls = new Set<string>();
 
       for (const item of allItems) {
@@ -178,11 +187,10 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
         const score = scoreFromMemo(row.memo);
         const memoText = buildMemo(row.memo, row.url);
 
-        if (row.url && urlToWish.has(row.url)) {
+        if (row.url && urlToWishId.has(row.url)) {
           if (handledUrls.has(row.url)) { skipped++; continue; }
           handledUrls.add(row.url);
-          const existing = urlToWish.get(row.url)!;
-          toUpdate.push({ ...item, wish: existing, score, memoText });
+          toUpdate.push({ ...item, wishId: urlToWishId.get(row.url)!, score, memoText });
         } else {
           toInsert.push({ ...item, score, memoText });
         }
@@ -231,32 +239,26 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
         for (const item of toUpdate) {
           const { error } = await supabase
             .from("wishes")
-            .update({
-              title: item.row.title,
-              memo: item.memoText ?? null,
-            })
-            .eq("id", item.wish.id);
+            .update({ title: item.row.title, memo: item.memoText ?? null })
+            .eq("id", item.wishId);
           if (error) throw error;
 
-          // Upsert vote
-          const { data: existingVote } = await supabase
+          // Upsert vote（conflictを避けるためupsertを使用）
+          const { error: voteErr } = await supabase
             .from("wish_votes")
-            .select("id")
-            .eq("wish_id", item.wish.id)
-            .eq("member_id", entry.memberId)
-            .maybeSingle();
-          if (existingVote) {
-            await supabase.from("wish_votes").update({ score: item.score }).eq("id", existingVote.id);
-          } else {
-            await supabase.from("wish_votes").insert({ wish_id: item.wish.id, member_id: entry.memberId, score: item.score });
-          }
+            .upsert(
+              { wish_id: item.wishId, member_id: entry.memberId, score: item.score },
+              { onConflict: "wish_id,member_id" }
+            );
+          if (voteErr) throw voteErr;
 
           // Genres
           if (item.genreIds.length > 0) {
-            await supabase.from("wish_genres").delete().eq("wish_id", item.wish.id);
-            await supabase.from("wish_genres").insert(
-              item.genreIds.map((gid) => ({ wish_id: item.wish.id, genre_id: gid }))
+            await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
+            const { error: genreErr } = await supabase.from("wish_genres").insert(
+              item.genreIds.map((gid) => ({ wish_id: item.wishId, genre_id: gid }))
             );
+            if (genreErr) throw genreErr;
           }
         }
 
@@ -272,7 +274,7 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
         throw err;
       }
     },
-    [groupId, existingWishes]
+    [groupId]
   );
 
   return { importFiles };

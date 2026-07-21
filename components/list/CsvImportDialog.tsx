@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Genre, Wish } from "@/types";
+import { Genre } from "@/types";
 import { useCsvImport, FileImportConfig, ImportResult, parseCsvText } from "@/hooks/useCsvImport";
 import { Upload, X, FileText, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,6 @@ interface Props {
   onClose: () => void;
   groupId: string;
   genres: Genre[];
-  wishes: Wish[];
 }
 
 async function countRows(file: File): Promise<number> {
@@ -33,7 +32,7 @@ async function countRows(file: File): Promise<number> {
   });
 }
 
-export function CsvImportDialog({ open, onClose, groupId, genres, wishes }: Props) {
+export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [globalGenreIds, setGlobalGenreIds] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
@@ -47,7 +46,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres, wishes }: Prop
     );
   };
 
-  const { importFiles } = useCsvImport(groupId, wishes);
+  const { importFiles } = useCsvImport(groupId);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);

@@ -350,7 +350,6 @@ export default function ListPage() {
         onClose={() => setCsvOpen(false)}
         groupId={uuid}
         genres={genres}
-        wishes={wishes}
       />
 
       <BottomNav groupId={uuid} />
