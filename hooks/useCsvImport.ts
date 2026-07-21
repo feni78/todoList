@@ -90,6 +90,7 @@ async function readFileAsText(file: File): Promise<string> {
 async function insertBatch(
   supabase: ReturnType<typeof createClient>,
   rows: {
+    id: string;
     group_id: string;
     member_id: string;
     title: string;
@@ -97,16 +98,13 @@ async function insertBatch(
     status: string;
     memo: string | null;
   }[]
-): Promise<string[]> {
+): Promise<void> {
   const CHUNK = 500;
-  const ids: string[] = [];
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const { data, error } = await supabase.from("wishes").insert(chunk).select("id");
+    const { error } = await supabase.from("wishes").insert(chunk);
     if (error) throw error;
-    ids.push(...(data ?? []).map((r) => r.id as string));
   }
-  return ids;
 }
 
 async function insertVotesBatch(
@@ -170,6 +168,8 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
       let skipped = 0;
+      // 同一URLを今回のインポート内で重複処理しないよう管理
+      const handledUrls = new Set<string>();
 
       for (const item of allItems) {
         const { row } = item;
@@ -179,6 +179,8 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
         const memoText = buildMemo(row.memo, row.url);
 
         if (row.url && urlToWish.has(row.url)) {
+          if (handledUrls.has(row.url)) { skipped++; continue; }
+          handledUrls.add(row.url);
           const existing = urlToWish.get(row.url)!;
           toUpdate.push({ ...item, wish: existing, score, memoText });
         } else {
@@ -186,11 +188,18 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
         }
       }
 
-      const insertedIds: string[] = [];
+      // クライアント側でUUIDを生成し、挿入順序に依存しない
+      const toInsertWithIds = toInsert.map((item) => ({
+        ...item,
+        id: crypto.randomUUID() as string,
+      }));
+      const insertedIds = toInsertWithIds.map((item) => item.id);
+
       try {
         // Batch insert new wishes
-        if (toInsert.length > 0) {
-          const wishRows = toInsert.map((item) => ({
+        if (toInsertWithIds.length > 0) {
+          const wishRows = toInsertWithIds.map((item) => ({
+            id: item.id,
             group_id: groupId,
             member_id: entry.memberId,
             title: item.row.title,
@@ -198,24 +207,23 @@ export function useCsvImport(groupId: string, existingWishes: Wish[]) {
             status: "PENDING" as const,
             memo: item.memoText ?? null,
           }));
-          const ids = await insertBatch(supabase, wishRows);
-          insertedIds.push(...ids);
+          await insertBatch(supabase, wishRows);
 
           // Votes
-          const voteRows = ids.map((id, i) => ({
-            wish_id: id,
+          const voteRows = toInsertWithIds.map((item) => ({
+            wish_id: item.id,
             member_id: entry.memberId,
-            score: toInsert[i].score,
+            score: item.score,
           }));
           await insertVotesBatch(supabase, voteRows);
 
           // Genres
           const genreLinks: { wish_id: string; genre_id: string }[] = [];
-          ids.forEach((id, i) => {
-            for (const gid of toInsert[i].genreIds) {
-              genreLinks.push({ wish_id: id, genre_id: gid });
+          for (const item of toInsertWithIds) {
+            for (const gid of item.genreIds) {
+              genreLinks.push({ wish_id: item.id, genre_id: gid });
             }
-          });
+          }
           if (genreLinks.length > 0) await insertGenresBatch(supabase, genreLinks);
         }
 
