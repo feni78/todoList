@@ -8,6 +8,7 @@ import { StatusTabs } from "@/components/list/StatusTabs";
 import { WishList } from "@/components/list/WishList";
 import { WishForm } from "@/components/list/WishForm";
 import { FilterPanel } from "@/components/list/FilterPanel";
+import { CsvImportDialog } from "@/components/list/CsvImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -62,6 +63,7 @@ export default function ListPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const [csvOpen, setCsvOpen] = useState(false);
   const [bulkAdding, setBulkAdding] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -264,6 +266,14 @@ export default function ListPage() {
 
       <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
         <button
+          onClick={() => setCsvOpen(true)}
+          className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-xs font-bold"
+          aria-label="CSV取り込み"
+          title="CSV取り込み"
+        >
+          CSV
+        </button>
+        <button
           onClick={() => setBulkOpen(true)}
           className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-xs font-bold"
           aria-label="一括追加"
@@ -333,6 +343,14 @@ export default function ListPage() {
         onClose={() => setFilterOpen(false)}
         members={group?.members ?? []}
         genres={genres}
+      />
+
+      <CsvImportDialog
+        open={csvOpen}
+        onClose={() => setCsvOpen(false)}
+        groupId={uuid}
+        genres={genres}
+        wishes={wishes}
       />
 
       <BottomNav groupId={uuid} />
