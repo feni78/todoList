@@ -85,6 +85,10 @@ const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
 export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanelProps) {
   const store = useFilterStore();
 
+  const excludeChanged =
+    store.excludeGenreIds.some((id) => !store.defaultExcludeGenreIds.includes(id)) ||
+    store.defaultExcludeGenreIds.some((id) => !store.excludeGenreIds.includes(id));
+
   const hasFilters =
     store.memberIds.length > 0 ||
     store.situations.length > 0 ||
@@ -92,7 +96,7 @@ export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanel
     store.durations.length > 0 ||
     store.seasons.length > 0 ||
     store.genreIds.length > 0 ||
-    store.excludeGenreIds.length > 0;
+    excludeChanged;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>

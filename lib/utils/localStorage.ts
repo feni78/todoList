@@ -75,3 +75,18 @@ export function setDarkMode(value: boolean): void {
 export function getAllGroups(): StorageGroupEntry[] {
   return getStorage().groups;
 }
+
+export function getDefaultExcludeGenreIds(groupId: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`futari_default_exclude_${groupId}`);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDefaultExcludeGenreIds(groupId: string, ids: string[]): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`futari_default_exclude_${groupId}`, JSON.stringify(ids));
+}

@@ -16,7 +16,8 @@ import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
-import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember } from "@/lib/utils/localStorage";
+import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds } from "@/lib/utils/localStorage";
+import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish } from "@/types";
 import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRef } from "react";
@@ -55,6 +56,18 @@ export default function SettingsPage() {
   const [editingGenreName, setEditingGenreName] = useState("");
   const [addingGenre, setAddingGenre] = useState(false);
   const [newGenreName, setNewGenreName] = useState("");
+  const [defaultExcludeIds, setDefaultExcludeIds] = useState<string[]>(() => getDefaultExcludeGenreIds(uuid ?? ""));
+  const { setDefaultExcludeGenreIds, setExcludeGenreIds } = useFilterStore();
+
+  const toggleDefaultExclude = (genreId: string) => {
+    const next = defaultExcludeIds.includes(genreId)
+      ? defaultExcludeIds.filter((id) => id !== genreId)
+      : [...defaultExcludeIds, genreId];
+    setDefaultExcludeIds(next);
+    saveDefaultExcludeGenreIds(uuid, next);
+    setDefaultExcludeGenreIds(next);
+    setExcludeGenreIds(next);
+  };
 
   useEffect(() => {
     setDarkModeState(getDarkMode());
@@ -541,6 +554,35 @@ export default function SettingsPage() {
             )}
           </div>
         </section>
+
+        {genres.length > 0 && (
+          <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+            <div>
+              <h2 className="font-semibold">デフォルト非表示ジャンル</h2>
+              <p className="text-xs text-muted-foreground mt-1">タップしたジャンルはリスト・ルーレットでデフォルトで除外されます</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {genres.map((g) => {
+                const excluded = defaultExcludeIds.includes(g.id);
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => toggleDefaultExclude(g.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                      excluded
+                        ? "bg-destructive text-destructive-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    {excluded ? `✕ ${g.name}` : g.name}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">

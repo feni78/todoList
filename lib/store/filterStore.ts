@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { FilterState, Situation, Status, Budget, Duration, Season } from "@/types";
 
 interface FilterStore extends FilterState {
+  defaultExcludeGenreIds: string[];
+  setDefaultExcludeGenreIds: (ids: string[]) => void;
   setMemberIds: (ids: string[]) => void;
   setSituations: (s: Situation[]) => void;
   setStatuses: (s: Status[]) => void;
@@ -28,6 +30,8 @@ const initialState: FilterState = {
 
 export const useFilterStore = create<FilterStore>((set) => ({
   ...initialState,
+  defaultExcludeGenreIds: [],
+  setDefaultExcludeGenreIds: (defaultExcludeGenreIds) => set({ defaultExcludeGenreIds }),
   setMemberIds: (memberIds) => set({ memberIds }),
   setSituations: (situations) => set({ situations }),
   setStatuses: (statuses) => set({ statuses }),
@@ -37,5 +41,6 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setGenreIds: (genreIds) => set({ genreIds }),
   setExcludeGenreIds: (excludeGenreIds) => set({ excludeGenreIds }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
-  reset: () => set(initialState),
+  // リセット時はデフォルト除外ジャンルを維持する
+  reset: () => set((state) => ({ ...initialState, defaultExcludeGenreIds: state.defaultExcludeGenreIds, excludeGenreIds: [...state.defaultExcludeGenreIds] })),
 }));

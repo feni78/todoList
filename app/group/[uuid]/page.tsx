@@ -224,6 +224,10 @@ export default function ListPage() {
     }
   };
 
+  const excludeChanged =
+    filterStore.excludeGenreIds.some((id) => !filterStore.defaultExcludeGenreIds.includes(id)) ||
+    filterStore.defaultExcludeGenreIds.some((id) => !filterStore.excludeGenreIds.includes(id));
+
   const hasActiveFilters =
     filterStore.memberIds.length > 0 ||
     filterStore.situations.length > 0 ||
@@ -232,7 +236,7 @@ export default function ListPage() {
     filterStore.durations.length > 0 ||
     filterStore.seasons.length > 0 ||
     filterStore.genreIds.length > 0 ||
-    filterStore.excludeGenreIds.length > 0;
+    excludeChanged;
 
   return (
     <div className="flex flex-col min-h-screen pb-16">

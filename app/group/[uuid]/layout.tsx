@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getGroupMember, saveGroupMember } from "@/lib/utils/localStorage";
+import { getGroupMember, saveGroupMember, getDefaultExcludeGenreIds } from "@/lib/utils/localStorage";
+import { useFilterStore } from "@/lib/store/filterStore";
 import { JoinGroupForm } from "@/components/group/JoinGroupForm";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +12,7 @@ import { Group, GroupMember } from "@/types";
 export default function GroupLayout({ children }: { children: React.ReactNode }) {
   const { uuid } = useParams<{ uuid: string }>();
   const { setGroup, setCurrentMember, group } = useGroupStore();
+  const { setDefaultExcludeGenreIds, setExcludeGenreIds } = useFilterStore();
   const [checking, setChecking] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -59,6 +61,12 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
 
     init();
   }, [uuid, setGroup, setCurrentMember]);
+
+  useEffect(() => {
+    const defaults = getDefaultExcludeGenreIds(uuid);
+    setDefaultExcludeGenreIds(defaults);
+    setExcludeGenreIds(defaults);
+  }, [uuid, setDefaultExcludeGenreIds, setExcludeGenreIds]);
 
   const handleJoined = () => {
     const stored = getGroupMember(uuid);
