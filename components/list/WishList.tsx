@@ -23,9 +23,13 @@ export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChan
   const [scrollMargin, setScrollMargin] = useState(0);
 
   useLayoutEffect(() => {
-    if (listRef.current) {
-      setScrollMargin(listRef.current.offsetTop);
-    }
+    const el = listRef.current;
+    if (!el) return;
+    const update = () => setScrollMargin(el.offsetTop);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
   }, []);
 
   const virtualizer = useWindowVirtualizer({
