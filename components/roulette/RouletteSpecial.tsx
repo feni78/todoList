@@ -14,12 +14,14 @@ interface RouletteSpecialProps {
 
 const ITEM_HEIGHT = 64;
 const VISIBLE = 5;
-const REPEATS = 22;
+const MAX_SPIN_ITEMS = 250; // 移動距離の上限（これ以上だと減速が視覚的に見えなくなる）
+const MAX_DOM_ITEMS = 2000; // DOM ノード上限
 
 export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, probabilities }: RouletteSpecialProps) {
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
+  const repeats = Math.max(4, Math.min(22, Math.ceil(MAX_DOM_ITEMS / count)));
 
   useEffect(() => {
     if (isSpinning && !prevSpinning.current && count > 0 && pendingResult) {
@@ -30,7 +32,8 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
 
       const centerOffset = Math.floor(VISIBLE / 2);
       const targetY = -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
-      const startY = targetY - 14 * count * ITEM_HEIGHT;
+      const spinItems = Math.min(14 * count, MAX_SPIN_ITEMS);
+      const startY = targetY - spinItems * ITEM_HEIGHT;
 
       controls.set({ y: startY });
       controls.start({
@@ -53,7 +56,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
     );
   }
 
-  const repeatedItems = Array.from({ length: REPEATS }, () => wishes).flat();
+  const repeatedItems = Array.from({ length: repeats }, () => wishes).flat();
 
   // 結果確定後：静的にresultを中央に表示
   const staticY = (() => {
