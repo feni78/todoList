@@ -117,7 +117,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className={cn("w-full max-h-[90vh] overflow-y-auto transition-all duration-200", skippedOpen ? "max-w-lg" : "max-w-md")}>
         <DialogHeader>
           <DialogTitle>CSV一括取り込み</DialogTitle>
         </DialogHeader>
