@@ -3,6 +3,28 @@
 import { useCallback, useEffect, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Wish, scoreToIcon } from "@/types";
+import { MapPin, ExternalLink } from "lucide-react";
+
+function ResultLinks({ memo }: { memo?: string }) {
+  const urls = memo?.match(/https?:\/\/[^\s]+/g) ?? [];
+  const googleUrl = urls.find((u) => u.includes("google")) ?? null;
+  const otherUrl = urls.find((u) => !u.includes("google")) ?? null;
+  if (!googleUrl && !otherUrl) return null;
+  return (
+    <div className="flex justify-center gap-3 mt-3">
+      {googleUrl && (
+        <a href={googleUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+          <MapPin size={14} />マップ
+        </a>
+      )}
+      {otherUrl && (
+        <a href={otherUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+          <ExternalLink size={14} />リンク
+        </a>
+      )}
+    </div>
+  );
+}
 
 interface RouletteNormalProps {
   wishes: Wish[];
@@ -170,6 +192,7 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
           <p className="text-sm text-muted-foreground mt-1">
             {scoreToIcon(result.avgScore)} {result.member.nickname}
           </p>
+          <ResultLinks memo={result.memo} />
         </motion.div>
       )}
     </div>
