@@ -18,18 +18,22 @@ export interface CsvImportLog {
 export function useCsvImportLogs(groupId: string) {
   const [logs, setLogs] = useState<CsvImportLog[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const supabase = createClient();
-    const { data, error } = await supabase
+    const { data, error: fetchErr } = await supabase
       .from("csv_import_logs")
       .select("id, member_id, imported_at, file_names, inserted, updated, skipped, skipped_items")
       .eq("group_id", groupId)
       .order("imported_at", { ascending: false })
       .limit(50);
 
-    if (!error && data) {
+    if (fetchErr) {
+      setError(fetchErr.message);
+    } else if (data) {
       setLogs(
         data.map((row) => ({
           id: row.id as string,
@@ -46,5 +50,5 @@ export function useCsvImportLogs(groupId: string) {
     setLoading(false);
   }, [groupId]);
 
-  return { logs, loading, fetchLogs };
+  return { logs, loading, error, fetchLogs };
 }

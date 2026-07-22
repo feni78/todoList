@@ -32,6 +32,7 @@ export interface AnalyzeResult {
   updateCount: number;
   skipCount: number;
   suspicious: SuspiciousItem[];
+  insertItems: { title: string; url: string }[];
 }
 
 export interface ImportResult {
@@ -202,6 +203,7 @@ export function useCsvImport(groupId: string) {
 
     let insertCount = 0, updateCount = 0, skipCount = 0;
     const suspicious: SuspiciousItem[] = [];
+    const insertItems: { title: string; url: string }[] = [];
     const handledKeys = new Set<string>();
 
     for (const { row } of allItems) {
@@ -230,10 +232,11 @@ export function useCsvImport(groupId: string) {
           suspicious.push({ title: row.title, url: row.url, matchedExistingTitle: ciMatch.title });
         }
         insertCount++;
+      insertItems.push({ title: row.title, url: row.url });
       }
     }
 
-    return { insertCount, updateCount, skipCount, suspicious };
+    return { insertCount, updateCount, skipCount, suspicious, insertItems };
   }, [groupId]);
 
   const importFiles = useCallback(

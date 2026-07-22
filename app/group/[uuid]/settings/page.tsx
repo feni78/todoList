@@ -46,7 +46,7 @@ export default function SettingsPage() {
   const [newNickname, setNewNickname] = useState("");
   const { genres, createGenre, updateGenre, deleteGenre } = useGenres(uuid);
   const { items: trashItems, loading: trashLoading, fetchTrash, restoreWish, permanentDelete, emptyTrash } = useTrash(uuid);
-  const { logs: importLogs, loading: logsLoading, fetchLogs } = useCsvImportLogs(uuid);
+  const { logs: importLogs, loading: logsLoading, error: logsError, fetchLogs } = useCsvImportLogs(uuid);
   const [trashOpen, setTrashOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
@@ -556,6 +556,12 @@ export default function SettingsPage() {
               {logsLoading ? (
                 <div className="flex justify-center py-4">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                </div>
+              ) : logsError ? (
+                <div className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                  <p className="font-medium">履歴の取得に失敗しました</p>
+                  <p className="mt-0.5 opacity-80">{logsError}</p>
+                  <p className="mt-1 opacity-70">Supabase の SQL Editor でマイグレーション (002_csv_import_logs.sql) を実行してください</p>
                 </div>
               ) : importLogs.length === 0 ? (
                 <p className="text-sm text-muted-foreground">履歴がありません</p>

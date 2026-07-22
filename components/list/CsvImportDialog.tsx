@@ -140,7 +140,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>CSV一括取り込み</DialogTitle>
         </DialogHeader>
@@ -194,6 +194,15 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
                 <span className="font-semibold">{analysis.skipCount}件</span>
               </div>
             </div>
+
+            {analysis.insertCount > 0 && (
+              <DetailList
+                items={analysis.insertItems.map((item) => ({
+                  title: item.url ? `${item.title}（${item.url}）` : item.title,
+                }))}
+                label={`新規登録予定の詳細（${analysis.insertCount}件）`}
+              />
+            )}
 
             {analysis.suspicious.length > 0 && (
               <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 overflow-hidden">

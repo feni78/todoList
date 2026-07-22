@@ -80,19 +80,28 @@ export function useWishes(groupId: string) {
   const fetchWishes = useCallback(async () => {
     const supabase = createClient();
 
-    const { data, error } = await supabase
-      .from("wishes")
-      .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), member:group_members!member_id(id, nickname)`)
-      .eq("group_id", groupId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(100000);
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
+    // サーバー側 max_rows 制限を回避するため .range() でページネーション取得
+    const PAGE = 1000;
+    let allData: Record<string, unknown>[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from("wishes")
+        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), member:group_members!member_id(id, nickname)`)
+        .eq("group_id", groupId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      allData = allData.concat(data ?? []);
+      if ((data ?? []).length < PAGE) break;
+      from += PAGE;
     }
+    const data = allData;
 
     const wishIds = (data ?? []).map((w) => w.id as string);
     let votes: { id: string; wish_id: string; member_id: string; score: number }[] = [];
