@@ -96,11 +96,17 @@ export function useWishes(groupId: string) {
     const wishIds = (data ?? []).map((w) => w.id as string);
     let votes: { id: string; wish_id: string; member_id: string; score: number }[] = [];
     if (wishIds.length > 0) {
-      const { data: voteData } = await supabase
-        .from("wish_votes")
-        .select("id, wish_id, member_id, score")
-        .in("wish_id", wishIds);
-      votes = (voteData ?? []) as typeof votes;
+      // URLが長くなりすぎてサイレントエラーになるのを防ぐため小分けに取得する
+      const VOTE_CHUNK = 150;
+      for (let i = 0; i < wishIds.length; i += VOTE_CHUNK) {
+        const { data: voteData, error: voteErr } = await supabase
+          .from("wish_votes")
+          .select("id, wish_id, member_id, score")
+          .in("wish_id", wishIds.slice(i, i + VOTE_CHUNK))
+          .limit(10000);
+        if (voteErr) throw new Error(`wish_votes fetch: ${voteErr.message}`);
+        votes = votes.concat((voteData ?? []) as typeof votes);
+      }
     }
 
     setWishes(
