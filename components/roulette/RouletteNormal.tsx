@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Wish, scoreToIcon } from "@/types";
 
@@ -30,8 +30,8 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
   const displayWishes = tooMany ? wishes.slice(0, MAX_WHEEL) : wishes;
   const displayCount = displayWishes.length;
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
+  const drawCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    canvasRef.current = canvas;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -55,7 +55,6 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
       ctx.closePath();
       ctx.fillStyle = COLORS[i % COLORS.length];
       ctx.fill();
-      // 件数が多いときは枠線を省略（白塗り防止）
       if (items.length <= 30) {
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2;
@@ -151,11 +150,11 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
         </div>
         {staticRotate !== null ? (
           <div style={{ transform: `rotate(${staticRotate}deg)` }}>
-            <canvas ref={canvasRef} width={280} height={280} className="rounded-full shadow-lg" />
+            <canvas ref={drawCanvas} width={280} height={280} className="rounded-full shadow-lg" />
           </div>
         ) : (
           <motion.div animate={controls} style={{ willChange: "transform" }}>
-            <canvas ref={canvasRef} width={280} height={280} className="rounded-full shadow-lg" />
+            <canvas ref={drawCanvas} width={280} height={280} className="rounded-full shadow-lg" />
           </motion.div>
         )}
       </div>
