@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Wish, Genre, SITUATION_ICONS, SEASON_LABELS, scoreToIcon } from "@/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -60,13 +59,7 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
 
   return (
     <>
-      <motion.div
-        layout
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 active:bg-muted/50 transition-colors"
-      >
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border active:bg-muted/50 transition-colors">
         <span className="text-2xl shrink-0 w-8 h-8 flex items-center justify-center">
           {wish.avgScore > 0 ? scoreToIcon(wish.avgScore) : "ー"}
         </span>
@@ -154,7 +147,7 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
             <Trash2 size={15} />
           </button>
         </div>
-      </motion.div>
+      </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain">
