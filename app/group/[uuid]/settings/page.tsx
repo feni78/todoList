@@ -586,21 +586,45 @@ export default function SettingsPage() {
                               新規 {log.inserted}　更新 {log.updated}　スキップ {log.skipped}
                             </span>
                           </div>
-                          {log.skippedItems.length > 0 && (
+                          {(log.insertedItems.length > 0 || log.updatedItems.length > 0 || log.skippedItems.length > 0) && (
                             isExpanded ? <ChevronUp size={14} className="shrink-0 mt-1 text-muted-foreground" /> : <ChevronDown size={14} className="shrink-0 mt-1 text-muted-foreground" />
                           )}
                         </button>
-                        {isExpanded && log.skippedItems.length > 0 && (
-                          <div className="border-t border-border max-h-48 overflow-y-auto">
-                            <p className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50">スキップ詳細</p>
-                            {log.skippedItems.map((item, i) => (
-                              <div key={i} className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border/30 last:border-0">
-                                <span className="text-xs truncate flex-1">{item.title}</span>
-                                <span className="text-xs text-muted-foreground shrink-0">
-                                  {item.reason === "no_change" ? "変更なし" : "重複"}
-                                </span>
-                              </div>
-                            ))}
+                        {isExpanded && (
+                          <div className="border-t border-border max-h-64 overflow-y-auto overflow-x-hidden">
+                            {log.insertedItems.length > 0 && (
+                              <>
+                                <p className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 sticky top-0 bg-card">新規 {log.inserted}件</p>
+                                {log.insertedItems.map((item, i) => (
+                                  <div key={i} className="px-3 py-1.5 border-b border-border/30 last:border-0">
+                                    <span className="text-xs truncate block">{item.title}</span>
+                                  </div>
+                                ))}
+                              </>
+                            )}
+                            {log.updatedItems.length > 0 && (
+                              <>
+                                <p className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 sticky top-0 bg-card">更新 {log.updated}件</p>
+                                {log.updatedItems.map((item, i) => (
+                                  <div key={i} className="px-3 py-1.5 border-b border-border/30 last:border-0">
+                                    <span className="text-xs truncate block">{item.title}</span>
+                                  </div>
+                                ))}
+                              </>
+                            )}
+                            {log.skippedItems.length > 0 && (
+                              <>
+                                <p className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 sticky top-0 bg-card">スキップ {log.skipped}件</p>
+                                {log.skippedItems.map((item, i) => (
+                                  <div key={i} className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border/30 last:border-0">
+                                    <span className="text-xs truncate flex-1">{item.title}</span>
+                                    <span className="text-xs text-muted-foreground shrink-0">
+                                      {item.reason === "no_change" ? "変更なし" : "重複"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

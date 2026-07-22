@@ -13,6 +13,8 @@ export interface CsvImportLog {
   updated: number;
   skipped: number;
   skippedItems: SkippedItem[];
+  insertedItems: { title: string }[];
+  updatedItems: { title: string }[];
 }
 
 export function useCsvImportLogs(groupId: string) {
@@ -26,7 +28,7 @@ export function useCsvImportLogs(groupId: string) {
     const supabase = createClient();
     const { data, error: fetchErr } = await supabase
       .from("csv_import_logs")
-      .select("id, member_id, imported_at, file_names, inserted, updated, skipped, skipped_items")
+      .select("id, member_id, imported_at, file_names, inserted, updated, skipped, skipped_items, inserted_items, updated_items")
       .eq("group_id", groupId)
       .order("imported_at", { ascending: false })
       .limit(50);
@@ -44,6 +46,8 @@ export function useCsvImportLogs(groupId: string) {
           updated: row.updated as number,
           skipped: row.skipped as number,
           skippedItems: (row.skipped_items as SkippedItem[]) ?? [],
+          insertedItems: (row.inserted_items as { title: string }[]) ?? [],
+          updatedItems: (row.updated_items as { title: string }[]) ?? [],
         }))
       );
     }

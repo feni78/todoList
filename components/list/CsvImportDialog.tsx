@@ -215,7 +215,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
 
         {/* プレビュー・確認画面 */}
         {(mode === "reviewing") && analysis && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 min-h-0">
             <p className="text-sm font-medium">取り込みプレビュー</p>
             <div className="rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
               <div className="flex justify-between">
@@ -232,30 +232,32 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
               </div>
             </div>
 
-            {analysis.insertCount > 0 && (
-              <DetailList
-                items={analysis.insertItems.map((item) => ({
-                  title: item.url ? `${item.title}（${item.url}）` : item.title,
-                }))}
-                label={`新規登録予定の詳細（${analysis.insertCount}件）`}
-              />
-            )}
+            <div className="flex flex-col gap-3 overflow-y-auto max-h-[40vh]">
+              {analysis.insertCount > 0 && (
+                <DetailList
+                  items={analysis.insertItems.map((item) => ({
+                    title: item.url ? `${item.title}（${item.url}）` : item.title,
+                  }))}
+                  label={`新規登録予定の詳細（${analysis.insertCount}件）`}
+                />
+              )}
 
-            {analysis.updateCount > 0 && (
-              <UpdateDetailList
-                items={analysis.updateItems}
-                label={`更新予定の詳細（${analysis.updateCount}件）`}
-              />
-            )}
+              {analysis.updateCount > 0 && (
+                <UpdateDetailList
+                  items={analysis.updateItems}
+                  label={`更新予定の詳細（${analysis.updateCount}件）`}
+                />
+              )}
 
-            {analysis.skipCount > 0 && (
-              <DetailList
-                items={analysis.skipItems.map((s) => ({
-                  title: `${s.title}（${s.reason === "no_change" ? "変更なし" : "重複"}）`,
-                }))}
-                label={`スキップ予定の詳細（${analysis.skipCount}件）`}
-              />
-            )}
+              {analysis.skipCount > 0 && (
+                <DetailList
+                  items={analysis.skipItems.map((s) => ({
+                    title: `${s.title}（${s.reason === "no_change" ? "変更なし" : "重複"}）`,
+                  }))}
+                  label={`スキップ予定の詳細（${analysis.skipCount}件）`}
+                />
+              )}
+            </div>
 
             {analysis.suspicious.length > 0 && (
               <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 overflow-hidden">

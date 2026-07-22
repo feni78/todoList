@@ -142,7 +142,7 @@ async function readFileAsText(file: File): Promise<string> {
   });
 }
 
-interface ExistingWish { id: string; title: string; memo: string | null; }
+interface ExistingWish { id: string; title: string; memo: string | null; genreIds: string[]; }
 
 interface ExistingMaps {
   urlToExisting: Map<string, ExistingWish>;
@@ -151,27 +151,38 @@ interface ExistingMaps {
 }
 
 async function fetchExisting(supabase: ReturnType<typeof createClient>, groupId: string): Promise<ExistingMaps> {
-  const { data, error } = await supabase
-    .from("wishes")
-    .select("id, title, memo")
-    .eq("group_id", groupId)
-    .is("deleted_at", null)
-    .limit(100000);
-  if (error) throw error;
+  // サーバー側 max_rows 制限を回避するためページネーション取得
+  const PAGE = 1000;
+  let allRows: { id: string; title: string; memo: string | null; wish_genres: { genre_id: string }[] }[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("wishes")
+      .select("id, title, memo, wish_genres(genre_id)")
+      .eq("group_id", groupId)
+      .is("deleted_at", null)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    allRows = allRows.concat((data ?? []) as typeof allRows);
+    if ((data ?? []).length < PAGE) break;
+    from += PAGE;
+  }
 
   const urlToExisting = new Map<string, ExistingWish>();
   const titleToExisting = new Map<string, ExistingWish>();
   const titleToExistingCI = new Map<string, ExistingWish>();
 
-  for (const w of (data ?? []) as ExistingWish[]) {
+  for (const w of allRows) {
+    const genreIds = (w.wish_genres ?? []).map((g) => g.genre_id).sort();
+    const existing: ExistingWish = { id: w.id, title: w.title, memo: w.memo, genreIds };
     if (w.memo) {
       const lines = w.memo.split("\n");
       const lastLine = lines[lines.length - 1].trim();
-      if (/^https?:\/\//.test(lastLine)) urlToExisting.set(normalizeUrl(lastLine), w);
+      if (/^https?:\/\//.test(lastLine)) urlToExisting.set(normalizeUrl(lastLine), existing);
     }
     if (w.title) {
-      titleToExisting.set(w.title, w);
-      titleToExistingCI.set(w.title.toLowerCase(), w);
+      titleToExisting.set(w.title, existing);
+      titleToExistingCI.set(w.title.toLowerCase(), existing);
     }
   }
 
@@ -233,7 +244,7 @@ export function useCsvImport(groupId: string) {
     const skipItems: SkippedItem[] = [];
     const handledKeys = new Set<string>();
 
-    for (const { row } of allItems) {
+    for (const { row, genreIds } of allItems) {
       if (!row.title) continue;
 
       const dedupeKey = row.url ? `url:${normalizeUrl(row.url)}` : `title:${row.title}`;
@@ -253,13 +264,16 @@ export function useCsvImport(groupId: string) {
         const newMemo = memoText ?? null;
         const titleChanged = existingMatch.title !== row.title;
         const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
-        if (!titleChanged && !memoWillChange) {
+        const sortedNew = [...genreIds].sort();
+        const genreChanged = JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
+        if (!titleChanged && !memoWillChange && !genreChanged) {
           skipItems.push({ title: row.title, reason: "no_change" });
           skipCount++;
         } else {
           const changes: string[] = [];
           if (titleChanged) changes.push("タイトル変更");
           if (memoWillChange) changes.push("メモ追記");
+          if (genreChanged) changes.push("ジャンル変更");
           // 追記される内容の先頭行
           const merged = mergeMemos(existingMatch.memo, newMemo);
           const addition = merged && existingMatch.memo
@@ -339,7 +353,9 @@ export function useCsvImport(groupId: string) {
           const newMemo = memoText ?? null;
           const titleChanged = existingMatch.title !== row.title;
           const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
-          if (!titleChanged && !memoWillChange) {
+          const sortedNew = [...item.genreIds].sort();
+          const genreChanged = JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
+          if (!titleChanged && !memoWillChange && !genreChanged) {
             skippedItems.push({ title: row.title, reason: "no_change" });
             continue;
           }
@@ -438,6 +454,8 @@ export function useCsvImport(groupId: string) {
           updated: result.updated,
           skipped: result.skipped,
           skipped_items: skippedItems,
+          inserted_items: result.insertedItems,
+          updated_items: result.updatedItems,
         }).then(({ error }) => { if (error) console.warn("履歴保存失敗:", error.message); });
 
         return result;
