@@ -49,7 +49,7 @@ function DetailList({ items, label }: { items: { title: string }[]; label: strin
       {open && (
         <div className="border-t border-border max-h-52 overflow-y-auto overflow-x-hidden">
           {items.map((item, i) => (
-            <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs min-w-0">
+            <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs w-full min-w-0">
               <p className="truncate">{item.title}</p>
             </div>
           ))}
@@ -59,11 +59,6 @@ function DetailList({ items, label }: { items: { title: string }[]; label: strin
   );
 }
 
-function firstLine(text: string | null | undefined): string {
-  if (!text) return "（空）";
-  const line = text.split("\n")[0].trim();
-  return line || "（空）";
-}
 
 function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label: string }) {
   const [open, setOpen] = useState(false);
@@ -88,10 +83,8 @@ function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label:
                   タイトル変更（<span className="line-through">{item.oldTitle}</span> → {item.title}）
                 </p>
               )}
-              {item.oldMemo !== undefined && (
-                <p className="truncate text-muted-foreground">
-                  メモ変更（{firstLine(item.oldMemo)} → {firstLine(item.newMemo)}）
-                </p>
+              {item.memoAddition !== undefined && (
+                <p className="truncate text-muted-foreground">メモ追記（{item.memoAddition}）</p>
               )}
             </div>
           ))}
@@ -182,7 +175,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>CSV一括取り込み</DialogTitle>
         </DialogHeader>
@@ -250,6 +243,15 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
               <UpdateDetailList
                 items={analysis.updateItems}
                 label={`更新予定の詳細（${analysis.updateCount}件）`}
+              />
+            )}
+
+            {analysis.skipCount > 0 && (
+              <DetailList
+                items={analysis.skipItems.map((s) => ({
+                  title: `${s.title}（${s.reason === "no_change" ? "変更なし" : "重複"}）`,
+                }))}
+                label={`スキップ予定の詳細（${analysis.skipCount}件）`}
               />
             )}
 

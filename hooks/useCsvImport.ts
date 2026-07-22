@@ -29,9 +29,8 @@ export interface SuspiciousItem {
 
 export interface UpdatePreviewItem {
   title: string;
-  oldTitle?: string;    // タイトルが変わる場合の変更前タイトル
-  oldMemo?: string | null;  // メモが変わる場合の変更前メモ（1行目）
-  newMemo?: string | null;  // メモが変わる場合の変更後メモ（1行目）
+  oldTitle?: string;      // タイトルが変わる場合の変更前タイトル
+  memoAddition?: string;  // メモに追記される内容（先頭行）
   changes: string[];
 }
 
@@ -42,6 +41,7 @@ export interface AnalyzeResult {
   suspicious: SuspiciousItem[];
   insertItems: { title: string; url: string }[];
   updateItems: UpdatePreviewItem[];
+  skipItems: SkippedItem[];
 }
 
 export interface ImportResult {
@@ -51,6 +51,22 @@ export interface ImportResult {
   skippedItems: SkippedItem[];
   insertedItems: { title: string }[];
   updatedItems: { title: string }[];
+}
+
+// 既存メモと新メモをマージ（行単位で重複除去して追記）
+function mergeMemos(existingMemo: string | null, newMemo: string | null): string | null {
+  if (!existingMemo && !newMemo) return null;
+  if (!existingMemo) return newMemo;
+  if (!newMemo) return existingMemo;
+  if (existingMemo === newMemo) return existingMemo;
+  const existingSet = new Set(existingMemo.split("\n").map((l) => l.trim()).filter(Boolean));
+  const toAdd = newMemo.split("\n").filter((l) => l.trim() && !existingSet.has(l.trim()));
+  if (toAdd.length === 0) return existingMemo;
+  return existingMemo + "\n" + toAdd.join("\n");
+}
+
+function memoWouldChange(existingMemo: string | null, newMemo: string | null): boolean {
+  return mergeMemos(existingMemo, newMemo) !== existingMemo;
 }
 
 // URLの末尾スラッシュ・大文字小文字・前後空白を正規化して誤マッチを防ぐ
@@ -214,13 +230,18 @@ export function useCsvImport(groupId: string) {
     const suspicious: SuspiciousItem[] = [];
     const insertItems: { title: string; url: string }[] = [];
     const updateItems: UpdatePreviewItem[] = [];
+    const skipItems: SkippedItem[] = [];
     const handledKeys = new Set<string>();
 
     for (const { row } of allItems) {
       if (!row.title) continue;
 
       const dedupeKey = row.url ? `url:${normalizeUrl(row.url)}` : `title:${row.title}`;
-      if (handledKeys.has(dedupeKey)) { skipCount++; continue; }
+      if (handledKeys.has(dedupeKey)) {
+        skipItems.push({ title: row.title, reason: row.url ? "duplicate_url" : "duplicate_title" });
+        skipCount++;
+        continue;
+      }
       handledKeys.add(dedupeKey);
 
       const memoText = buildMemo(row.memo, row.url);
@@ -230,19 +251,24 @@ export function useCsvImport(groupId: string) {
 
       if (existingMatch) {
         const newMemo = memoText ?? null;
-        if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
+        const titleChanged = existingMatch.title !== row.title;
+        const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
+        if (!titleChanged && !memoWillChange) {
+          skipItems.push({ title: row.title, reason: "no_change" });
           skipCount++;
         } else {
           const changes: string[] = [];
-          const titleChanged = existingMatch.title !== row.title;
-          const memoChanged = existingMatch.memo !== newMemo;
           if (titleChanged) changes.push("タイトル変更");
-          if (memoChanged) changes.push("メモ変更");
+          if (memoWillChange) changes.push("メモ追記");
+          // 追記される内容の先頭行
+          const merged = mergeMemos(existingMatch.memo, newMemo);
+          const addition = merged && existingMatch.memo
+            ? merged.slice(existingMatch.memo.length).trimStart().split("\n")[0]
+            : undefined;
           updateItems.push({
             title: row.title,
             oldTitle: titleChanged ? existingMatch.title : undefined,
-            oldMemo: memoChanged ? existingMatch.memo : undefined,
-            newMemo: memoChanged ? newMemo : undefined,
+            memoAddition: memoWillChange ? addition : undefined,
             changes,
           });
           updateCount++;
@@ -258,7 +284,7 @@ export function useCsvImport(groupId: string) {
       }
     }
 
-    return { insertCount, updateCount, skipCount, suspicious, insertItems, updateItems };
+    return { insertCount, updateCount, skipCount, suspicious, insertItems, updateItems, skipItems };
   }, [groupId]);
 
   const importFiles = useCallback(
@@ -280,7 +306,7 @@ export function useCsvImport(groupId: string) {
       const { urlToExisting, titleToExisting, titleToExistingCI } = await fetchExisting(supabase, groupId);
 
       interface NewItem extends ParsedItem { score: ScoreValue; memoText: string | null; }
-      interface UpdateItem extends ParsedItem { wishId: string; score: ScoreValue; memoText: string | null; }
+      interface UpdateItem extends ParsedItem { wishId: string; score: ScoreValue; memoText: string | null; existingMemo: string | null; }
 
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
@@ -311,11 +337,13 @@ export function useCsvImport(groupId: string) {
 
         if (existingMatch) {
           const newMemo = memoText ?? null;
-          if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
+          const titleChanged = existingMatch.title !== row.title;
+          const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
+          if (!titleChanged && !memoWillChange) {
             skippedItems.push({ title: row.title, reason: "no_change" });
             continue;
           }
-          toUpdate.push({ ...item, wishId: existingMatch.id, score, memoText });
+          toUpdate.push({ ...item, wishId: existingMatch.id, score, memoText, existingMemo: existingMatch.memo ?? null });
         } else {
           toInsert.push({ ...item, score, memoText });
         }
@@ -352,23 +380,34 @@ export function useCsvImport(groupId: string) {
         if (toUpdate.length > 0) {
           const updateWishIds = toUpdate.map((item) => item.wishId);
           const CHUNK = 500;
-          const existingVoteWishIds = new Set<string>();
+          // wish_id → 既存スコアのマップ（スコア優先のため score も取得）
+          const existingVoteScores = new Map<string, ScoreValue>();
           for (let i = 0; i < updateWishIds.length; i += CHUNK) {
             const { data: votes } = await supabase
-              .from("wish_votes").select("wish_id")
+              .from("wish_votes").select("wish_id, score")
               .in("wish_id", updateWishIds.slice(i, i + CHUNK))
               .eq("member_id", entry.memberId);
-            (votes ?? []).forEach((v: { wish_id: string }) => existingVoteWishIds.add(v.wish_id));
+            (votes ?? []).forEach((v: { wish_id: string; score: number }) =>
+              existingVoteScores.set(v.wish_id, v.score as ScoreValue));
           }
 
           for (const item of toUpdate) {
+            const mergedMemo = mergeMemos(item.existingMemo, item.memoText);
             const { error } = await supabase.from("wishes")
-              .update({ title: item.row.title, memo: item.memoText ?? null }).eq("id", item.wishId);
+              .update({ title: item.row.title, memo: mergedMemo }).eq("id", item.wishId);
             if (error) throw error;
 
-            if (!existingVoteWishIds.has(item.wishId)) {
+            const existingScore = existingVoteScores.get(item.wishId);
+            if (existingScore === undefined) {
+              // 投票なし → 新規挿入
               const { error: voteErr } = await supabase.from("wish_votes")
                 .insert({ wish_id: item.wishId, member_id: entry.memberId, score: item.score });
+              if (voteErr) throw voteErr;
+            } else if (item.score > existingScore) {
+              // CSV側のスコアが高ければ更新
+              const { error: voteErr } = await supabase.from("wish_votes")
+                .update({ score: item.score })
+                .eq("wish_id", item.wishId).eq("member_id", entry.memberId);
               if (voteErr) throw voteErr;
             }
 
