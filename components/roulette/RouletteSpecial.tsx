@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Wish, scoreToIcon } from "@/types";
 
@@ -22,10 +22,12 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
   const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
   const repeats = Math.max(4, Math.min(22, Math.ceil(MAX_DOM_ITEMS / count)));
+  const [animDone, setAnimDone] = useState(true);
 
   useEffect(() => {
     if (isSpinning && !prevSpinning.current && count > 0 && pendingResult) {
       prevSpinning.current = true;
+      setAnimDone(false);
 
       const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
       if (resultIndex < 0) return;
@@ -43,7 +45,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
     }
     if (!isSpinning) {
       prevSpinning.current = false;
-      controls.stop();
+      // controls.stop() を呼ばずアニメーションを自然に完了させる
     }
   }, [isSpinning, pendingResult, wishes, count, controls]);
 
@@ -58,9 +60,9 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
 
   const repeatedItems = Array.from({ length: repeats }, () => wishes).flat();
 
-  // 結果確定後：静的にresultを中央に表示
+  // アニメーション完了後のみ静的表示に切り替える
   const staticY = (() => {
-    if (!result || isSpinning) return null;
+    if (!result || isSpinning || !animDone) return null;
     const resultIndex = wishes.findIndex((w) => w.id === result.id);
     if (resultIndex < 0) return null;
     const centerOffset = Math.floor(VISIBLE / 2);
@@ -104,13 +106,17 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
             {slotItems}
           </div>
         ) : (
-          <motion.div animate={controls} style={{ willChange: "transform" }}>
+          <motion.div
+            animate={controls}
+            style={{ willChange: "transform" }}
+            onAnimationComplete={() => setAnimDone(true)}
+          >
             {slotItems}
           </motion.div>
         )}
       </div>
 
-      {result && !isSpinning && (
+      {result && !isSpinning && animDone && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
