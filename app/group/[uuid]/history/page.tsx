@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -22,6 +22,10 @@ export default function HistoryPage() {
     }
   };
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [showFavoriteOnly]);
 
   const displayWishes = showFavoriteOnly ? wishes.filter((w) => w.isFavorite) : wishes;
 
