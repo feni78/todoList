@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Genre } from "@/types";
 import {
-  useCsvImport, FileImportConfig, ImportResult, AnalyzeResult, parseCsvText,
+  useCsvImport, FileImportConfig, ImportResult, AnalyzeResult, UpdatePreviewItem, parseCsvText,
 } from "@/hooks/useCsvImport";
 import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -49,8 +49,38 @@ function DetailList({ items, label }: { items: { title: string }[]; label: strin
       {open && (
         <div className="border-t border-border max-h-52 overflow-y-auto">
           {items.map((item, i) => (
-            <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs truncate">
-              {item.title}
+            <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs overflow-hidden">
+              <p className="truncate">{item.title}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label: string }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border overflow-hidden text-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors"
+      >
+        <span>{label}</span>
+        {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+      </button>
+      {open && (
+        <div className="border-t border-border max-h-52 overflow-y-auto">
+          {items.map((item, i) => (
+            <div key={i} className="px-4 py-2 border-b border-border/30 last:border-0 text-xs overflow-hidden">
+              <p className="truncate font-medium">{item.title}</p>
+              {item.oldTitle && (
+                <p className="truncate text-muted-foreground">変更前: {item.oldTitle}</p>
+              )}
+              <p className="text-muted-foreground">{item.changes.join("・")}</p>
             </div>
           ))}
         </div>
@@ -140,7 +170,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>CSV一括取り込み</DialogTitle>
         </DialogHeader>
@@ -201,6 +231,13 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
                   title: item.url ? `${item.title}（${item.url}）` : item.title,
                 }))}
                 label={`新規登録予定の詳細（${analysis.insertCount}件）`}
+              />
+            )}
+
+            {analysis.updateCount > 0 && (
+              <UpdateDetailList
+                items={analysis.updateItems}
+                label={`更新予定の詳細（${analysis.updateCount}件）`}
               />
             )}
 

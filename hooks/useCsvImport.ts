@@ -27,12 +27,19 @@ export interface SuspiciousItem {
   matchedExistingTitle: string;
 }
 
+export interface UpdatePreviewItem {
+  title: string;
+  oldTitle?: string;
+  changes: string[]; // e.g. ["タイトル変更", "メモ変更"]
+}
+
 export interface AnalyzeResult {
   insertCount: number;
   updateCount: number;
   skipCount: number;
   suspicious: SuspiciousItem[];
   insertItems: { title: string; url: string }[];
+  updateItems: UpdatePreviewItem[];
 }
 
 export interface ImportResult {
@@ -204,6 +211,7 @@ export function useCsvImport(groupId: string) {
     let insertCount = 0, updateCount = 0, skipCount = 0;
     const suspicious: SuspiciousItem[] = [];
     const insertItems: { title: string; url: string }[] = [];
+    const updateItems: UpdatePreviewItem[] = [];
     const handledKeys = new Set<string>();
 
     for (const { row } of allItems) {
@@ -223,6 +231,14 @@ export function useCsvImport(groupId: string) {
         if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
           skipCount++;
         } else {
+          const changes: string[] = [];
+          if (existingMatch.title !== row.title) changes.push("タイトル変更");
+          if (existingMatch.memo !== newMemo) changes.push("メモ変更");
+          updateItems.push({
+            title: row.title,
+            oldTitle: existingMatch.title !== row.title ? existingMatch.title : undefined,
+            changes,
+          });
           updateCount++;
         }
       } else {
@@ -232,11 +248,11 @@ export function useCsvImport(groupId: string) {
           suspicious.push({ title: row.title, url: row.url, matchedExistingTitle: ciMatch.title });
         }
         insertCount++;
-      insertItems.push({ title: row.title, url: row.url });
+        insertItems.push({ title: row.title, url: row.url });
       }
     }
 
-    return { insertCount, updateCount, skipCount, suspicious, insertItems };
+    return { insertCount, updateCount, skipCount, suspicious, insertItems, updateItems };
   }, [groupId]);
 
   const importFiles = useCallback(
