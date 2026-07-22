@@ -155,12 +155,13 @@ export function useCsvImport(groupId: string) {
         }
       }
 
-      // インポート開始時にDBから最新データを取得
+      // インポート開始時にDBから最新データを取得（上限を明示して1000件制限を回避）
       const { data: freshWishes, error: fetchErr } = await supabase
         .from("wishes")
         .select("id, title, memo")
         .eq("group_id", groupId)
-        .is("deleted_at", null);
+        .is("deleted_at", null)
+        .limit(100000);
       if (fetchErr) throw fetchErr;
 
       // URLまたはタイトルで既存wish IDを引けるMapを構築
@@ -186,26 +187,25 @@ export function useCsvImport(groupId: string) {
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
       let skipped = 0;
-      const handledKeys = new Set<string>(); // "url:<url>" or "title:<title>"
+      // 新規・更新問わず全処理済みキーを記録し、複数ファイル間の重複を防ぐ
+      const handledKeys = new Set<string>();
 
       for (const item of allItems) {
         const { row } = item;
         if (!row.title) { skipped++; continue; }
 
+        const dedupeKey = row.url ? `url:${row.url}` : `title:${row.title}`;
+        if (handledKeys.has(dedupeKey)) { skipped++; continue; }
+        handledKeys.add(dedupeKey);
+
         const score = scoreFromMemo(row.memo);
         const memoText = buildMemo(row.memo, row.url);
 
-        // URLで突合（URLあり優先）
         const matchByUrl = row.url ? urlToExisting.get(row.url) : undefined;
-        // URLなし or URL未一致の場合はタイトルで突合
         const matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
         const existingMatch = matchByUrl ?? matchByTitle;
-        const dedupeKey = row.url ? `url:${row.url}` : `title:${row.title}`;
 
         if (existingMatch) {
-          if (handledKeys.has(dedupeKey)) { skipped++; continue; }
-          handledKeys.add(dedupeKey);
-
           // 内容が変わっていなければスキップ
           const newMemo = memoText ?? null;
           if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
@@ -258,29 +258,43 @@ export function useCsvImport(groupId: string) {
         }
 
         // Update existing wishes
-        for (const item of toUpdate) {
-          const { error } = await supabase
-            .from("wishes")
-            .update({ title: item.row.title, memo: item.memoText ?? null })
-            .eq("id", item.wishId);
-          if (error) throw error;
+        if (toUpdate.length > 0) {
+          // 既存のvoteを一括取得し、N+1クエリを回避
+          const updateWishIds = toUpdate.map((item) => item.wishId);
+          const CHUNK = 500;
+          const existingVoteWishIds = new Set<string>();
+          for (let i = 0; i < updateWishIds.length; i += CHUNK) {
+            const { data: votes } = await supabase
+              .from("wish_votes")
+              .select("wish_id")
+              .in("wish_id", updateWishIds.slice(i, i + CHUNK))
+              .eq("member_id", entry.memberId);
+            (votes ?? []).forEach((v: { wish_id: string }) => existingVoteWishIds.add(v.wish_id));
+          }
 
-          // Upsert vote（conflictを避けるためupsertを使用）
-          const { error: voteErr } = await supabase
-            .from("wish_votes")
-            .upsert(
-              { wish_id: item.wishId, member_id: entry.memberId, score: item.score },
-              { onConflict: "wish_id,member_id" }
-            );
-          if (voteErr) throw voteErr;
+          for (const item of toUpdate) {
+            const { error } = await supabase
+              .from("wishes")
+              .update({ title: item.row.title, memo: item.memoText ?? null })
+              .eq("id", item.wishId);
+            if (error) throw error;
 
-          // Genres
-          if (item.genreIds.length > 0) {
-            await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
-            const { error: genreErr } = await supabase.from("wish_genres").insert(
-              item.genreIds.map((gid) => ({ wish_id: item.wishId, genre_id: gid }))
-            );
-            if (genreErr) throw genreErr;
+            // 既存の評価があれば上書きしない（手動設定を保持）
+            if (!existingVoteWishIds.has(item.wishId)) {
+              const { error: voteErr } = await supabase
+                .from("wish_votes")
+                .insert({ wish_id: item.wishId, member_id: entry.memberId, score: item.score });
+              if (voteErr) throw voteErr;
+            }
+
+            // Genres
+            if (item.genreIds.length > 0) {
+              await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
+              const { error: genreErr } = await supabase.from("wish_genres").insert(
+                item.genreIds.map((gid) => ({ wish_id: item.wishId, genre_id: gid }))
+              );
+              if (genreErr) throw genreErr;
+            }
           }
         }
 
