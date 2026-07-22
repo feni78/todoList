@@ -69,6 +69,37 @@ function memoWouldChange(existingMemo: string | null, newMemo: string | null): b
   return mergeMemos(existingMemo, newMemo) !== existingMemo;
 }
 
+// 同一バッチ内で同じ URL またはタイトルを持つ行を事前にマージする
+function mergeBatchDuplicates(
+  allItems: { row: CsvRow; genreIds: string[] }[]
+): { row: CsvRow; genreIds: string[] }[] {
+  const order: string[] = [];
+  const merged = new Map<string, { row: CsvRow; genreIds: string[] }>();
+
+  for (const item of allItems) {
+    if (!item.row.title) continue;
+    const key = item.row.url
+      ? `url:${normalizeUrl(item.row.url)}`
+      : `title:${item.row.title}`;
+
+    if (!merged.has(key)) {
+      order.push(key);
+      merged.set(key, { row: { ...item.row }, genreIds: [...item.genreIds] });
+    } else {
+      const prev = merged.get(key)!;
+      // buildMemo 済みの文字列でマージし、url は空にして二重追加を防ぐ
+      const prevBuilt = buildMemo(prev.row.memo, prev.row.url);
+      const newBuilt = buildMemo(item.row.memo, item.row.url);
+      prev.row = { ...prev.row, memo: mergeMemos(prevBuilt, newBuilt) ?? "", url: "" };
+      // ジャンルはユニオン
+      const genreSet = new Set([...prev.genreIds, ...item.genreIds]);
+      prev.genreIds = [...genreSet];
+    }
+  }
+
+  return order.map((k) => merged.get(k)!);
+}
+
 // URLの末尾スラッシュ・大文字小文字・前後空白を正規化して誤マッチを防ぐ
 function normalizeUrl(url: string): string {
   try {
@@ -242,18 +273,11 @@ export function useCsvImport(groupId: string) {
     const insertItems: { title: string; url: string }[] = [];
     const updateItems: UpdatePreviewItem[] = [];
     const skipItems: SkippedItem[] = [];
-    const handledKeys = new Set<string>();
 
-    for (const { row, genreIds } of allItems) {
+    const dedupedItems = mergeBatchDuplicates(allItems);
+
+    for (const { row, genreIds } of dedupedItems) {
       if (!row.title) continue;
-
-      const dedupeKey = row.url ? `url:${normalizeUrl(row.url)}` : `title:${row.title}`;
-      if (handledKeys.has(dedupeKey)) {
-        skipItems.push({ title: row.title, reason: row.url ? "duplicate_url" : "duplicate_title" });
-        skipCount++;
-        continue;
-      }
-      handledKeys.add(dedupeKey);
 
       const memoText = buildMemo(row.memo, row.url);
       const matchByUrl = row.url ? urlToExisting.get(normalizeUrl(row.url)) : undefined;
@@ -326,18 +350,12 @@ export function useCsvImport(groupId: string) {
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
       const skippedItems: SkippedItem[] = [];
-      const handledKeys = new Set<string>();
 
-      for (const item of allItems) {
+      const dedupedItems = mergeBatchDuplicates(allItems);
+
+      for (const item of dedupedItems) {
         const { row } = item;
         if (!row.title) continue;
-
-        const dedupeKey = row.url ? `url:${normalizeUrl(row.url)}` : `title:${row.title}`;
-        if (handledKeys.has(dedupeKey)) {
-          skippedItems.push({ title: row.title, reason: row.url ? "duplicate_url" : "duplicate_title" });
-          continue;
-        }
-        handledKeys.add(dedupeKey);
 
         const score = scoreFromMemo(row.memo);
         const memoText = buildMemo(row.memo, row.url);
@@ -355,7 +373,7 @@ export function useCsvImport(groupId: string) {
           const titleChanged = existingMatch.title !== row.title;
           const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
           const sortedNew = [...item.genreIds].sort();
-          const genreChanged = JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
+          const genreChanged = item.genreIds.length > 0 && JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
           if (!titleChanged && !memoWillChange && !genreChanged) {
             skippedItems.push({ title: row.title, reason: "no_change" });
             continue;
