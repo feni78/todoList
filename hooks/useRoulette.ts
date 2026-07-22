@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { drawWish } from "@/lib/utils/roulette";
 import { Wish } from "@/types";
@@ -17,7 +17,7 @@ export function useRoulette(wishes: Wish[]) {
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filteredWishes = wishes.filter((w) => {
+  const filteredWishes = useMemo(() => wishes.filter((w) => {
     if (filter.memberIds.length > 0 && !filter.memberIds.includes(w.memberId)) return false;
     if (filter.situations.length > 0 && !filter.situations.includes(w.situation)) return false;
     if (filter.statuses.length > 0 && !filter.statuses.includes(w.status)) return false;
@@ -33,7 +33,7 @@ export function useRoulette(wishes: Wish[]) {
       if (w.genres.some((g) => filter.excludeGenreIds.includes(g.id))) return false;
     }
     return true;
-  });
+  }), [wishes, filter]);
 
   // スピンIDが一致する場合だけ完了する（古いタイマーの誤発火を防ぐ）
   const complete = useCallback((drawn: Wish | null, expectedId: number) => {

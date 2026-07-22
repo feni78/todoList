@@ -215,24 +215,25 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
 
         {/* プレビュー・確認画面 */}
         {(mode === "reviewing") && analysis && (
-          <div className="flex flex-col gap-4 min-h-0">
-            <p className="text-sm font-medium">取り込みプレビュー</p>
-            <div className="rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">新規登録予定</span>
-                <span className="font-semibold">{analysis.insertCount}件</span>
+          <div className="flex flex-col gap-0" style={{ maxHeight: "calc(85vh - 80px)" }}>
+            {/* スクロール領域 */}
+            <div className="flex flex-col gap-4 overflow-y-auto pb-4">
+              <p className="text-sm font-medium">取り込みプレビュー</p>
+              <div className="rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">新規登録予定</span>
+                  <span className="font-semibold">{analysis.insertCount}件</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">更新予定</span>
+                  <span className="font-semibold">{analysis.updateCount}件</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">スキップ予定</span>
+                  <span className="font-semibold">{analysis.skipCount}件</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">更新予定</span>
-                <span className="font-semibold">{analysis.updateCount}件</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">スキップ予定</span>
-                <span className="font-semibold">{analysis.skipCount}件</span>
-              </div>
-            </div>
 
-            <div className="flex flex-col gap-3 overflow-y-auto max-h-[40vh]">
               {analysis.insertCount > 0 && (
                 <DetailList
                   items={analysis.insertItems.map((item) => ({
@@ -257,39 +258,40 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
                   label={`スキップ予定の詳細（${analysis.skipCount}件）`}
                 />
               )}
-            </div>
 
-            {analysis.suspicious.length > 0 && (
-              <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 overflow-hidden">
-                <div className="flex items-start gap-2 px-4 py-3">
-                  <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-1 min-w-0">
-                    <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                      要確認: {analysis.suspicious.length}件
-                    </p>
-                    <p className="text-xs text-amber-600 dark:text-amber-400">
-                      新規として登録される予定ですが、名前が似た既存データが見つかりました。
-                    </p>
-                  </div>
-                </div>
-                <div className="border-t border-amber-200 dark:border-amber-800 max-h-40 overflow-y-auto">
-                  {analysis.suspicious.map((item, i) => (
-                    <div key={i} className="px-4 py-2 border-b border-amber-100 dark:border-amber-900/50 last:border-0 text-xs">
-                      <p className="font-medium truncate">{item.title}</p>
-                      <p className="text-amber-600 dark:text-amber-400 truncate">
-                        既存: 「{item.matchedExistingTitle}」
+              {analysis.suspicious.length > 0 && (
+                <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 overflow-hidden">
+                  <div className="flex items-start gap-2 px-4 py-3">
+                    <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                        要確認: {analysis.suspicious.length}件
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        新規として登録される予定ですが、名前が似た既存データが見つかりました。
                       </p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="border-t border-amber-200 dark:border-amber-800 max-h-40 overflow-y-auto">
+                    {analysis.suspicious.map((item, i) => (
+                      <div key={i} className="px-4 py-2 border-b border-amber-100 dark:border-amber-900/50 last:border-0 text-xs">
+                        <p className="font-medium truncate">{item.title}</p>
+                        <p className="text-amber-600 dark:text-amber-400 truncate">
+                          既存: 「{item.matchedExistingTitle}」
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {error && (
-              <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
-            )}
+              {error && (
+                <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+              )}
+            </div>
 
-            <div className="flex flex-col gap-2">
+            {/* 固定フッター：ボタン */}
+            <div className="flex flex-col gap-2 pt-3 border-t border-border shrink-0">
               {analysis.suspicious.length > 0 && (
                 <Button variant="outline" className="w-full" onClick={() => handleImport(true)}>
                   疑わしいものは既存として扱う

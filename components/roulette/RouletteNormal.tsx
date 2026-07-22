@@ -17,11 +17,18 @@ const COLORS = [
   "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
 ];
 
+const MAX_WHEEL = 50;
+
 export function RouletteNormal({ wishes, isSpinning, result, pendingResult, probabilities }: RouletteNormalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
+  const tooMany = count > MAX_WHEEL;
+
+  // 件数が多い場合は先頭 MAX_WHEEL 件のみ描画（回転アニメーション用の見た目）
+  const displayWishes = tooMany ? wishes.slice(0, MAX_WHEEL) : wishes;
+  const displayCount = displayWishes.length;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -33,7 +40,7 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
     const cx = size / 2;
     const cy = size / 2;
     const r = size / 2 - 4;
-    const items = wishes.length > 0 ? wishes : [{ id: "empty", title: "アイテムなし" }];
+    const items = displayWishes.length > 0 ? displayWishes : [{ id: "empty", title: "アイテムなし" }];
     const arc = (2 * Math.PI) / items.length;
 
     ctx.clearRect(0, 0, size, size);
@@ -48,43 +55,57 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
       ctx.closePath();
       ctx.fillStyle = COLORS[i % COLORS.length];
       ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(startAngle + arc / 2);
-      ctx.textAlign = "right";
-      ctx.fillStyle = "#fff";
-      const fontSize = Math.max(10, 14 - items.length);
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      const title = "title" in item ? (item as { title: string }).title : "";
-      const prob = probabilities?.get("id" in item ? (item as { id: string }).id : "") ?? null;
-      const titleY = prob !== null ? -2 : 5;
-      ctx.fillText(title.length > 8 ? title.slice(0, 8) + "…" : title, r - 10, titleY);
-      if (prob !== null) {
-        ctx.font = `${Math.max(8, fontSize - 2)}px sans-serif`;
-        ctx.fillText(`${(prob * 100).toFixed(1)}%`, r - 10, titleY + fontSize);
+      // 件数が多いときは枠線を省略（白塗り防止）
+      if (items.length <= 30) {
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
       }
-      ctx.restore();
+
+      if (!tooMany) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(startAngle + arc / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#fff";
+        const fontSize = Math.max(10, 14 - items.length);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        const title = "title" in item ? (item as { title: string }).title : "";
+        const prob = probabilities?.get("id" in item ? (item as { id: string }).id : "") ?? null;
+        const titleY = prob !== null ? -2 : 5;
+        ctx.fillText(title.length > 8 ? title.slice(0, 8) + "…" : title, r - 10, titleY);
+        if (prob !== null) {
+          ctx.font = `${Math.max(8, fontSize - 2)}px sans-serif`;
+          ctx.fillText(`${(prob * 100).toFixed(1)}%`, r - 10, titleY + fontSize);
+        }
+        ctx.restore();
+      }
     });
 
     ctx.beginPath();
     ctx.arc(cx, cy, 20, 0, 2 * Math.PI);
     ctx.fillStyle = "#fff";
     ctx.fill();
-  }, [wishes, probabilities]);
+  }, [displayWishes, probabilities, tooMany]);
 
   useEffect(() => {
-    if (isSpinning && !prevSpinning.current && pendingResult && count > 0) {
+    if (isSpinning && !prevSpinning.current && pendingResult && displayCount > 0) {
       prevSpinning.current = true;
-      const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
-      if (resultIndex < 0) return;
 
-      const segmentAngle = 360 / count;
-      const segmentCenter = (resultIndex + 0.5) * segmentAngle;
-      const target = 3 * 360 + (360 - (segmentCenter % 360));
+      let target: number;
+      if (tooMany) {
+        // 件数超過時はランダム角度でスピン（結果はテキストで表示）
+        target = 3 * 360 + Math.random() * 360;
+      } else {
+        const resultIndex = displayWishes.findIndex((w) => w.id === pendingResult.id);
+        if (resultIndex < 0) {
+          target = 3 * 360 + Math.random() * 360;
+        } else {
+          const segmentAngle = 360 / displayCount;
+          const segmentCenter = (resultIndex + 0.5) * segmentAngle;
+          target = 3 * 360 + (360 - (segmentCenter % 360));
+        }
+      }
 
       controls.set({ rotate: 0 });
       controls.start({
@@ -94,9 +115,9 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
     }
     if (!isSpinning) {
       prevSpinning.current = false;
-      controls.stop();
+      if (!result) controls.stop();
     }
-  }, [isSpinning, pendingResult, wishes, count, controls]);
+  }, [isSpinning, pendingResult, displayWishes, displayCount, tooMany, controls, result]);
 
   if (wishes.length === 0) {
     return (
@@ -107,18 +128,23 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
     );
   }
 
-  // 結果確定後：静的にresultの角度を表示
+  // 結果確定後：件数が少ない場合のみ結果角度に回転
   const staticRotate = (() => {
-    if (!result || isSpinning) return null;
-    const resultIndex = wishes.findIndex((w) => w.id === result.id);
+    if (!result || isSpinning || tooMany) return null;
+    const resultIndex = displayWishes.findIndex((w) => w.id === result.id);
     if (resultIndex < 0) return null;
-    const segmentAngle = 360 / count;
+    const segmentAngle = 360 / displayCount;
     const segmentCenter = (resultIndex + 0.5) * segmentAngle;
     return 360 - (segmentCenter % 360);
   })();
 
   return (
     <div className="flex flex-col items-center gap-4">
+      {tooMany && (
+        <p className="text-xs text-muted-foreground">
+          {count}件中 {MAX_WHEEL}件を表示（抽選は全件対象）
+        </p>
+      )}
       <div className="relative" style={{ width: 280, height: 280 }}>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10">
           <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[20px] border-l-transparent border-r-transparent border-t-foreground" />
