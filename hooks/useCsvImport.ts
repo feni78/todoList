@@ -265,7 +265,8 @@ export function useCsvImport(groupId: string) {
         const titleChanged = existingMatch.title !== row.title;
         const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
         const sortedNew = [...genreIds].sort();
-        const genreChanged = JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
+        // genreIds が空のときはジャンル未指定扱い（既存を変更しない）
+        const genreChanged = genreIds.length > 0 && JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
         if (!titleChanged && !memoWillChange && !genreChanged) {
           skipItems.push({ title: row.title, reason: "no_change" });
           skipCount++;
@@ -427,9 +428,9 @@ export function useCsvImport(groupId: string) {
               if (voteErr) throw voteErr;
             }
 
-            // ジャンルは常に置き換え（未選択なら全削除）
-            await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
+            // genreIds が指定されている場合のみ置き換え
             if (item.genreIds.length > 0) {
+              await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
               const { error: genreErr } = await supabase.from("wish_genres")
                 .insert(item.genreIds.map((gid) => ({ wish_id: item.wishId, genre_id: gid })));
               if (genreErr) throw genreErr;

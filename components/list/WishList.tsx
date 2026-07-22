@@ -22,7 +22,7 @@ export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChan
     if (listRef.current) {
       setScrollMargin(listRef.current.offsetTop);
     }
-  });
+  }, []);
 
   const virtualizer = useWindowVirtualizer({
     count: wishes.length,
