@@ -307,7 +307,20 @@ export function useCsvImport(groupId: string) {
           }
         }
 
-        return { inserted: toInsert.length, updated: toUpdate.length, skipped: skippedItems.length, skippedItems };
+        const result: ImportResult = { inserted: toInsert.length, updated: toUpdate.length, skipped: skippedItems.length, skippedItems };
+
+        // 履歴をDBに保存（失敗してもインポート結果には影響させない）
+        supabase.from("csv_import_logs").insert({
+          group_id: groupId,
+          member_id: entry.memberId,
+          file_names: configs.map((c) => c.file.name),
+          inserted: result.inserted,
+          updated: result.updated,
+          skipped: result.skipped,
+          skipped_items: skippedItems,
+        }).then(({ error }) => { if (error) console.warn("履歴保存失敗:", error.message); });
+
+        return result;
       } catch (err) {
         // Rollback: delete inserted wishes
         if (insertedIds.length > 0) {
