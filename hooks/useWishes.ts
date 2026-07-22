@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Wish, WishVote, Genre, ScoreValue, Status } from "@/types";
 import { getGroupMember } from "@/lib/utils/localStorage";
@@ -73,24 +73,28 @@ function mapRow(row: Record<string, unknown>): Wish {
   };
 }
 
-export function useWishes(groupId: string) {
+export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // statuses はページごとに固定なので ref で安定参照する
+  const statusesRef = useRef<Status[]>(options?.statuses ?? ["PENDING", "HOLD"]);
+
   const fetchWishes = useCallback(async () => {
     const supabase = createClient();
+    const statuses = statusesRef.current;
 
-    // サーバー側 max_rows 制限を回避するため .range() でページネーション取得
     const PAGE = 1000;
     let allData: Record<string, unknown>[] = [];
     let from = 0;
     while (true) {
       const { data, error } = await supabase
         .from("wishes")
-        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), member:group_members!member_id(id, nickname)`)
+        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), member:group_members!member_id(id, nickname), wish_votes(id, member_id, score)`)
         .eq("group_id", groupId)
         .is("deleted_at", null)
+        .in("status", statuses)
         .order("created_at", { ascending: false })
         .range(from, from + PAGE - 1);
       if (error) {
@@ -102,33 +106,8 @@ export function useWishes(groupId: string) {
       if ((data ?? []).length < PAGE) break;
       from += PAGE;
     }
-    const data = allData;
 
-    const wishIds = (data ?? []).map((w) => w.id as string);
-    let votes: { id: string; wish_id: string; member_id: string; score: number }[] = [];
-    if (wishIds.length > 0) {
-      // URLが長くなりすぎてサイレントエラーになるのを防ぐため小分けに取得する
-      const VOTE_CHUNK = 150;
-      for (let i = 0; i < wishIds.length; i += VOTE_CHUNK) {
-        const { data: voteData, error: voteErr } = await supabase
-          .from("wish_votes")
-          .select("id, wish_id, member_id, score")
-          .in("wish_id", wishIds.slice(i, i + VOTE_CHUNK))
-          .limit(10000);
-        if (voteErr) throw new Error(`wish_votes fetch: ${voteErr.message}`);
-        votes = votes.concat((voteData ?? []) as typeof votes);
-      }
-    }
-
-    setWishes(
-      (data ?? []).map((row) => {
-        const rowWithVotes = {
-          ...row,
-          wish_votes: votes.filter((v) => v.wish_id === row.id),
-        };
-        return mapRow(rowWithVotes as Record<string, unknown>);
-      })
-    );
+    setWishes(allData.map((row) => mapRow(row as Record<string, unknown>)));
     setLoading(false);
   }, [groupId]);
 

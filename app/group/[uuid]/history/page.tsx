@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
   const { uuid } = useParams<{ uuid: string }>();
-  const { wishes, loading, updateWish, deleteWish, changeStatus, toggleFavorite: toggleFavoriteWish } = useWishes(uuid);
+  const { wishes, loading, updateWish, deleteWish, changeStatus, toggleFavorite: toggleFavoriteWish } = useWishes(uuid, { statuses: ["DONE"] });
 
   const handleToggleFavorite = async (id: string, value: boolean) => {
     try {
@@ -23,8 +23,7 @@ export default function HistoryPage() {
   };
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
 
-  const doneWishes = wishes.filter((w) => w.status === "DONE");
-  const displayWishes = showFavoriteOnly ? doneWishes.filter((w) => w.isFavorite) : doneWishes;
+  const displayWishes = showFavoriteOnly ? wishes.filter((w) => w.isFavorite) : wishes;
 
   const handleUpdate = async (id: string, data: Parameters<typeof updateWish>[1]) => {
     try {
