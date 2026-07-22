@@ -53,7 +53,7 @@ export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChan
           const wish = wishes[virtualRow.index];
           return (
             <div
-              key={wish.id}
+              key={virtualRow.key}
               data-index={virtualRow.index}
               ref={virtualizer.measureElement}
               style={{

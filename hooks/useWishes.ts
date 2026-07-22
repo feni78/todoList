@@ -80,8 +80,10 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
 
   // statuses はページごとに固定なので ref で安定参照する
   const statusesRef = useRef<Status[]>(options?.statuses ?? ["PENDING", "HOLD"]);
+  const fetchIdRef = useRef(0);
 
   const fetchWishes = useCallback(async () => {
+    const fetchId = ++fetchIdRef.current;
     const supabase = createClient();
     const statuses = statusesRef.current;
 
@@ -98,6 +100,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         .order("created_at", { ascending: false })
         .range(from, from + PAGE - 1);
       if (error) {
+        if (fetchId !== fetchIdRef.current) return;
         setError(error.message);
         setLoading(false);
         return;
@@ -107,6 +110,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
       from += PAGE;
     }
 
+    if (fetchId !== fetchIdRef.current) return;
     setWishes(allData.map((row) => mapRow(row as Record<string, unknown>)));
     setLoading(false);
   }, [groupId]);
