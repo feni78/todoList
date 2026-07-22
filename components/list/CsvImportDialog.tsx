@@ -270,6 +270,12 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
               <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
             )}
 
+            {totalRows > 2000 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2">
+                件数が多いため、取り込みに数分かかる場合があります
+              </p>
+            )}
+
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={handleClose} disabled={importing}>
                 キャンセル
