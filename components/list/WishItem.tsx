@@ -19,9 +19,12 @@ interface WishItemProps {
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
   onToggleFavorite?: (id: string, value: boolean) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite }: WishItemProps) {
+export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, isSelected, onToggleSelect }: WishItemProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const currentMemberId = getGroupMember(wish.groupId)?.memberId;
@@ -60,14 +63,23 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border active:bg-muted/50 transition-colors">
-        <span className="text-2xl shrink-0 w-8 h-8 flex items-center justify-center">
-          {wish.avgScore > 0 ? scoreToIcon(wish.avgScore) : "ー"}
-        </span>
+      <div
+        className={cn("flex items-center gap-3 px-4 py-3 border-b border-border transition-colors", selectionMode ? "active:bg-muted/30" : "active:bg-muted/50", isSelected && "bg-primary/5")}
+        onClick={selectionMode ? () => onToggleSelect?.(wish.id) : undefined}
+      >
+        {selectionMode ? (
+          <div className={cn("shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors", isSelected ? "bg-primary border-primary" : "border-muted-foreground")}>
+            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+          </div>
+        ) : (
+          <span className="text-2xl shrink-0 w-8 h-8 flex items-center justify-center">
+            {wish.avgScore > 0 ? scoreToIcon(wish.avgScore) : "ー"}
+          </span>
+        )}
 
         <button
           className="flex-1 text-left min-w-0"
-          onClick={() => setEditOpen(true)}
+          onClick={selectionMode ? undefined : () => setEditOpen(true)}
         >
           <div className="flex items-center gap-1.5 min-w-0">
             <span
@@ -124,7 +136,7 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
         </button>
 
         <div className="flex items-center gap-1 shrink-0">
-          {onToggleFavorite && (
+          {!selectionMode && onToggleFavorite && (
             <button
               onClick={() => onToggleFavorite(wish.id, !wish.isFavorite)}
               className={cn(
@@ -135,7 +147,7 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
               <Star size={15} fill={wish.isFavorite ? "currentColor" : "none"} />
             </button>
           )}
-          {memoUrl && (
+          {!selectionMode && memoUrl && (
             <a
               href={memoUrl}
               target="_blank"
@@ -146,18 +158,22 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
               <ExternalLink size={15} />
             </a>
           )}
-          <button
-            onClick={() => setEditOpen(true)}
-            className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg transition-colors"
-          >
-            <Pencil size={15} />
-          </button>
-          <button
-            onClick={handleDelete}
-            className="text-muted-foreground hover:text-destructive p-1.5 rounded-lg transition-colors"
-          >
-            <Trash2 size={15} />
-          </button>
+          {!selectionMode && (
+            <>
+              <button
+                onClick={() => setEditOpen(true)}
+                className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg transition-colors"
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="text-muted-foreground hover:text-destructive p-1.5 rounded-lg transition-colors"
+              >
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

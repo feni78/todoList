@@ -12,10 +12,13 @@ interface WishListProps {
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
   onToggleFavorite?: (id: string, value: boolean) => void;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
   emptyMessage?: string;
 }
 
-export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, emptyMessage }: WishListProps) {
+export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, selectedIds, onToggleSelect, emptyMessage }: WishListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
 
@@ -68,6 +71,9 @@ export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChan
                 onDelete={onDelete}
                 onStatusChange={onStatusChange}
                 onToggleFavorite={onToggleFavorite}
+                selectionMode={selectionMode}
+                isSelected={selectedIds?.has(wish.id)}
+                onToggleSelect={onToggleSelect}
               />
             </div>
           );

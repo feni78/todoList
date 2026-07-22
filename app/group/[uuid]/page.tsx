@@ -18,7 +18,8 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { Status, Situation, Season, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
-import { Plus, SlidersHorizontal, Search, X, ArrowUpDown } from "lucide-react";
+import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag } from "lucide-react";
+import { BulkGenreBar } from "@/components/list/BulkGenreBar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -51,7 +52,7 @@ export default function ListPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
   const currentMemberId = getGroupMember(uuid)?.memberId;
-  const { wishes, loading, createWish, updateWish, deleteWish, changeStatus, refetch } = useWishes(uuid);
+  const { wishes, loading, createWish, updateWish, deleteWish, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
   const { genres } = useGenres(uuid);
   const filterStore = useFilterStore();
 
@@ -67,6 +68,8 @@ export default function ListPage() {
   const [bulkAdding, setBulkAdding] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     let result = [...wishes];
@@ -165,6 +168,27 @@ export default function ListPage() {
     }
   };
 
+  const handleToggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const handleSelectAll = () => setSelectedIds(new Set(filtered.map((w) => w.id)));
+  const handleClearAll = () => setSelectedIds(new Set());
+
+  const handleExitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkApply = async (genreIds: string[], mode: "add" | "remove") => {
+    await bulkUpdateGenres([...selectedIds], genreIds, mode);
+    toast.success(mode === "add" ? "ジャンルを追加しました" : "ジャンルを削除しました");
+    handleExitSelection();
+  };
+
   const handleStatusChange = async (id: string, status: Status) => {
     try {
       await changeStatus(id, status);
@@ -260,35 +284,60 @@ export default function ListPage() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelect={handleToggleSelect}
           emptyMessage={statusTab === "PENDING" ? "やりたいことを追加しよう！" : "保留中のアイテムはありません"}
         />
       )}
 
-      <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
-        <button
-          onClick={() => setCsvOpen(true)}
-          className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-xs font-bold"
-          aria-label="CSV取り込み"
-          title="CSV取り込み"
-        >
-          CSV
-        </button>
-        <button
-          onClick={() => setBulkOpen(true)}
-          className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-xs font-bold"
-          aria-label="一括追加"
-          title="一括追加"
-        >
-          一括
-        </button>
-        <button
-          onClick={() => setAddOpen(true)}
-          className="w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
-          aria-label="追加"
-        >
-          <Plus size={24} />
-        </button>
-      </div>
+      {!selectionMode && (
+        <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+          <button
+            onClick={() => setCsvOpen(true)}
+            className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-xs font-bold"
+            aria-label="CSV取り込み"
+            title="CSV取り込み"
+          >
+            CSV
+          </button>
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all text-xs font-bold"
+            aria-label="一括追加"
+            title="一括追加"
+          >
+            一括
+          </button>
+          <button
+            onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+            className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all"
+            aria-label="ジャンル一括設定"
+            title="ジャンル一括設定"
+          >
+            <Tag size={16} />
+          </button>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all"
+            aria-label="追加"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
+      )}
+
+      {selectionMode && (
+        <BulkGenreBar
+          selectedCount={selectedIds.size}
+          totalCount={filtered.length}
+          genres={genres}
+          onSelectAll={handleSelectAll}
+          onClearAll={handleClearAll}
+          onApply={handleBulkApply}
+          onCancel={handleExitSelection}
+        />
+      )}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain">
