@@ -18,7 +18,7 @@ import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember } from "@/lib/utils/localStorage";
 import { RouletteSettings, Wish } from "@/types";
-import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -46,10 +46,9 @@ export default function SettingsPage() {
   const [newNickname, setNewNickname] = useState("");
   const { genres, createGenre, updateGenre, deleteGenre } = useGenres(uuid);
   const { items: trashItems, loading: trashLoading, fetchTrash, restoreWish, permanentDelete, emptyTrash } = useTrash(uuid);
-  const { logs: importLogs, loading: logsLoading, error: logsError, fetchLogs, toggleFavorite } = useCsvImportLogs(uuid);
+  const { logs: importLogs, loading: logsLoading, error: logsError, fetchLogs } = useCsvImportLogs(uuid);
   const [trashOpen, setTrashOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
-  const [logsShowFavorite, setLogsShowFavorite] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [editingGenreId, setEditingGenreId] = useState<string | null>(null);
   const [editingGenreName, setEditingGenreName] = useState("");
@@ -545,23 +544,12 @@ export default function SettingsPage() {
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">CSV取り込み履歴</h2>
-            <div className="flex items-center gap-2">
-              {logsOpen && (
-                <button
-                  onClick={() => setLogsShowFavorite((v) => !v)}
-                  className={cn("p-1 rounded transition-colors", logsShowFavorite ? "text-yellow-400" : "text-muted-foreground hover:text-foreground")}
-                  title={logsShowFavorite ? "全件表示" : "お気に入りのみ"}
-                >
-                  <Star size={15} fill={logsShowFavorite ? "currentColor" : "none"} />
-                </button>
-              )}
-              <button
-                onClick={() => { setLogsOpen((v) => !v); if (!logsOpen) fetchLogs(); }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {logsOpen ? "閉じる" : "開く"}
-              </button>
-            </div>
+            <button
+              onClick={() => { setLogsOpen((v) => !v); if (!logsOpen) fetchLogs(); }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {logsOpen ? "閉じる" : "開く"}
+            </button>
           </div>
           {logsOpen && (
             <>
@@ -579,40 +567,29 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">履歴がありません</p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {(logsShowFavorite ? importLogs.filter((l) => l.isFavorite) : importLogs).length === 0 ? (
-                    <p className="text-sm text-muted-foreground">お気に入りの履歴がありません</p>
-                  ) : (logsShowFavorite ? importLogs.filter((l) => l.isFavorite) : importLogs).map((log) => {
+                  {importLogs.map((log) => {
                     const member = group?.members.find((m) => m.id === log.memberId);
                     const date = new Date(log.importedAt);
                     const dateStr = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
                     const isExpanded = expandedLogId === log.id;
                     return (
                       <div key={log.id} className="rounded-xl border border-border overflow-hidden">
-                        <div className="flex items-start gap-1 px-3 py-2.5">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                            className="flex-1 flex items-start justify-between gap-2 hover:bg-muted/50 -mx-1 px-1 rounded transition-colors text-left min-w-0"
-                          >
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                              <span className="text-xs text-muted-foreground">{dateStr}　{member?.nickname ?? "不明"}</span>
-                              <span className="text-xs truncate text-foreground">{log.fileNames.join("、")}</span>
-                              <span className="text-xs text-muted-foreground">
-                                新規 {log.inserted}　更新 {log.updated}　スキップ {log.skipped}
-                              </span>
-                            </div>
-                            {(log.insertedItems.length > 0 || log.updatedItems.length > 0 || log.skippedItems.length > 0) && (
-                              isExpanded ? <ChevronUp size={14} className="shrink-0 mt-1 text-muted-foreground" /> : <ChevronDown size={14} className="shrink-0 mt-1 text-muted-foreground" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleFavorite(log.id, !log.isFavorite)}
-                            className={cn("shrink-0 p-1 mt-0.5 rounded transition-colors", log.isFavorite ? "text-yellow-400" : "text-muted-foreground hover:text-yellow-400")}
-                          >
-                            <Star size={14} fill={log.isFavorite ? "currentColor" : "none"} />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                          className="w-full flex items-start justify-between gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
+                        >
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-xs text-muted-foreground">{dateStr}　{member?.nickname ?? "不明"}</span>
+                            <span className="text-xs truncate text-foreground">{log.fileNames.join("、")}</span>
+                            <span className="text-xs text-muted-foreground">
+                              新規 {log.inserted}　更新 {log.updated}　スキップ {log.skipped}
+                            </span>
+                          </div>
+                          {(log.insertedItems.length > 0 || log.updatedItems.length > 0 || log.skippedItems.length > 0) && (
+                            isExpanded ? <ChevronUp size={14} className="shrink-0 mt-1 text-muted-foreground" /> : <ChevronDown size={14} className="shrink-0 mt-1 text-muted-foreground" />
+                          )}
+                        </button>
                         {isExpanded && (
                           <div className="border-t border-border max-h-64 overflow-y-auto overflow-x-hidden">
                             {log.insertedItems.length > 0 && (

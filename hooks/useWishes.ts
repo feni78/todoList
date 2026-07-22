@@ -290,11 +290,14 @@ export function useWishes(groupId: string) {
 
   const toggleFavorite = useCallback(
     async (wishId: string, value: boolean) => {
+      // ローカル状態を即時更新（楽観的更新）
       setWishes((prev) => prev.map((w) => w.id === wishId ? { ...w, isFavorite: value } : w));
       const supabase = createClient();
       const { error } = await supabase.from("wishes").update({ is_favorite: value }).eq("id", wishId);
       if (error) {
+        // 失敗時はロールバック
         setWishes((prev) => prev.map((w) => w.id === wishId ? { ...w, isFavorite: !value } : w));
+        throw error;
       }
     },
     []

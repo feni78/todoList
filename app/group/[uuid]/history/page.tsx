@@ -12,7 +12,15 @@ import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
   const { uuid } = useParams<{ uuid: string }>();
-  const { wishes, loading, updateWish, deleteWish, changeStatus, toggleFavorite } = useWishes(uuid);
+  const { wishes, loading, updateWish, deleteWish, changeStatus, toggleFavorite: toggleFavoriteWish } = useWishes(uuid);
+
+  const handleToggleFavorite = async (id: string, value: boolean) => {
+    try {
+      await toggleFavoriteWish(id, value);
+    } catch {
+      toast.error("お気に入りの更新に失敗しました。DBマイグレーションを確認してください。");
+    }
+  };
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
 
   const doneWishes = wishes.filter((w) => w.status === "DONE");
@@ -74,7 +82,7 @@ export default function HistoryPage() {
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onStatusChange={handleStatusChange}
-            onToggleFavorite={toggleFavorite}
+            onToggleFavorite={handleToggleFavorite}
             emptyMessage={showFavoriteOnly ? "お気に入りのアイテムはありません" : "実施済みのアイテムはありません"}
           />
         )}
