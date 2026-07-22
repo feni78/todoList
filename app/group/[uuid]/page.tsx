@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -20,6 +20,7 @@ import { getGroupMember } from "@/lib/utils/localStorage";
 import { Status, Situation, Season, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
+import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -52,7 +53,7 @@ export default function ListPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
   const currentMemberId = getGroupMember(uuid)?.memberId;
-  const { wishes, loading, createWish, updateWish, deleteWish, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
+  const { wishes, loading, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
   const { genres } = useGenres(uuid);
   const filterStore = useFilterStore();
 
@@ -68,8 +69,17 @@ export default function ListPage() {
   const [bulkAdding, setBulkAdding] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<"genre" | "delete" | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("mode") === "delete") {
+      setSelectionMode("delete");
+      setSelectedIds(new Set());
+      window.history.replaceState({}, "", `/group/${uuid}`);
+    }
+  }, [uuid]);
 
   const filtered = useMemo(() => {
     let result = [...wishes];
@@ -179,14 +189,25 @@ export default function ListPage() {
   const handleClearAll = () => setSelectedIds(new Set());
 
   const handleExitSelection = () => {
-    setSelectionMode(false);
+    setSelectionMode(null);
     setSelectedIds(new Set());
   };
 
   const handleStatusTabChange = (tab: TabValue) => {
     setStatusTab(tab);
-    setSelectionMode(false);
+    setSelectionMode(null);
     setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    try {
+      await bulkDeleteWishes([...selectedIds]);
+      toast.success(`${count}件を削除しました`);
+      handleExitSelection();
+    } catch {
+      toast.error("削除に失敗しました");
+    }
   };
 
   const handleBulkApply = async (genreIds: string[], mode: "add" | "remove") => {
@@ -290,14 +311,14 @@ export default function ListPage() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
-          selectionMode={selectionMode}
+          selectionMode={selectionMode !== null}
           selectedIds={selectedIds}
           onToggleSelect={handleToggleSelect}
           emptyMessage={statusTab === "PENDING" ? "やりたいことを追加しよう！" : "保留中のアイテムはありません"}
         />
       )}
 
-      {!selectionMode && (
+      {selectionMode === null && (
         <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
           <button
             onClick={() => setCsvOpen(true)}
@@ -316,7 +337,7 @@ export default function ListPage() {
             一括
           </button>
           <button
-            onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+            onClick={() => { setSelectionMode("genre"); setSelectedIds(new Set()); }}
             className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all"
             aria-label="ジャンル一括設定"
             title="ジャンル一括設定"
@@ -333,7 +354,7 @@ export default function ListPage() {
         </div>
       )}
 
-      {selectionMode && (
+      {selectionMode === "genre" && (
         <BulkGenreBar
           selectedCount={selectedIds.size}
           totalCount={filtered.length}
@@ -341,6 +362,16 @@ export default function ListPage() {
           onSelectAll={handleSelectAll}
           onClearAll={handleClearAll}
           onApply={handleBulkApply}
+          onCancel={handleExitSelection}
+        />
+      )}
+      {selectionMode === "delete" && (
+        <BulkDeleteBar
+          selectedCount={selectedIds.size}
+          totalCount={filtered.length}
+          onSelectAll={handleSelectAll}
+          onClearAll={handleClearAll}
+          onDelete={handleBulkDelete}
           onCancel={handleExitSelection}
         />
       )}

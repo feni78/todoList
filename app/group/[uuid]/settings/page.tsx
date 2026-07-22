@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
   const { uuid } = useParams<{ uuid: string }>();
+  const router = useRouter();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
   const { wishes, createWish } = useWishes(uuid);
@@ -706,6 +707,13 @@ export default function SettingsPage() {
             <Label htmlFor="dev-mode">ルーレット確率を表示</Label>
             <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} />
           </div>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => router.push(`/group/${uuid}?mode=delete`)}
+          >
+            タスクを選んで削除
+          </Button>
           <details className="group">
             <summary className="cursor-pointer list-none flex items-center gap-1">
               <ChevronDown size={14} className="text-destructive group-open:rotate-180 transition-transform" />

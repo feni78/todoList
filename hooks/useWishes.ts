@@ -316,6 +316,21 @@ export function useWishes(groupId: string) {
     [fetchWishes]
   );
 
+  const bulkDeleteWishes = useCallback(
+    async (wishIds: string[]) => {
+      const supabase = createClient();
+      const CHUNK = 200;
+      for (let i = 0; i < wishIds.length; i += CHUNK) {
+        const { error } = await supabase.from("wishes")
+          .update({ deleted_at: new Date().toISOString() })
+          .in("id", wishIds.slice(i, i + CHUNK));
+        if (error) throw error;
+      }
+      await fetchWishes();
+    },
+    [fetchWishes]
+  );
+
   const toggleFavorite = useCallback(
     async (wishId: string, value: boolean) => {
       // ローカル状態を即時更新（楽観的更新）
@@ -331,5 +346,5 @@ export function useWishes(groupId: string) {
     []
   );
 
-  return { wishes, loading, error, createWish, updateWish, deleteWish, changeStatus, toggleFavorite, bulkUpdateGenres, refetch: fetchWishes };
+  return { wishes, loading, error, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, toggleFavorite, bulkUpdateGenres, refetch: fetchWishes };
 }
