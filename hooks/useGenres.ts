@@ -12,8 +12,9 @@ export function useGenres(groupId: string) {
     const supabase = createClient();
     const { data } = await supabase
       .from("genres")
-      .select("id, group_id, name")
+      .select("id, group_id, name, sort_order")
       .eq("group_id", groupId)
+      .order("sort_order", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
     setGenres(
@@ -45,5 +46,15 @@ export function useGenres(groupId: string) {
     await fetchGenres();
   }, [fetchGenres]);
 
-  return { genres, loading, createGenre, updateGenre, deleteGenre };
+  const reorderGenres = useCallback(async (orderedIds: string[]) => {
+    const supabase = createClient();
+    await Promise.all(
+      orderedIds.map((id, idx) =>
+        supabase.from("genres").update({ sort_order: idx }).eq("id", id)
+      )
+    );
+    await fetchGenres();
+  }, [fetchGenres]);
+
+  return { genres, loading, createGenre, updateGenre, deleteGenre, reorderGenres };
 }

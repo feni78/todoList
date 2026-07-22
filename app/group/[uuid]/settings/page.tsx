@@ -19,7 +19,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish } from "@/types";
-import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -46,7 +46,7 @@ export default function SettingsPage() {
   const [editingNickname, setEditingNickname] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [newNickname, setNewNickname] = useState("");
-  const { genres, createGenre, updateGenre, deleteGenre } = useGenres(uuid);
+  const { genres, createGenre, updateGenre, deleteGenre, reorderGenres } = useGenres(uuid);
   const { items: trashItems, loading: trashLoading, fetchTrash, restoreWish, permanentDelete, emptyTrash } = useTrash(uuid);
   const { logs: importLogs, loading: logsLoading, error: logsError, fetchLogs } = useCsvImportLogs(uuid);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -238,6 +238,14 @@ export default function SettingsPage() {
     document.title = groupNameInput.trim();
     setEditingGroupName(false);
     toast.success("グループ名を更新しました");
+  };
+
+  const moveGenre = async (index: number, dir: -1 | 1) => {
+    const next = [...genres];
+    const target = index + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    await reorderGenres(next.map((g) => g.id));
   };
 
   const handleAddGenre = async () => {
@@ -500,37 +508,47 @@ export default function SettingsPage() {
             </button>
           </div>
           <div className="flex flex-col gap-2">
-            {genres.map((g) => (
-              <div key={g.id} className="flex items-center gap-2 py-1">
-                {editingGenreId === g.id ? (
-                  <>
-                    <input
-                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                      value={editingGenreName}
-                      onChange={(e) => setEditingGenreName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleEditGenre(g.id); if (e.key === "Escape") setEditingGenreId(null); }}
-                      autoFocus
-                    />
-                    <button onClick={() => handleEditGenre(g.id)} className="p-1.5 text-primary transition-colors">
-                      <Check size={15} />
-                    </button>
-                    <button onClick={() => setEditingGenreId(null)} className="p-1.5 text-muted-foreground transition-colors">
-                      <X size={15} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm">{g.name}</span>
-                    <button onClick={() => { setEditingGenreId(g.id); setEditingGenreName(g.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                      <Pencil size={15} />
-                    </button>
-                    <button onClick={() => handleDeleteGenre(g.id, g.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                      <Trash2 size={15} />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
+            {(() => {
+              return genres.map((g, idx) => (
+                <div key={g.id} className="flex items-center gap-2 py-1">
+                  {editingGenreId === g.id ? (
+                    <>
+                      <input
+                        className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                        value={editingGenreName}
+                        onChange={(e) => setEditingGenreName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleEditGenre(g.id); if (e.key === "Escape") setEditingGenreId(null); }}
+                        autoFocus
+                      />
+                      <button onClick={() => handleEditGenre(g.id)} className="p-1.5 text-primary transition-colors">
+                        <Check size={15} />
+                      </button>
+                      <button onClick={() => setEditingGenreId(null)} className="p-1.5 text-muted-foreground transition-colors">
+                        <X size={15} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex flex-col">
+                        <button onClick={() => moveGenre(idx, -1)} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
+                          <ArrowUp size={12} />
+                        </button>
+                        <button onClick={() => moveGenre(idx, 1)} disabled={idx === genres.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
+                          <ArrowDown size={12} />
+                        </button>
+                      </div>
+                      <span className="flex-1 text-sm">{g.name}</span>
+                      <button onClick={() => { setEditingGenreId(g.id); setEditingGenreName(g.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                        <Pencil size={15} />
+                      </button>
+                      <button onClick={() => handleDeleteGenre(g.id, g.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                        <Trash2 size={15} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ));
+            })()}
             {addingGenre && (
               <div className="flex items-center gap-2 py-1">
                 <input
