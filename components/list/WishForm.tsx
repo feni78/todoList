@@ -296,27 +296,6 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label>季節タグ（任意・複数選択可）</Label>
-        <div className="flex gap-1.5">
-          {SEASONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => toggleSeason(s)}
-              className={cn(
-                "flex-1 py-2 rounded-lg text-xs font-medium transition-colors",
-                form.seasons.includes(s)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {SEASON_LABELS[s]}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {genres.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <Label>ジャンル（任意・複数選択可）</Label>

@@ -239,7 +239,7 @@ export default function ListPage() {
     excludeChanged;
 
   return (
-    <div className="flex flex-col min-h-screen pb-16">
+    <div className="flex flex-col min-h-screen pb-40">
       <TopBar
         right={
           <button
