@@ -178,19 +178,21 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md w-full max-h-[90vh] overflow-y-auto overflow-x-hidden overscroll-contain">
+        <DialogContent className="max-w-md w-full max-h-[90dvh] flex flex-col overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>編集</DialogTitle>
           </DialogHeader>
-          <WishForm
-            initial={wish}
-            currentMemberId={currentMemberId}
-            members={members}
-            genres={genres}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditOpen(false)}
-            loading={saving}
-          />
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+            <WishForm
+              initial={wish}
+              currentMemberId={currentMemberId}
+              members={members}
+              genres={genres}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditOpen(false)}
+              loading={saving}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </>
