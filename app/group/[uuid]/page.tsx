@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useWishes } from "@/hooks/useWishes";
 import { useGenres } from "@/hooks/useGenres";
+import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { getGroupMember } from "@/lib/utils/localStorage";
@@ -40,6 +41,7 @@ export default function ListPage() {
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const { wishes, loading, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
   const { genres } = useGenres(uuid);
+  const { regions } = useRegions(uuid);
   const filterStore = useFilterStore();
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
@@ -102,6 +104,9 @@ export default function ListPage() {
     }
     if (filterStore.excludeGenreIds.length > 0) {
       result = result.filter((w) => !w.genres.some((g) => filterStore.excludeGenreIds.includes(g.id)));
+    }
+    if (filterStore.regionIds.length > 0) {
+      result = result.filter((w) => w.regions.some((r) => filterStore.regionIds.includes(r.id)));
     }
     if (filterStore.searchQuery) {
       const q = filterStore.searchQuery.toLowerCase();
@@ -298,6 +303,7 @@ export default function ListPage() {
         <WishList
           wishes={filtered}
           genres={genres}
+          regions={regions}
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
@@ -374,6 +380,7 @@ export default function ListPage() {
           <WishForm
             currentMemberId={currentMemberId}
             genres={genres}
+            regions={regions}
             onSubmit={handleCreate}
             onCancel={() => setAddOpen(false)}
             loading={adding}
@@ -419,6 +426,7 @@ export default function ListPage() {
         onClose={() => setFilterOpen(false)}
         members={group?.members ?? []}
         genres={genres}
+        regions={regions}
       />
 
       <CsvImportDialog

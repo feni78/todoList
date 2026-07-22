@@ -42,6 +42,7 @@ const defaultFilter: RouletteFilter = {
   genreIds: [],
   genreSearchMode: "OR",
   excludeGenreIds: [],
+  regionIds: [],
 };
 
 export const useRouletteStore = create<RouletteState>((set) => ({

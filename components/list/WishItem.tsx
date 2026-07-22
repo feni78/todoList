@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Wish, Genre, SITUATION_ICONS, SEASON_LABELS, scoreToIcon } from "@/types";
+import { Wish, Genre, Region, SITUATION_ICONS, SEASON_LABELS, scoreToIcon } from "@/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ type WishUpdateData = (Parameters<typeof WishForm>[0]["onSubmit"] extends (d: in
 interface WishItemProps {
   wish: Wish;
   genres?: Genre[];
+  regions?: Region[];
   onUpdate: (id: string, data: WishUpdateData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
@@ -24,7 +25,7 @@ interface WishItemProps {
   onToggleSelect?: (id: string) => void;
 }
 
-export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, isSelected, onToggleSelect }: WishItemProps) {
+export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, isSelected, onToggleSelect }: WishItemProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const currentMemberId = getGroupMember(wish.groupId)?.memberId;
@@ -121,6 +122,11 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
                 {g.name}
               </Badge>
             ))}
+            {wish.regions.map((r) => (
+              <Badge key={r.id} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400 text-blue-600 dark:text-blue-400">
+                {r.name}
+              </Badge>
+            ))}
           </div>
           {wish.votes.length > 0 && (
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -201,6 +207,7 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
               currentMemberId={currentMemberId}
               members={members}
               genres={genres}
+              regions={regions}
               onSubmit={handleUpdate}
               onCancel={() => setEditOpen(false)}
               loading={saving}

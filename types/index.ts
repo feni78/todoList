@@ -35,6 +35,12 @@ export interface Genre {
   name: string;
 }
 
+export interface Region {
+  id: string;
+  groupId: string;
+  name: string;
+}
+
 export interface WishVote {
   id: string;
   wishId: string;
@@ -54,6 +60,7 @@ export interface Wish {
   duration?: Duration;
   seasons: Season[];
   genres: Genre[];
+  regions: Region[];
   createdAt: string;
   updatedAt: string;
   doneAt: string | null;
@@ -103,6 +110,7 @@ export interface FilterState {
   genreIds: string[];
   genreSearchMode: "OR" | "AND";
   excludeGenreIds: string[];
+  regionIds: string[];
   searchQuery: string;
 }
 

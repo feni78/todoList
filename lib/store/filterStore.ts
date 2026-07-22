@@ -13,6 +13,7 @@ interface FilterStore extends FilterState {
   setGenreIds: (ids: string[]) => void;
   setGenreSearchMode: (mode: "OR" | "AND") => void;
   setExcludeGenreIds: (ids: string[]) => void;
+  setRegionIds: (ids: string[]) => void;
   setSearchQuery: (q: string) => void;
   reset: () => void;
 }
@@ -27,6 +28,7 @@ const initialState: FilterState = {
   genreIds: [],
   genreSearchMode: "OR",
   excludeGenreIds: [],
+  regionIds: [],
   searchQuery: "",
 };
 
@@ -43,6 +45,7 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setGenreIds: (genreIds) => set({ genreIds }),
   setGenreSearchMode: (genreSearchMode) => set({ genreSearchMode }),
   setExcludeGenreIds: (excludeGenreIds) => set({ excludeGenreIds }),
+  setRegionIds: (regionIds) => set({ regionIds }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   // リセット時はデフォルト除外ジャンルを維持する
   reset: () => set((state) => ({ ...initialState, defaultExcludeGenreIds: state.defaultExcludeGenreIds, excludeGenreIds: [...state.defaultExcludeGenreIds] })),

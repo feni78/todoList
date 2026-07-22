@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   GroupMember,
   Genre,
+  Region,
   Situation,
   Budget,
   Duration,
@@ -24,6 +25,7 @@ interface FilterPanelProps {
   onClose: () => void;
   members: GroupMember[];
   genres?: Genre[];
+  regions?: Region[];
 }
 
 function FilterChip({ selected, onClick, label, variant = "default" }: {
@@ -82,7 +84,7 @@ const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
 
-export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanelProps) {
+export function FilterPanel({ open, onClose, members, genres = [], regions = [] }: FilterPanelProps) {
   const store = useFilterStore();
 
   const excludeChanged =
@@ -96,6 +98,7 @@ export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanel
     store.durations.length > 0 ||
     store.seasons.length > 0 ||
     store.genreIds.length > 0 ||
+    store.regionIds.length > 0 ||
     excludeChanged;
 
   return (
@@ -162,6 +165,19 @@ export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanel
               />
             ))}
           </FilterSection>
+
+          {regions.length > 0 && (
+            <FilterSection title="地域タグ">
+              {regions.map((r) => (
+                <FilterChip
+                  key={r.id}
+                  selected={store.regionIds.includes(r.id)}
+                  onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
+                  label={r.name}
+                />
+              ))}
+            </FilterSection>
+          )}
 
           {genres.length > 0 && (
             <FilterSection title="ジャンル（含む）">

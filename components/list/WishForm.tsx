@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import {
   Wish,
   Genre,
+  Region,
   GroupMember,
   Situation,
   Status,
@@ -35,6 +36,7 @@ interface WishFormData {
   duration: Duration | "";
   seasons: Season[];
   genreIds: string[];
+  regionIds: string[];
   myScore: ScoreValue | null;
 }
 
@@ -43,6 +45,7 @@ interface WishFormProps {
   currentMemberId?: string;
   members?: GroupMember[];
   genres?: Genre[];
+  regions?: Region[];
   onSubmit: (data: {
     title: string;
     memberId?: string;
@@ -53,6 +56,7 @@ interface WishFormProps {
     duration?: Duration;
     seasons: Season[];
     genreIds?: string[];
+    regionIds?: string[];
     myScore?: ScoreValue | null;
   }) => Promise<void>;
   onCancel: () => void;
@@ -95,7 +99,7 @@ function SegmentButton<T extends string>({
   );
 }
 
-export function WishForm({ initial, currentMemberId, members = [], genres = [], onSubmit, onCancel, loading }: WishFormProps) {
+export function WishForm({ initial, currentMemberId, members = [], genres = [], regions = [], onSubmit, onCancel, loading }: WishFormProps) {
   const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
   // 新規作成 or 自分が登録したものの編集 → 必須
   const scoreRequired = !initial || initial.memberId === currentMemberId;
@@ -110,6 +114,7 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
     duration: initial?.duration ?? "",
     seasons: initial?.seasons ?? [],
     genreIds: initial?.genres.map((g) => g.id) ?? [],
+    regionIds: initial?.regions.map((r) => r.id) ?? [],
     myScore: existingVote?.score ?? null,
   });
 
@@ -119,6 +124,15 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       seasons: f.seasons.includes(season)
         ? f.seasons.filter((s) => s !== season)
         : [...f.seasons, season],
+    }));
+  };
+
+  const toggleRegion = (regionId: string) => {
+    setForm((f) => ({
+      ...f,
+      regionIds: f.regionIds.includes(regionId)
+        ? f.regionIds.filter((id) => id !== regionId)
+        : [...f.regionIds, regionId],
     }));
   };
 
@@ -145,6 +159,7 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       duration: form.duration || undefined,
       seasons: form.seasons,
       genreIds: form.genreIds,
+      regionIds: form.regionIds,
       myScore: form.myScore,
     });
   };
@@ -334,6 +349,29 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
                 )}
               >
                 {g.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {regions.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <Label>地域タグ（任意・複数選択可）</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {regions.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => toggleRegion(r.id)}
+                className={cn(
+                  "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                  form.regionIds.includes(r.id)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {r.name}
               </button>
             ))}
           </div>

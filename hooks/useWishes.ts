@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Wish, WishVote, Genre, ScoreValue, Status } from "@/types";
+import { Wish, WishVote, Genre, Region, ScoreValue, Status } from "@/types";
 import { getGroupMember } from "@/lib/utils/localStorage";
 
 type SupabaseClient = ReturnType<typeof createClient>;
@@ -35,6 +35,11 @@ function mapRow(row: Record<string, unknown>): Wish {
         .filter((g) => g.genre)
         .map((g) => ({ id: g.genre.id, groupId: g.genre.group_id, name: g.genre.name }))
     : [];
+  const regions: Region[] = Array.isArray(row.wish_regions)
+    ? (row.wish_regions as { region: { id: string; group_id: string; name: string } }[])
+        .filter((r) => r.region)
+        .map((r) => ({ id: r.region.id, groupId: r.region.group_id, name: r.region.name }))
+    : [];
   const member = row.member as { id: string; nickname: string } | null;
   const rawVotes = Array.isArray(row.wish_votes)
     ? (row.wish_votes as { id: string; member_id: string; score: number }[])
@@ -62,6 +67,7 @@ function mapRow(row: Record<string, unknown>): Wish {
     duration: row.duration as Wish["duration"] | undefined,
     seasons,
     genres,
+    regions,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     doneAt: (row.done_at as string | null) ?? null,
@@ -93,7 +99,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
     while (true) {
       const { data, error } = await supabase
         .from("wishes")
-        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), member:group_members!member_id(id, nickname), wish_votes(id, member_id, score)`)
+        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), wish_regions(region:regions(id, group_id, name)), member:group_members!member_id(id, nickname), wish_votes(id, member_id, score)`)
         .eq("group_id", groupId)
         .is("deleted_at", null)
         .in("status", statuses)
@@ -141,6 +147,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
       duration?: Wish["duration"];
       seasons: Wish["seasons"];
       genreIds?: string[];
+      regionIds?: string[];
       myScore?: ScoreValue | null;
     }) => {
       const entry = getGroupMember(groupId);
@@ -176,6 +183,12 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         );
       }
 
+      if (data.regionIds && data.regionIds.length > 0) {
+        await supabase.from("wish_regions").insert(
+          data.regionIds.map((region_id) => ({ wish_id: wish.id, region_id }))
+        );
+      }
+
       if (data.myScore != null) {
         await saveVote(supabase, wish.id, entry.memberId, data.myScore);
       }
@@ -200,12 +213,13 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         duration?: Wish["duration"];
         seasons?: Wish["seasons"];
         genreIds?: string[];
+        regionIds?: string[];
         myScore?: ScoreValue | null;
       }
     ) => {
       const entry = getGroupMember(groupId);
       const supabase = createClient();
-      const { seasons, genreIds, myScore, ...rest } = data;
+      const { seasons, genreIds, regionIds, myScore, ...rest } = data;
 
       const updatePayload: Record<string, unknown> = {};
       if (rest.memberId !== undefined) updatePayload.member_id = rest.memberId;
@@ -236,6 +250,15 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         if (genreIds.length > 0) {
           await supabase.from("wish_genres").insert(
             genreIds.map((genre_id) => ({ wish_id: wishId, genre_id }))
+          );
+        }
+      }
+
+      if (regionIds !== undefined) {
+        await supabase.from("wish_regions").delete().eq("wish_id", wishId);
+        if (regionIds.length > 0) {
+          await supabase.from("wish_regions").insert(
+            regionIds.map((region_id) => ({ wish_id: wishId, region_id }))
           );
         }
       }

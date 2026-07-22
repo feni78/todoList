@@ -2,12 +2,13 @@
 
 import { useRef, useLayoutEffect, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { Wish, Genre } from "@/types";
+import { Wish, Genre, Region } from "@/types";
 import { WishItem } from "./WishItem";
 
 interface WishListProps {
   wishes: Wish[];
   genres?: Genre[];
+  regions?: Region[];
   onUpdate: Parameters<typeof WishItem>[0]["onUpdate"];
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
@@ -18,7 +19,7 @@ interface WishListProps {
   emptyMessage?: string;
 }
 
-export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, selectedIds, onToggleSelect, emptyMessage }: WishListProps) {
+export function WishList({ wishes, genres = [], regions = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, selectedIds, onToggleSelect, emptyMessage }: WishListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
 
@@ -71,6 +72,7 @@ export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChan
               <WishItem
                 wish={wish}
                 genres={genres}
+                regions={regions}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onStatusChange={onStatusChange}
