@@ -47,9 +47,9 @@ function DetailList({ items, label }: { items: { title: string }[]; label: strin
         {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>
       {open && (
-        <div className="border-t border-border max-h-52 overflow-y-auto">
+        <div className="border-t border-border max-h-52 overflow-y-auto overflow-x-hidden">
           {items.map((item, i) => (
-            <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs overflow-hidden">
+            <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs min-w-0">
               <p className="truncate">{item.title}</p>
             </div>
           ))}
@@ -57,6 +57,12 @@ function DetailList({ items, label }: { items: { title: string }[]; label: strin
       )}
     </div>
   );
+}
+
+function firstLine(text: string | null | undefined): string {
+  if (!text) return "（空）";
+  const line = text.split("\n")[0].trim();
+  return line || "（空）";
 }
 
 function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label: string }) {
@@ -73,14 +79,20 @@ function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label:
         {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>
       {open && (
-        <div className="border-t border-border max-h-52 overflow-y-auto">
+        <div className="border-t border-border max-h-64 overflow-y-auto overflow-x-hidden">
           {items.map((item, i) => (
-            <div key={i} className="px-4 py-2 border-b border-border/30 last:border-0 text-xs overflow-hidden">
+            <div key={i} className="px-4 py-2 border-b border-border/30 last:border-0 text-xs min-w-0">
               <p className="truncate font-medium">{item.title}</p>
-              {item.oldTitle && (
-                <p className="truncate text-muted-foreground">変更前: {item.oldTitle}</p>
+              {item.oldTitle !== undefined && (
+                <p className="truncate text-muted-foreground">
+                  タイトル変更（<span className="line-through">{item.oldTitle}</span> → {item.title}）
+                </p>
               )}
-              <p className="text-muted-foreground">{item.changes.join("・")}</p>
+              {item.oldMemo !== undefined && (
+                <p className="truncate text-muted-foreground">
+                  メモ変更（{firstLine(item.oldMemo)} → {firstLine(item.newMemo)}）
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -170,7 +182,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden">
+      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>CSV一括取り込み</DialogTitle>
         </DialogHeader>

@@ -29,8 +29,10 @@ export interface SuspiciousItem {
 
 export interface UpdatePreviewItem {
   title: string;
-  oldTitle?: string;
-  changes: string[]; // e.g. ["タイトル変更", "メモ変更"]
+  oldTitle?: string;    // タイトルが変わる場合の変更前タイトル
+  oldMemo?: string | null;  // メモが変わる場合の変更前メモ（1行目）
+  newMemo?: string | null;  // メモが変わる場合の変更後メモ（1行目）
+  changes: string[];
 }
 
 export interface AnalyzeResult {
@@ -232,11 +234,15 @@ export function useCsvImport(groupId: string) {
           skipCount++;
         } else {
           const changes: string[] = [];
-          if (existingMatch.title !== row.title) changes.push("タイトル変更");
-          if (existingMatch.memo !== newMemo) changes.push("メモ変更");
+          const titleChanged = existingMatch.title !== row.title;
+          const memoChanged = existingMatch.memo !== newMemo;
+          if (titleChanged) changes.push("タイトル変更");
+          if (memoChanged) changes.push("メモ変更");
           updateItems.push({
             title: row.title,
-            oldTitle: existingMatch.title !== row.title ? existingMatch.title : undefined,
+            oldTitle: titleChanged ? existingMatch.title : undefined,
+            oldMemo: memoChanged ? existingMatch.memo : undefined,
+            newMemo: memoChanged ? newMemo : undefined,
             changes,
           });
           updateCount++;
