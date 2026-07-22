@@ -738,6 +738,13 @@ export default function SettingsPage() {
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <h2 className="font-semibold">使い方</h2>
+          <Button variant="outline" className="w-full" onClick={() => router.push(`/group/${uuid}/help`)}>
+            使い方ガイドを見る
+          </Button>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">共有</h2>
           <p className="text-sm text-muted-foreground">
             このURLをメンバーに送ってグループに招待しよう
