@@ -29,3 +29,8 @@ CREATE POLICY "wish_regions_all" ON wish_regions FOR ALL
       WHERE id = current_setting('app.member_id', true)::uuid
     )
   ));
+
+GRANT SELECT ON regions TO anon, authenticated;
+GRANT SELECT ON wish_regions TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON regions TO authenticated;
+GRANT INSERT, UPDATE, DELETE ON wish_regions TO authenticated;
