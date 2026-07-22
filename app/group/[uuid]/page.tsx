@@ -183,6 +183,12 @@ export default function ListPage() {
     setSelectedIds(new Set());
   };
 
+  const handleStatusTabChange = (tab: TabValue) => {
+    setStatusTab(tab);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
   const handleBulkApply = async (genreIds: string[], mode: "add" | "remove") => {
     await bulkUpdateGenres([...selectedIds], genreIds, mode);
     toast.success(mode === "add" ? "ジャンルを追加しました" : "ジャンルを削除しました");
@@ -231,7 +237,7 @@ export default function ListPage() {
         </div>
       )}
 
-      <StatusTabs value={statusTab} onChange={setStatusTab} />
+      <StatusTabs value={statusTab} onChange={handleStatusTabChange} />
 
       <div className="flex items-center gap-1.5 px-3 py-3 mt-2 mb-1 overflow-x-auto scrollbar-none">
         {SITUATION_TABS.map((tab) => (
