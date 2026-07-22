@@ -38,20 +38,20 @@ function DetailList({ items, label }: { items: { title: string }[]; label: strin
   const [open, setOpen] = useState(false);
   if (items.length === 0) return null;
   return (
-    <div className="rounded-xl border border-border overflow-hidden text-sm">
+    <div className="rounded-xl border border-border text-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors rounded-xl"
       >
         <span>{label}</span>
         {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>
       {open && (
-        <div className="border-t border-border max-h-52 overflow-y-auto overflow-x-hidden">
+        <div className="border-t border-border">
           {items.map((item, i) => (
             <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs w-full min-w-0">
-              <p className="truncate">{item.title}</p>
+              <p className="break-all">{item.title}</p>
             </div>
           ))}
         </div>
@@ -65,27 +65,27 @@ function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label:
   const [open, setOpen] = useState(false);
   if (items.length === 0) return null;
   return (
-    <div className="rounded-xl border border-border overflow-hidden text-sm">
+    <div className="rounded-xl border border-border text-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors rounded-xl"
       >
         <span>{label}</span>
         {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
       </button>
       {open && (
-        <div className="border-t border-border max-h-64 overflow-y-auto overflow-x-hidden">
+        <div className="border-t border-border">
           {items.map((item, i) => (
             <div key={i} className="px-4 py-2 border-b border-border/30 last:border-0 text-xs min-w-0">
-              <p className="truncate font-medium">{item.title}</p>
+              <p className="break-all font-medium">{item.title}</p>
               {item.oldTitle !== undefined && (
-                <p className="truncate text-muted-foreground">
+                <p className="break-all text-muted-foreground">
                   タイトル変更（<span className="line-through">{item.oldTitle}</span> → {item.title}）
                 </p>
               )}
               {item.memoAddition !== undefined && (
-                <p className="truncate text-muted-foreground">メモ追記（{item.memoAddition}）</p>
+                <p className="break-all text-muted-foreground">メモ追記（{item.memoAddition}）</p>
               )}
             </div>
           ))}
@@ -215,9 +215,8 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
 
         {/* プレビュー・確認画面 */}
         {(mode === "reviewing") && analysis && (
-          <div className="flex flex-col gap-0">
-            {/* スクロール領域：ボタン分（約130px）を除いた高さで制限 */}
-            <div className="flex flex-col gap-4 overflow-y-auto pb-2" style={{ maxHeight: "calc(75vh - 130px)" }}>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
               <p className="text-sm font-medium">取り込みプレビュー</p>
               <div className="rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
                 <div className="flex justify-between">
@@ -260,7 +259,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
               )}
 
               {analysis.suspicious.length > 0 && (
-                <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 overflow-hidden">
+                <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30">
                   <div className="flex items-start gap-2 px-4 py-3">
                     <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-1 min-w-0">
@@ -272,11 +271,11 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
                       </p>
                     </div>
                   </div>
-                  <div className="border-t border-amber-200 dark:border-amber-800 max-h-40 overflow-y-auto">
+                  <div className="border-t border-amber-200 dark:border-amber-800">
                     {analysis.suspicious.map((item, i) => (
                       <div key={i} className="px-4 py-2 border-b border-amber-100 dark:border-amber-900/50 last:border-0 text-xs">
-                        <p className="font-medium truncate">{item.title}</p>
-                        <p className="text-amber-600 dark:text-amber-400 truncate">
+                        <p className="font-medium break-all">{item.title}</p>
+                        <p className="text-amber-600 dark:text-amber-400 break-all">
                           既存: 「{item.matchedExistingTitle}」
                         </p>
                       </div>
@@ -289,9 +288,8 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
                 <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
               )}
             </div>
-
-            {/* 固定フッター：ボタン */}
-            <div className="flex flex-col gap-2 pt-3 border-t border-border shrink-0">
+            {/* sticky フッター：ボタン */}
+            <div className="sticky bottom-0 bg-background flex flex-col gap-2 pt-3 border-t border-border">
               {analysis.suspicious.length > 0 && (
                 <Button variant="outline" className="w-full" onClick={() => handleImport(true)}>
                   疑わしいものは既存として扱う
