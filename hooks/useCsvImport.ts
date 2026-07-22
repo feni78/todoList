@@ -16,10 +16,16 @@ export interface FileImportConfig {
   genreIds: string[];
 }
 
+export interface SkippedItem {
+  title: string;
+  reason: "duplicate_url" | "duplicate_title" | "no_change";
+}
+
 export interface ImportResult {
   inserted: number;
   updated: number;
   skipped: number;
+  skippedItems: SkippedItem[];
 }
 
 export function parseCsvText(text: string): CsvRow[] {
@@ -186,16 +192,19 @@ export function useCsvImport(groupId: string) {
 
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
-      let skipped = 0;
+      const skippedItems: SkippedItem[] = [];
       // 新規・更新問わず全処理済みキーを記録し、複数ファイル間の重複を防ぐ
       const handledKeys = new Set<string>();
 
       for (const item of allItems) {
         const { row } = item;
-        if (!row.title) { skipped++; continue; }
+        if (!row.title) continue;
 
         const dedupeKey = row.url ? `url:${row.url}` : `title:${row.title}`;
-        if (handledKeys.has(dedupeKey)) { skipped++; continue; }
+        if (handledKeys.has(dedupeKey)) {
+          skippedItems.push({ title: row.title, reason: row.url ? "duplicate_url" : "duplicate_title" });
+          continue;
+        }
         handledKeys.add(dedupeKey);
 
         const score = scoreFromMemo(row.memo);
@@ -209,7 +218,7 @@ export function useCsvImport(groupId: string) {
           // 内容が変わっていなければスキップ
           const newMemo = memoText ?? null;
           if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
-            skipped++;
+            skippedItems.push({ title: row.title, reason: "no_change" });
             continue;
           }
           toUpdate.push({ ...item, wishId: existingMatch.id, score, memoText });
@@ -298,7 +307,7 @@ export function useCsvImport(groupId: string) {
           }
         }
 
-        return { inserted: toInsert.length, updated: toUpdate.length, skipped };
+        return { inserted: toInsert.length, updated: toUpdate.length, skipped: skippedItems.length, skippedItems };
       } catch (err) {
         // Rollback: delete inserted wishes
         if (insertedIds.length > 0) {

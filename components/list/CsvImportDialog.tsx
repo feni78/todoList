@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Genre } from "@/types";
 import { useCsvImport, FileImportConfig, ImportResult, parseCsvText } from "@/hooks/useCsvImport";
-import { Upload, X, FileText, CheckCircle2 } from "lucide-react";
+import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FileEntry {
@@ -38,6 +38,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [skippedOpen, setSkippedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleGlobalGenre = (genreId: string) => {
@@ -108,6 +109,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
     setGlobalGenreIds([]);
     setResult(null);
     setError(null);
+    setSkippedOpen(false);
     onClose();
   };
 
@@ -140,6 +142,32 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
                 <span className="font-semibold">{result.skipped}件</span>
               </div>
             </div>
+
+            {result.skippedItems.length > 0 && (
+              <div className="rounded-xl border border-border overflow-hidden text-sm">
+                <button
+                  type="button"
+                  onClick={() => setSkippedOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <span>スキップ詳細を見る</span>
+                  {skippedOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                </button>
+                {skippedOpen && (
+                  <div className="border-t border-border max-h-60 overflow-y-auto">
+                    {result.skippedItems.map((item, i) => (
+                      <div key={i} className="flex items-start justify-between gap-2 px-4 py-2 border-b border-border/50 last:border-0">
+                        <span className="text-foreground truncate flex-1">{item.title}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {item.reason === "no_change" ? "変更なし" : "重複"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <Button onClick={handleClose} className="w-full">閉じる</Button>
           </div>
         ) : (
