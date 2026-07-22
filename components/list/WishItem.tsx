@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WishForm } from "./WishForm";
-import { Trash2, Pencil, ExternalLink, Star } from "lucide-react";
+import { Trash2, Pencil, ExternalLink, Star, MapPin } from "lucide-react";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { useGroupStore } from "@/lib/store/groupStore";
 
@@ -31,7 +31,9 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
   const { group } = useGroupStore();
   const members = group?.members ?? [];
   const hasMyVote = wish.votes.some((v) => v.memberId === currentMemberId);
-  const memoUrl = wish.memo?.match(/https?:\/\/[^\s]+/)?.[0] ?? null;
+  const memoUrls = wish.memo?.match(/https?:\/\/[^\s]+/g) ?? [];
+  const googleUrl = memoUrls.find((u) => u.includes("google")) ?? null;
+  const otherUrl = memoUrls.find((u) => !u.includes("google")) ?? null;
 
   const handleDoneAtChange = async (dateStr: string) => {
     if (!dateStr) return;
@@ -147,9 +149,20 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
               <Star size={15} fill={wish.isFavorite ? "currentColor" : "none"} />
             </button>
           )}
-          {!selectionMode && memoUrl && (
+          {!selectionMode && googleUrl && (
             <a
-              href={memoUrl}
+              href={googleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground hover:text-primary p-1.5 rounded-lg transition-colors"
+            >
+              <MapPin size={15} />
+            </a>
+          )}
+          {!selectionMode && otherUrl && (
+            <a
+              href={otherUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
