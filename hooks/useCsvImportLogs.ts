@@ -15,6 +15,7 @@ export interface CsvImportLog {
   skippedItems: SkippedItem[];
   insertedItems: { title: string }[];
   updatedItems: { title: string }[];
+  isFavorite: boolean;
 }
 
 export function useCsvImportLogs(groupId: string) {
@@ -28,7 +29,7 @@ export function useCsvImportLogs(groupId: string) {
     const supabase = createClient();
     const { data, error: fetchErr } = await supabase
       .from("csv_import_logs")
-      .select("id, member_id, imported_at, file_names, inserted, updated, skipped, skipped_items, inserted_items, updated_items")
+      .select("id, member_id, imported_at, file_names, inserted, updated, skipped, skipped_items, inserted_items, updated_items, is_favorite")
       .eq("group_id", groupId)
       .order("imported_at", { ascending: false })
       .limit(50);
@@ -48,11 +49,26 @@ export function useCsvImportLogs(groupId: string) {
           skippedItems: (row.skipped_items as SkippedItem[]) ?? [],
           insertedItems: (row.inserted_items as { title: string }[]) ?? [],
           updatedItems: (row.updated_items as { title: string }[]) ?? [],
+          isFavorite: (row.is_favorite as boolean) ?? false,
         }))
       );
     }
     setLoading(false);
   }, [groupId]);
 
-  return { logs, loading, error, fetchLogs };
+  const toggleFavorite = useCallback(async (id: string, value: boolean) => {
+    // 楽観的更新
+    setLogs((prev) => prev.map((log) => log.id === id ? { ...log, isFavorite: value } : log));
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("csv_import_logs")
+      .update({ is_favorite: value })
+      .eq("id", id);
+    if (error) {
+      // ロールバック
+      setLogs((prev) => prev.map((log) => log.id === id ? { ...log, isFavorite: !value } : log));
+    }
+  }, []);
+
+  return { logs, loading, error, fetchLogs, toggleFavorite };
 }
