@@ -17,7 +17,7 @@ const COLORS = [
   "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
 ];
 
-const MAX_WHEEL = 50;
+const MAX_WHEEL = 100;
 
 export function RouletteNormal({ wishes, isSpinning, result, pendingResult, probabilities }: RouletteNormalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
