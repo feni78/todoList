@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WishForm } from "./WishForm";
-import { Trash2, Pencil, ExternalLink } from "lucide-react";
+import { Trash2, Pencil, ExternalLink, Star } from "lucide-react";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { useGroupStore } from "@/lib/store/groupStore";
 
@@ -18,9 +18,10 @@ interface WishItemProps {
   onUpdate: (id: string, data: WishUpdateData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
+  onToggleFavorite?: (id: string, value: boolean) => void;
 }
 
-export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange }: WishItemProps) {
+export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite }: WishItemProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const currentMemberId = getGroupMember(wish.groupId)?.memberId;
@@ -123,6 +124,17 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
         </button>
 
         <div className="flex items-center gap-1 shrink-0">
+          {onToggleFavorite && (
+            <button
+              onClick={() => onToggleFavorite(wish.id, !wish.isFavorite)}
+              className={cn(
+                "p-1.5 rounded-lg transition-colors",
+                wish.isFavorite ? "text-yellow-400" : "text-muted-foreground hover:text-yellow-400"
+              )}
+            >
+              <Star size={15} fill={wish.isFavorite ? "currentColor" : "none"} />
+            </button>
+          )}
           {memoUrl && (
             <a
               href={memoUrl}

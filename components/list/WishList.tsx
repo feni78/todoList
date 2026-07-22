@@ -11,10 +11,11 @@ interface WishListProps {
   onUpdate: Parameters<typeof WishItem>[0]["onUpdate"];
   onDelete: (id: string) => Promise<void>;
   onStatusChange: (id: string, status: Wish["status"]) => Promise<void>;
+  onToggleFavorite?: (id: string, value: boolean) => void;
   emptyMessage?: string;
 }
 
-export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChange, emptyMessage }: WishListProps) {
+export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, emptyMessage }: WishListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
 
@@ -66,6 +67,7 @@ export function WishList({ wishes, genres = [], onUpdate, onDelete, onStatusChan
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onStatusChange={onStatusChange}
+                onToggleFavorite={onToggleFavorite}
               />
             </div>
           );

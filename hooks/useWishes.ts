@@ -69,6 +69,7 @@ function mapRow(row: Record<string, unknown>): Wish {
     votes,
     avgScore,
     hasMaxVote,
+    isFavorite: (row.is_favorite as boolean) ?? false,
   };
 }
 
@@ -287,5 +288,17 @@ export function useWishes(groupId: string) {
     [updateWish]
   );
 
-  return { wishes, loading, error, createWish, updateWish, deleteWish, changeStatus, refetch: fetchWishes };
+  const toggleFavorite = useCallback(
+    async (wishId: string, value: boolean) => {
+      setWishes((prev) => prev.map((w) => w.id === wishId ? { ...w, isFavorite: value } : w));
+      const supabase = createClient();
+      const { error } = await supabase.from("wishes").update({ is_favorite: value }).eq("id", wishId);
+      if (error) {
+        setWishes((prev) => prev.map((w) => w.id === wishId ? { ...w, isFavorite: !value } : w));
+      }
+    },
+    []
+  );
+
+  return { wishes, loading, error, createWish, updateWish, deleteWish, changeStatus, toggleFavorite, refetch: fetchWishes };
 }

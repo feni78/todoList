@@ -64,6 +64,7 @@ export interface Wish {
   votes: WishVote[];
   avgScore: number;
   hasMaxVote: boolean;
+  isFavorite: boolean;
 }
 
 export interface Group {
