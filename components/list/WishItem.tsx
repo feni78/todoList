@@ -149,17 +149,6 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
               <Star size={15} fill={wish.isFavorite ? "currentColor" : "none"} />
             </button>
           )}
-          {!selectionMode && googleUrl && (
-            <a
-              href={googleUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-muted-foreground hover:text-primary p-1.5 rounded-lg transition-colors"
-            >
-              <MapPin size={15} />
-            </a>
-          )}
           {!selectionMode && otherUrl && (
             <a
               href={otherUrl}
@@ -169,6 +158,17 @@ export function WishItem({ wish, genres = [], onUpdate, onDelete, onStatusChange
               className="text-muted-foreground hover:text-primary p-1.5 rounded-lg transition-colors"
             >
               <ExternalLink size={15} />
+            </a>
+          )}
+          {!selectionMode && googleUrl && (
+            <a
+              href={googleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground hover:text-primary p-1.5 rounded-lg transition-colors"
+            >
+              <MapPin size={15} />
             </a>
           )}
           {!selectionMode && (
