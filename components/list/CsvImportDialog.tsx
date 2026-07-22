@@ -19,6 +19,7 @@ interface FileEntry {
 interface Props {
   open: boolean;
   onClose: () => void;
+  onImportComplete?: () => void;
   groupId: string;
   genres: Genre[];
 }
@@ -94,7 +95,7 @@ function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label:
   );
 }
 
-export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
+export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genres }: Props) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [globalGenreIds, setGlobalGenreIds] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("idle");
@@ -155,6 +156,7 @@ export function CsvImportDialog({ open, onClose, groupId, genres }: Props) {
       const res = await importFiles(buildConfigs(), treatSuspiciousAsExisting);
       setResult(res);
       setMode("done");
+      onImportComplete?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "取り込みに失敗しました");
       setMode("reviewing");

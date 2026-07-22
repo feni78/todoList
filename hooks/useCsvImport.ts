@@ -411,8 +411,9 @@ export function useCsvImport(groupId: string) {
               if (voteErr) throw voteErr;
             }
 
+            // ジャンルは常に置き換え（未選択なら全削除）
+            await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
             if (item.genreIds.length > 0) {
-              await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
               const { error: genreErr } = await supabase.from("wish_genres")
                 .insert(item.genreIds.map((gid) => ({ wish_id: item.wishId, genre_id: gid })));
               if (genreErr) throw genreErr;

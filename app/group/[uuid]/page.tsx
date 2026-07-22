@@ -51,7 +51,7 @@ export default function ListPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
   const currentMemberId = getGroupMember(uuid)?.memberId;
-  const { wishes, loading, createWish, updateWish, deleteWish, changeStatus } = useWishes(uuid);
+  const { wishes, loading, createWish, updateWish, deleteWish, changeStatus, refetch } = useWishes(uuid);
   const { genres } = useGenres(uuid);
   const filterStore = useFilterStore();
 
@@ -348,6 +348,7 @@ export default function ListPage() {
       <CsvImportDialog
         open={csvOpen}
         onClose={() => setCsvOpen(false)}
+        onImportComplete={refetch}
         groupId={uuid}
         genres={genres}
       />
