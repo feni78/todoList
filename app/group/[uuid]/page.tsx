@@ -17,7 +17,7 @@ import { useGenres } from "@/hooks/useGenres";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { getGroupMember } from "@/lib/utils/localStorage";
-import { Status, Situation, Season, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
+import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
 import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
@@ -27,26 +27,11 @@ import { toast } from "sonner";
 type TabValue = "PENDING" | "HOLD";
 type SortOrder = "priority" | "createdAt";
 
-function getCurrentSeason(): Season {
-  const month = new Date().getMonth() + 1;
-  if (month >= 3 && month <= 5) return "SPRING";
-  if (month >= 6 && month <= 9) return "SUMMER";
-  if (month >= 10 && month <= 11) return "AUTUMN";
-  return "WINTER";
-}
 
-const SEASON_ICONS: Record<Season, string> = {
-  SPRING: "🌸",
-  SUMMER: "🍉",
-  AUTUMN: "🍁",
-  WINTER: "⛄",
-};
-
-const SITUATION_TABS: { value: Situation | "ALL" | "SEASONAL"; label: string }[] = [
+const SITUATION_TABS: { value: Situation | "ALL"; label: string }[] = [
   { value: "ALL", label: "すべて" },
   { value: "HOME", label: `${SITUATION_ICONS.HOME} ${SITUATION_LABELS.HOME}` },
   { value: "OUTSIDE", label: `${SITUATION_ICONS.OUTSIDE} ${SITUATION_LABELS.OUTSIDE}` },
-  { value: "SEASONAL", label: `${SEASON_ICONS[getCurrentSeason()]} 季節限定` },
 ];
 
 export default function ListPage() {
@@ -59,7 +44,7 @@ export default function ListPage() {
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
 
-  const [situationTab, setSituationTab] = useState<"ALL" | Situation | "SEASONAL">("ALL");
+  const [situationTab, setSituationTab] = useState<"ALL" | Situation>("ALL");
   const [sortOrder, setSortOrder] = useState<SortOrder>("priority");
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -86,10 +71,7 @@ export default function ListPage() {
 
     result = result.filter((w) => w.status === statusTab);
 
-    if (situationTab === "SEASONAL") {
-      const season = getCurrentSeason();
-      result = result.filter((w) => w.seasons.includes(season));
-    } else if (situationTab !== "ALL") {
+    if (situationTab !== "ALL") {
       result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
     }
 
