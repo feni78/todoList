@@ -94,7 +94,11 @@ export default function ListPage() {
       result = result.filter((w) => w.seasons.some((s) => filterStore.seasons.includes(s)));
     }
     if (filterStore.genreIds.length > 0) {
-      result = result.filter((w) => w.genres.some((g) => filterStore.genreIds.includes(g.id)));
+      if (filterStore.genreSearchMode === "AND") {
+        result = result.filter((w) => filterStore.genreIds.every((id) => w.genres.some((g) => g.id === id)));
+      } else {
+        result = result.filter((w) => w.genres.some((g) => filterStore.genreIds.includes(g.id)));
+      }
     }
     if (filterStore.excludeGenreIds.length > 0) {
       result = result.filter((w) => !w.genres.some((g) => filterStore.excludeGenreIds.includes(g.id)));

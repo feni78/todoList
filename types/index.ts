@@ -101,6 +101,7 @@ export interface FilterState {
   durations: Duration[];
   seasons: Season[];
   genreIds: string[];
+  genreSearchMode: "OR" | "AND";
   excludeGenreIds: string[];
   searchQuery: string;
 }

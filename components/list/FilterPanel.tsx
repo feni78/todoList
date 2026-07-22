@@ -173,6 +173,35 @@ export function FilterPanel({ open, onClose, members, genres = [] }: FilterPanel
                   label={g.name}
                 />
               ))}
+              {genres.length > 0 && (
+                <div className="w-full flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground">検索方法:</span>
+                  <button
+                    type="button"
+                    onClick={() => store.setGenreSearchMode("OR")}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+                      store.genreSearchMode === "OR"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    OR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => store.setGenreSearchMode("AND")}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+                      store.genreSearchMode === "AND"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    AND
+                  </button>
+                </div>
+              )}
             </FilterSection>
           )}
 
