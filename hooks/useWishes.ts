@@ -85,7 +85,8 @@ export function useWishes(groupId: string) {
       .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), member:group_members!member_id(id, nickname)`)
       .eq("group_id", groupId)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(100000);
 
     if (error) {
       setError(error.message);

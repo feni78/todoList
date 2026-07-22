@@ -21,15 +21,40 @@ export interface SkippedItem {
   reason: "duplicate_url" | "duplicate_title" | "no_change";
 }
 
+export interface SuspiciousItem {
+  title: string;
+  url: string;
+  matchedExistingTitle: string;
+}
+
+export interface AnalyzeResult {
+  insertCount: number;
+  updateCount: number;
+  skipCount: number;
+  suspicious: SuspiciousItem[];
+}
+
 export interface ImportResult {
   inserted: number;
   updated: number;
   skipped: number;
   skippedItems: SkippedItem[];
+  insertedItems: { title: string }[];
+  updatedItems: { title: string }[];
+}
+
+// URLの末尾スラッシュ・大文字小文字・前後空白を正規化して誤マッチを防ぐ
+function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url.trim());
+    const path = u.pathname.replace(/\/$/, "");
+    return (u.origin + path).toLowerCase() + u.search + u.hash;
+  } catch {
+    return url.toLowerCase().trim();
+  }
 }
 
 export function parseCsvText(text: string): CsvRow[] {
-  // テキスト全体を文字単位で処理し、クォート内の改行も正しく扱う
   const records: string[][] = [];
   let cur = "";
   let inQuote = false;
@@ -54,10 +79,8 @@ export function parseCsvText(text: string): CsvRow[] {
       else { cur += ch; }
     }
   }
-  // 末尾に改行がない場合の残りを処理
   if (cur || fields.length > 0) newRecord();
 
-  // ヘッダー行をスキップ、空行を除外
   const rows: CsvRow[] = [];
   for (let i = 1; i < records.length; i++) {
     const cols = records[i];
@@ -72,9 +95,9 @@ export function parseCsvText(text: string): CsvRow[] {
 }
 
 function scoreFromMemo(memo: string): ScoreValue {
-  if (memo.includes("●●●")) return 30; // 金
-  if (memo.includes("●●")) return 10;  // 銀
-  return 5;                             // 銅
+  if (memo.includes("●●●")) return 30;
+  if (memo.includes("●●")) return 10;
+  return 5;
 }
 
 function buildMemo(csvMemo: string, url: string): string | null {
@@ -93,22 +116,49 @@ async function readFileAsText(file: File): Promise<string> {
   });
 }
 
+interface ExistingWish { id: string; title: string; memo: string | null; }
+
+interface ExistingMaps {
+  urlToExisting: Map<string, ExistingWish>;
+  titleToExisting: Map<string, ExistingWish>;
+  titleToExistingCI: Map<string, ExistingWish>; // case-insensitive
+}
+
+async function fetchExisting(supabase: ReturnType<typeof createClient>, groupId: string): Promise<ExistingMaps> {
+  const { data, error } = await supabase
+    .from("wishes")
+    .select("id, title, memo")
+    .eq("group_id", groupId)
+    .is("deleted_at", null)
+    .limit(100000);
+  if (error) throw error;
+
+  const urlToExisting = new Map<string, ExistingWish>();
+  const titleToExisting = new Map<string, ExistingWish>();
+  const titleToExistingCI = new Map<string, ExistingWish>();
+
+  for (const w of (data ?? []) as ExistingWish[]) {
+    if (w.memo) {
+      const lines = w.memo.split("\n");
+      const lastLine = lines[lines.length - 1].trim();
+      if (/^https?:\/\//.test(lastLine)) urlToExisting.set(normalizeUrl(lastLine), w);
+    }
+    if (w.title) {
+      titleToExisting.set(w.title, w);
+      titleToExistingCI.set(w.title.toLowerCase(), w);
+    }
+  }
+
+  return { urlToExisting, titleToExisting, titleToExistingCI };
+}
+
 async function insertBatch(
   supabase: ReturnType<typeof createClient>,
-  rows: {
-    id: string;
-    group_id: string;
-    member_id: string;
-    title: string;
-    situation: string;
-    status: string;
-    memo: string | null;
-  }[]
+  rows: { id: string; group_id: string; member_id: string; title: string; situation: string; status: string; memo: string | null }[]
 ): Promise<void> {
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK);
-    const { error } = await supabase.from("wishes").insert(chunk);
+    const { error } = await supabase.from("wishes").insert(rows.slice(i, i + CHUNK));
     if (error) throw error;
   }
 }
@@ -119,10 +169,7 @@ async function insertVotesBatch(
 ): Promise<void> {
   const CHUNK = 500;
   for (let i = 0; i < votes.length; i += CHUNK) {
-    const chunk = votes.slice(i, i + CHUNK);
-    const { error } = await supabase
-      .from("wish_votes")
-      .upsert(chunk, { onConflict: "wish_id,member_id" });
+    const { error } = await supabase.from("wish_votes").upsert(votes.slice(i, i + CHUNK), { onConflict: "wish_id,member_id" });
     if (error) throw error;
   }
 }
@@ -133,74 +180,93 @@ async function insertGenresBatch(
 ): Promise<void> {
   const CHUNK = 500;
   for (let i = 0; i < links.length; i += CHUNK) {
-    const chunk = links.slice(i, i + CHUNK);
-    const { error } = await supabase.from("wish_genres").insert(chunk);
+    const { error } = await supabase.from("wish_genres").insert(links.slice(i, i + CHUNK));
     if (error) throw error;
   }
 }
 
 export function useCsvImport(groupId: string) {
+  // ドライラン：DB書き込みなしで件数と要確認アイテムを返す
+  const analyzeImport = useCallback(async (configs: FileImportConfig[]): Promise<AnalyzeResult> => {
+    const supabase = createClient();
+
+    const allItems: { row: CsvRow; genreIds: string[] }[] = [];
+    for (const config of configs) {
+      const text = await readFileAsText(config.file);
+      for (const row of parseCsvText(text)) {
+        allItems.push({ row, genreIds: config.genreIds });
+      }
+    }
+
+    const { urlToExisting, titleToExisting, titleToExistingCI } = await fetchExisting(supabase, groupId);
+
+    let insertCount = 0, updateCount = 0, skipCount = 0;
+    const suspicious: SuspiciousItem[] = [];
+    const handledKeys = new Set<string>();
+
+    for (const { row } of allItems) {
+      if (!row.title) continue;
+
+      const dedupeKey = row.url ? `url:${normalizeUrl(row.url)}` : `title:${row.title}`;
+      if (handledKeys.has(dedupeKey)) { skipCount++; continue; }
+      handledKeys.add(dedupeKey);
+
+      const memoText = buildMemo(row.memo, row.url);
+      const matchByUrl = row.url ? urlToExisting.get(normalizeUrl(row.url)) : undefined;
+      const matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
+      const existingMatch = matchByUrl ?? matchByTitle;
+
+      if (existingMatch) {
+        const newMemo = memoText ?? null;
+        if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
+          skipCount++;
+        } else {
+          updateCount++;
+        }
+      } else {
+        // 大文字小文字のみ異なる既存タイトルがあれば要確認
+        const ciMatch = titleToExistingCI.get(row.title.toLowerCase());
+        if (ciMatch && ciMatch.title !== row.title) {
+          suspicious.push({ title: row.title, url: row.url, matchedExistingTitle: ciMatch.title });
+        }
+        insertCount++;
+      }
+    }
+
+    return { insertCount, updateCount, skipCount, suspicious };
+  }, [groupId]);
+
   const importFiles = useCallback(
-    async (configs: FileImportConfig[]): Promise<ImportResult> => {
+    async (configs: FileImportConfig[], treatSuspiciousAsExisting = false): Promise<ImportResult> => {
       const entry = getGroupMember(groupId);
       if (!entry) throw new Error("メンバー情報が見つかりません");
 
       const supabase = createClient();
 
-      // Parse all files
-      interface ParsedItem {
-        row: CsvRow;
-        genreIds: string[];
-      }
+      interface ParsedItem { row: CsvRow; genreIds: string[]; }
       const allItems: ParsedItem[] = [];
       for (const config of configs) {
         const text = await readFileAsText(config.file);
-        const rows = parseCsvText(text);
-        for (const row of rows) {
+        for (const row of parseCsvText(text)) {
           allItems.push({ row, genreIds: config.genreIds });
         }
       }
 
-      // インポート開始時にDBから最新データを取得（上限を明示して1000件制限を回避）
-      const { data: freshWishes, error: fetchErr } = await supabase
-        .from("wishes")
-        .select("id, title, memo")
-        .eq("group_id", groupId)
-        .is("deleted_at", null)
-        .limit(100000);
-      if (fetchErr) throw fetchErr;
+      const { urlToExisting, titleToExisting, titleToExistingCI } = await fetchExisting(supabase, groupId);
 
-      // URLまたはタイトルで既存wish IDを引けるMapを構築
-      interface ExistingWish { id: string; title: string; memo: string | null; }
-      const existing = (freshWishes ?? []) as ExistingWish[];
-
-      const urlToExisting = new Map<string, ExistingWish>();
-      const titleToExisting = new Map<string, ExistingWish>();
-      for (const w of existing) {
-        if (w.memo) {
-          // buildMemoはURLをメモの末尾に置くため、最後の行からURLを抽出する
-          const lines = w.memo.split("\n");
-          const lastLine = lines[lines.length - 1].trim();
-          if (/^https?:\/\//.test(lastLine)) urlToExisting.set(lastLine, w);
-        }
-        if (w.title) titleToExisting.set(w.title, w);
-      }
-
-      // Categorize
       interface NewItem extends ParsedItem { score: ScoreValue; memoText: string | null; }
       interface UpdateItem extends ParsedItem { wishId: string; score: ScoreValue; memoText: string | null; }
 
       const toInsert: NewItem[] = [];
       const toUpdate: UpdateItem[] = [];
       const skippedItems: SkippedItem[] = [];
-      // 新規・更新問わず全処理済みキーを記録し、複数ファイル間の重複を防ぐ
       const handledKeys = new Set<string>();
 
       for (const item of allItems) {
         const { row } = item;
         if (!row.title) continue;
 
-        const dedupeKey = row.url ? `url:${row.url}` : `title:${row.title}`;
+        const dedupeKey = row.url ? `url:${normalizeUrl(row.url)}` : `title:${row.title}`;
         if (handledKeys.has(dedupeKey)) {
           skippedItems.push({ title: row.title, reason: row.url ? "duplicate_url" : "duplicate_title" });
           continue;
@@ -210,12 +276,15 @@ export function useCsvImport(groupId: string) {
         const score = scoreFromMemo(row.memo);
         const memoText = buildMemo(row.memo, row.url);
 
-        const matchByUrl = row.url ? urlToExisting.get(row.url) : undefined;
-        const matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
+        const matchByUrl = row.url ? urlToExisting.get(normalizeUrl(row.url)) : undefined;
+        let matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
+        // 要確認アイテムを既存として扱うモード：大文字小文字違いも一致とみなす
+        if (!matchByUrl && !matchByTitle && treatSuspiciousAsExisting) {
+          matchByTitle = titleToExistingCI.get(row.title.toLowerCase());
+        }
         const existingMatch = matchByUrl ?? matchByTitle;
 
         if (existingMatch) {
-          // 内容が変わっていなければスキップ
           const newMemo = memoText ?? null;
           if (existingMatch.title === row.title && existingMatch.memo === newMemo) {
             skippedItems.push({ title: row.title, reason: "no_change" });
@@ -227,17 +296,12 @@ export function useCsvImport(groupId: string) {
         }
       }
 
-      // クライアント側でUUIDを生成し、挿入順序に依存しない
-      const toInsertWithIds = toInsert.map((item) => ({
-        ...item,
-        id: crypto.randomUUID() as string,
-      }));
+      const toInsertWithIds = toInsert.map((item) => ({ ...item, id: crypto.randomUUID() as string }));
       const insertedIds = toInsertWithIds.map((item) => item.id);
 
       try {
-        // Batch insert new wishes
         if (toInsertWithIds.length > 0) {
-          const wishRows = toInsertWithIds.map((item) => ({
+          await insertBatch(supabase, toInsertWithIds.map((item) => ({
             id: item.id,
             group_id: groupId,
             member_id: entry.memberId,
@@ -245,71 +309,62 @@ export function useCsvImport(groupId: string) {
             situation: "OUTSIDE" as const,
             status: "PENDING" as const,
             memo: item.memoText ?? null,
-          }));
-          await insertBatch(supabase, wishRows);
+          })));
 
-          // Votes
-          const voteRows = toInsertWithIds.map((item) => ({
+          await insertVotesBatch(supabase, toInsertWithIds.map((item) => ({
             wish_id: item.id,
             member_id: entry.memberId,
             score: item.score,
-          }));
-          await insertVotesBatch(supabase, voteRows);
+          })));
 
-          // Genres
           const genreLinks: { wish_id: string; genre_id: string }[] = [];
           for (const item of toInsertWithIds) {
-            for (const gid of item.genreIds) {
-              genreLinks.push({ wish_id: item.id, genre_id: gid });
-            }
+            for (const gid of item.genreIds) genreLinks.push({ wish_id: item.id, genre_id: gid });
           }
           if (genreLinks.length > 0) await insertGenresBatch(supabase, genreLinks);
         }
 
-        // Update existing wishes
         if (toUpdate.length > 0) {
-          // 既存のvoteを一括取得し、N+1クエリを回避
           const updateWishIds = toUpdate.map((item) => item.wishId);
           const CHUNK = 500;
           const existingVoteWishIds = new Set<string>();
           for (let i = 0; i < updateWishIds.length; i += CHUNK) {
             const { data: votes } = await supabase
-              .from("wish_votes")
-              .select("wish_id")
+              .from("wish_votes").select("wish_id")
               .in("wish_id", updateWishIds.slice(i, i + CHUNK))
               .eq("member_id", entry.memberId);
             (votes ?? []).forEach((v: { wish_id: string }) => existingVoteWishIds.add(v.wish_id));
           }
 
           for (const item of toUpdate) {
-            const { error } = await supabase
-              .from("wishes")
-              .update({ title: item.row.title, memo: item.memoText ?? null })
-              .eq("id", item.wishId);
+            const { error } = await supabase.from("wishes")
+              .update({ title: item.row.title, memo: item.memoText ?? null }).eq("id", item.wishId);
             if (error) throw error;
 
-            // 既存の評価があれば上書きしない（手動設定を保持）
             if (!existingVoteWishIds.has(item.wishId)) {
-              const { error: voteErr } = await supabase
-                .from("wish_votes")
+              const { error: voteErr } = await supabase.from("wish_votes")
                 .insert({ wish_id: item.wishId, member_id: entry.memberId, score: item.score });
               if (voteErr) throw voteErr;
             }
 
-            // Genres
             if (item.genreIds.length > 0) {
               await supabase.from("wish_genres").delete().eq("wish_id", item.wishId);
-              const { error: genreErr } = await supabase.from("wish_genres").insert(
-                item.genreIds.map((gid) => ({ wish_id: item.wishId, genre_id: gid }))
-              );
+              const { error: genreErr } = await supabase.from("wish_genres")
+                .insert(item.genreIds.map((gid) => ({ wish_id: item.wishId, genre_id: gid })));
               if (genreErr) throw genreErr;
             }
           }
         }
 
-        const result: ImportResult = { inserted: toInsert.length, updated: toUpdate.length, skipped: skippedItems.length, skippedItems };
+        const result: ImportResult = {
+          inserted: toInsert.length,
+          updated: toUpdate.length,
+          skipped: skippedItems.length,
+          skippedItems,
+          insertedItems: toInsert.map((item) => ({ title: item.row.title })),
+          updatedItems: toUpdate.map((item) => ({ title: item.row.title })),
+        };
 
-        // 履歴をDBに保存（失敗してもインポート結果には影響させない）
         supabase.from("csv_import_logs").insert({
           group_id: groupId,
           member_id: entry.memberId,
@@ -322,7 +377,6 @@ export function useCsvImport(groupId: string) {
 
         return result;
       } catch (err) {
-        // Rollback: delete inserted wishes
         if (insertedIds.length > 0) {
           const CHUNK = 500;
           for (let i = 0; i < insertedIds.length; i += CHUNK) {
@@ -335,5 +389,5 @@ export function useCsvImport(groupId: string) {
     [groupId]
   );
 
-  return { importFiles };
+  return { analyzeImport, importFiles };
 }
