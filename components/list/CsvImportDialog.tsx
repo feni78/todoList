@@ -215,9 +215,9 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
 
         {/* プレビュー・確認画面 */}
         {(mode === "reviewing") && analysis && (
-          <div className="flex flex-col gap-0" style={{ maxHeight: "calc(85vh - 80px)" }}>
-            {/* スクロール領域 */}
-            <div className="flex flex-col gap-4 overflow-y-auto pb-4">
+          <div className="flex flex-col gap-0">
+            {/* スクロール領域：ボタン分（約130px）を除いた高さで制限 */}
+            <div className="flex flex-col gap-4 overflow-y-auto pb-2" style={{ maxHeight: "calc(75vh - 130px)" }}>
               <p className="text-sm font-medium">取り込みプレビュー</p>
               <div className="rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
                 <div className="flex justify-between">
