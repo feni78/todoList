@@ -40,6 +40,7 @@ const defaultFilter: RouletteFilter = {
   durations: [],
   seasons: [],
   genreIds: [],
+  genreSearchMode: "OR",
   excludeGenreIds: [],
 };
 
