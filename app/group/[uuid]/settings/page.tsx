@@ -1097,7 +1097,6 @@ export default function SettingsPage() {
         {/* 地域タグ未設定アイテム */}
         {(() => {
           const regionlessWishes = wishes.filter((w) => {
-            if (w.status === "DONE") return false;
             const hasBroad = w.regions.some((r) => isBroadRegionTag(r.name));
             const hasSpecific = w.regions.some((r) => !isBroadRegionTag(r.name));
             return !hasBroad || !hasSpecific;
@@ -1253,7 +1252,6 @@ export default function SettingsPage() {
 
         {(() => {
           const locationlessWishes = wishes.filter((w) => {
-            if (w.status === "DONE") return false;
             return w.latitude == null || w.longitude == null;
           });
           return (
