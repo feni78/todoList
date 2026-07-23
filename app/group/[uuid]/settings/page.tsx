@@ -891,7 +891,12 @@ export default function SettingsPage() {
 
         {/* 地域タグ未設定アイテム */}
         {(() => {
-          const regionlessWishes = wishes.filter((w) => w.regions.length === 0 && w.status !== "DONE");
+          const regionlessWishes = wishes.filter((w) => {
+            if (w.status === "DONE") return false;
+            const hasBroad = w.regions.some((r) => isBroadRegionTag(r.name));
+            const hasSpecific = w.regions.some((r) => !isBroadRegionTag(r.name));
+            return !hasBroad || !hasSpecific;
+          });
           const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
           const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
             .sort((a, b) => a.name.localeCompare(b.name, "ja"));
