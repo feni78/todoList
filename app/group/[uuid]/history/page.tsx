@@ -236,6 +236,8 @@ export default function HistoryPage() {
         ) : (
           <WishList
             wishes={filtered}
+            genres={genres}
+            regions={regions}
             onUpdate={handleUpdate}
             onDelete={handleDelete}
             onStatusChange={handleStatusChange}

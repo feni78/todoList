@@ -140,9 +140,17 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
         <div className="flex flex-col gap-5">
           <Section title="実施済み">
             <FilterChip
-              selected={filter.statuses.includes("DONE")}
-              onClick={() => setFilter({ statuses: toggle(filter.statuses as Status[], "DONE" as Status) as Status[] })}
+              selected={filter.statuses.includes("DONE") && filter.statuses.includes("PENDING")}
+              onClick={() => {
+                const bothSelected = filter.statuses.includes("DONE") && filter.statuses.includes("PENDING");
+                setFilter({ statuses: bothSelected ? ["PENDING"] as Status[] : ["PENDING", "DONE"] as Status[] });
+              }}
               label="実施済みを含む"
+            />
+            <FilterChip
+              selected={filter.statuses.includes("DONE") && !filter.statuses.includes("PENDING")}
+              onClick={() => setFilter({ statuses: filter.statuses.includes("DONE") && !filter.statuses.includes("PENDING") ? ["PENDING"] as Status[] : ["DONE"] as Status[] })}
+              label="実施済みのみ"
             />
           </Section>
 
