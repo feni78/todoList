@@ -34,6 +34,16 @@ export default function RoulettePage() {
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
   const [filterOpen, setFilterOpen] = useState(false);
   const [specialAnimDone, setSpecialAnimDone] = useState(true);
+  const [showResultUI, setShowResultUI] = useState(false);
+
+  useEffect(() => {
+    if (result && !isSpinning && specialAnimDone) {
+      const t = setTimeout(() => setShowResultUI(true), 200);
+      return () => clearTimeout(t);
+    } else {
+      setShowResultUI(false);
+    }
+  }, [result, isSpinning, specialAnimDone]);
 
   useEffect(() => {
     const km = filter.nearbyKm;
@@ -70,7 +80,7 @@ export default function RoulettePage() {
       return;
     }
     if (mode === "special") setSpecialAnimDone(false);
-    spin(mode === "special" ? 8500 : 3500);
+    spin(mode === "special" ? 10000 : 3500);
   };
 
 
@@ -145,12 +155,12 @@ export default function RoulettePage() {
             size="lg"
             className="w-full rounded-full text-base font-bold h-14 shadow-lg"
           >
-            {isSpinning || !specialAnimDone ? "回転中..." : result ? (
+            {isSpinning || !specialAnimDone ? "回転中..." : showResultUI ? (
               <><RefreshCw size={18} className="mr-2" />もう一度</>
             ) : "スタート！"}
           </Button>
 
-          {result && !isSpinning && specialAnimDone && (
+          {showResultUI && (
             <Button
               variant="outline"
               onClick={handleDone}

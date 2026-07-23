@@ -75,7 +75,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
       controls.set({ y: startY });
       controls.start({
         y: targetY,
-        transition: { duration: 8.5, ease: [0.05, 1.0, 0.95, 1] },
+        transition: { duration: 10, ease: [0.03, 0.8, 0.97, 1] },
       });
     }
     if (!isSpinning) {
@@ -95,14 +95,6 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
 
   const repeatedItems = Array.from({ length: repeats }, () => wishes).flat();
 
-  // アニメーション完了後のみ静的表示に切り替える
-  const staticY = (() => {
-    if (!result || isSpinning || !animDone) return null;
-    const resultIndex = wishes.findIndex((w) => w.id === result.id);
-    if (resultIndex < 0) return null;
-    const centerOffset = Math.floor(VISIBLE / 2);
-    return -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
-  })();
 
   const slotItems = repeatedItems.map((wish, i) => (
     <div key={`${wish.id}-${i}`} className="flex items-center gap-3 px-4" style={{ height: ITEM_HEIGHT }}>
@@ -136,19 +128,13 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
           />
         </div>
 
-        {staticY !== null ? (
-          <div style={{ transform: `translateY(${staticY}px)` }}>
-            {slotItems}
-          </div>
-        ) : (
-          <motion.div
-            animate={controls}
-            style={{ willChange: "transform" }}
-            onAnimationComplete={() => { setAnimDone(true); onAnimDone?.(); }}
-          >
-            {slotItems}
-          </motion.div>
-        )}
+        <motion.div
+          animate={controls}
+          style={{ willChange: "transform" }}
+          onAnimationComplete={() => { setAnimDone(true); onAnimDone?.(); }}
+        >
+          {slotItems}
+        </motion.div>
       </div>
 
       {showResult && result && (
