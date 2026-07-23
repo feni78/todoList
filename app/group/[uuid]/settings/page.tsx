@@ -1013,23 +1013,28 @@ export default function SettingsPage() {
                             <div className="flex items-center">
                               <button
                                 type="button"
-                                className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0"
+                                className="flex-1 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0 text-sm truncate"
                                 onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
                               >
-                                <span className="flex-1 text-sm truncate">{w.title}</span>
-                                {expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
+                                {w.title}
                               </button>
                               {mapsUrl && (
                                 <a
                                   href={mapsUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="px-2.5 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
-                                  onClick={(e) => e.stopPropagation()}
+                                  className="px-2 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
                                 >
                                   <MapPin size={14} />
                                 </a>
                               )}
+                              <button
+                                type="button"
+                                className="px-2.5 py-2.5 text-muted-foreground shrink-0"
+                                onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
+                              >
+                                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              </button>
                             </div>
                           );
                         })()}
