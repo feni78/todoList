@@ -730,48 +730,6 @@ export default function SettingsPage() {
           </section>
         )}
 
-        {(() => {
-          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
-          if (broadRegions.length === 0) return null;
-          return (
-            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <button
-                type="button"
-                className="flex items-center gap-1 text-left"
-                onClick={() => setDefaultExcludeRegionSectionOpen((v) => !v)}
-              >
-                <div className="flex-1">
-                  <h2 className="font-semibold">デフォルト非表示中地域タグ</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">タップした中地域タグはデフォルトで除外されます</p>
-                </div>
-                {defaultExcludeRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
-              </button>
-              {defaultExcludeRegionSectionOpen && (
-                <div className="flex flex-wrap gap-2">
-                  {broadRegions.map((r) => {
-                    const excluded = defaultExcludeRegionIds.includes(r.id);
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => toggleDefaultExcludeRegion(r.id)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                          excluded
-                            ? "bg-destructive text-destructive-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/70"
-                        )}
-                      >
-                        {excluded ? `✕ ${r.name}` : r.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          );
-        })()}
-
         {/* 中地域タグ管理 */}
         {(() => {
           const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
@@ -841,6 +799,48 @@ export default function SettingsPage() {
                   {broadRegions.length === 0 && !addingRegion && (
                     <p className="text-sm text-muted-foreground">+ボタンで中地域タグを追加できます</p>
                   )}
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
+        {(() => {
+          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+          if (broadRegions.length === 0) return null;
+          return (
+            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <button
+                type="button"
+                className="flex items-center gap-1 text-left"
+                onClick={() => setDefaultExcludeRegionSectionOpen((v) => !v)}
+              >
+                <div className="flex-1">
+                  <h2 className="font-semibold">デフォルト非表示中地域タグ</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">タップした中地域タグはデフォルトで除外されます</p>
+                </div>
+                {defaultExcludeRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
+              </button>
+              {defaultExcludeRegionSectionOpen && (
+                <div className="flex flex-wrap gap-2">
+                  {broadRegions.map((r) => {
+                    const excluded = defaultExcludeRegionIds.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => toggleDefaultExcludeRegion(r.id)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                          excluded
+                            ? "bg-destructive text-destructive-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/70"
+                        )}
+                      >
+                        {excluded ? `✕ ${r.name}` : r.name}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </section>
