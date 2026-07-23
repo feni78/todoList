@@ -13,13 +13,15 @@ function ResultLinks({ memo }: { memo?: string }) {
   return (
     <div className="flex justify-center gap-3 mt-3">
       {otherUrl && (
-        <a href={otherUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors p-1">
-          <ExternalLink size={16} />
+        <a href={otherUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+          <ExternalLink size={14} />
+          <span>リンク</span>
         </a>
       )}
       {googleUrl && (
-        <a href={googleUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors p-1">
-          <MapPin size={16} />
+        <a href={googleUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+          <MapPin size={14} />
+          <span>マップ</span>
         </a>
       )}
     </div>
