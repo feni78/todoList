@@ -289,13 +289,23 @@ export default function ListPage() {
       />
 
       {searchOpen && (
-        <div className="px-4 py-2 border-b border-border">
+        <div className="px-4 py-2 border-b border-border relative">
           <Input
             placeholder="タイトルを検索..."
             value={filterStore.searchQuery}
             onChange={(e) => filterStore.setSearchQuery(e.target.value)}
             autoFocus
+            className="pr-8"
           />
+          {filterStore.searchQuery && (
+            <button
+              type="button"
+              onClick={() => filterStore.setSearchQuery("")}
+              className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
       )}
 
