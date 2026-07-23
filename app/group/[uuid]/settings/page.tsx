@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
-  const { wishes, loading: wishesLoading, createWish, updateWish, deleteWish } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
+  const { wishes, loading: wishesLoading, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
   const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
@@ -1351,7 +1351,7 @@ export default function SettingsPage() {
                             <p className="text-[11px] text-muted-foreground">残り{daysLeft}日</p>
                           </div>
                           <button
-                            onClick={async () => { try { await restoreWish(item.id); toast.success("復元しました"); } catch { toast.error("復元に失敗しました"); } }}
+                            onClick={async () => { try { await restoreWish(item.id); await refetchWishes(); toast.success("復元しました"); } catch { toast.error("復元に失敗しました"); } }}
                             className="text-xs text-primary hover:underline shrink-0"
                           >
                             復元
@@ -1374,6 +1374,7 @@ export default function SettingsPage() {
                         try {
                           const items = [...trashItems];
                           for (const item of items) { await restoreWish(item.id); }
+                          await refetchWishes();
                           toast.success(`${items.length}件を復元しました`);
                         } catch { toast.error("復元に失敗しました"); }
                       }}
