@@ -151,7 +151,7 @@ export default function RoulettePage() {
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <Button
             onClick={() => handleSpin()}
-            disabled={isSpinning || !specialAnimDone || filteredWishes.length === 0}
+            disabled={isSpinning || !specialAnimDone || (result !== null && !showResultUI) || filteredWishes.length === 0}
             size="lg"
             className="w-full rounded-full text-base font-bold h-14 shadow-lg"
           >
