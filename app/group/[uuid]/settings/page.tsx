@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
-  const { wishes, createWish } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
+  const { wishes, createWish, updateWish } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
   const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
@@ -73,6 +73,9 @@ export default function SettingsPage() {
   const [defaultExcludeRegionIds, setDefaultExcludeRegionIdsState] = useState<string[]>(() => getDefaultExcludeRegionIds(uuid ?? ""));
   const [defaultExcludeGenreSectionOpen, setDefaultExcludeGenreSectionOpen] = useState(false);
   const [defaultExcludeRegionSectionOpen, setDefaultExcludeRegionSectionOpen] = useState(false);
+  const [regionlessSectionOpen, setRegionlessSectionOpen] = useState(false);
+  const [regionlessExpandedId, setRegionlessExpandedId] = useState<string | null>(null);
+  const [savingRegionWishId, setSavingRegionWishId] = useState<string | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
 
   const toggleDefaultExclude = (genreId: string) => {
@@ -880,6 +883,120 @@ export default function SettingsPage() {
                   {specificRegions.length === 0 && (
                     <p className="text-sm text-muted-foreground">CSVインポート時に自動生成されます</p>
                   )}
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
+        {/* 地域タグ未設定アイテム */}
+        {(() => {
+          const regionlessWishes = wishes.filter((w) => w.regions.length === 0 && w.status !== "DONE");
+          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+          const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+            .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+          if (regions.length === 0) return null;
+          return (
+            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <button
+                type="button"
+                className="flex items-center gap-1 text-left"
+                onClick={() => setRegionlessSectionOpen((v) => !v)}
+              >
+                <div className="flex-1">
+                  <h2 className="font-semibold">地域タグ未設定</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {regionlessWishes.length > 0 ? `${regionlessWishes.length}件未設定` : "全件設定済み"}
+                  </p>
+                </div>
+                {regionlessSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
+              </button>
+              {regionlessSectionOpen && (
+                <div className="flex flex-col gap-2">
+                  {regionlessWishes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">地域タグ未設定のアイテムはありません</p>
+                  ) : regionlessWishes.map((w) => {
+                    const expanded = regionlessExpandedId === w.id;
+                    const currentRegionIds = w.regions.map((r) => r.id);
+                    return (
+                      <div key={w.id} className="border border-border rounded-xl overflow-hidden">
+                        <button
+                          type="button"
+                          className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
+                          onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
+                        >
+                          <span className="flex-1 text-sm truncate">{w.title}</span>
+                          {expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
+                        </button>
+                        {expanded && (
+                          <div className="px-3 pb-3 flex flex-col gap-3 border-t border-border">
+                            {broadRegions.length > 0 && (
+                              <div className="flex flex-col gap-1.5 pt-2">
+                                <p className="text-xs text-muted-foreground font-medium">中地域</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {broadRegions.map((r) => {
+                                    const selected = currentRegionIds.includes(r.id);
+                                    return (
+                                      <button
+                                        key={r.id}
+                                        type="button"
+                                        disabled={savingRegionWishId === w.id}
+                                        onClick={async () => {
+                                          const next = selected
+                                            ? currentRegionIds.filter((id) => id !== r.id)
+                                            : [...currentRegionIds, r.id];
+                                          setSavingRegionWishId(w.id);
+                                          try { await updateWish(w.id, { regionIds: next }); } catch { toast.error("更新に失敗しました"); }
+                                          finally { setSavingRegionWishId(null); }
+                                        }}
+                                        className={cn(
+                                          "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
+                                          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                        )}
+                                      >
+                                        {r.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {specificRegions.length > 0 && (
+                              <div className="flex flex-col gap-1.5">
+                                <p className="text-xs text-muted-foreground font-medium">小地域</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {specificRegions.map((r) => {
+                                    const selected = currentRegionIds.includes(r.id);
+                                    return (
+                                      <button
+                                        key={r.id}
+                                        type="button"
+                                        disabled={savingRegionWishId === w.id}
+                                        onClick={async () => {
+                                          const next = selected
+                                            ? currentRegionIds.filter((id) => id !== r.id)
+                                            : [...currentRegionIds, r.id];
+                                          setSavingRegionWishId(w.id);
+                                          try { await updateWish(w.id, { regionIds: next }); } catch { toast.error("更新に失敗しました"); }
+                                          finally { setSavingRegionWishId(null); }
+                                        }}
+                                        className={cn(
+                                          "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
+                                          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                        )}
+                                      >
+                                        {r.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>
