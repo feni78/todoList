@@ -22,7 +22,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish } from "@/types";
-import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin } from "lucide-react";
+import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin, GitMerge } from "lucide-react";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
-  const { wishes, loading: wishesLoading, createWish, updateWish } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
+  const { wishes, loading: wishesLoading, createWish, updateWish, deleteWish } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
   const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
@@ -78,6 +78,7 @@ export default function SettingsPage() {
   const [regionlessSectionOpen, setRegionlessSectionOpen] = useState(false);
   const [regionlessExpandedId, setRegionlessExpandedId] = useState<string | null>(null);
   const [savingRegionWishId, setSavingRegionWishId] = useState<string | null>(null);
+  const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
 
   const toggleDefaultExclude = (genreId: string) => {
@@ -315,6 +316,82 @@ export default function SettingsPage() {
     await reorderRegions(next.map((r) => r.id));
   };
 
+  const saveRegionTags = async (wishId: string, regionIds: string[]) => {
+    if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
+    setSavingRegionWishId(wishId);
+    savingTimerRef.current = setTimeout(() => setSavingRegionWishId(null), 8000);
+    try {
+      await updateWish(wishId, { regionIds });
+    } catch {
+      toast.error("更新に失敗しました");
+    } finally {
+      if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
+      setSavingRegionWishId(null);
+    }
+  };
+
+  const handleMergeDuplicates = async () => {
+    if (!confirm("重複するスポット名を統合し、重複する小地域タグを削除します。よろしいですか？")) return;
+    let mergedWishes = 0;
+    let mergedRegions = 0;
+
+    const titleGroups = new Map<string, typeof wishes>();
+    for (const w of wishes) {
+      const group = titleGroups.get(w.title) ?? [];
+      group.push(w);
+      titleGroups.set(w.title, group);
+    }
+    for (const group of titleGroups.values()) {
+      if (group.length < 2) continue;
+      const [primary, ...rest] = group;
+      const allMemoLines = [primary, ...rest]
+        .map((w) => w.memo).filter(Boolean)
+        .flatMap((m) => m!.split("\n").filter(Boolean));
+      const mergedMemo = [...new Set(allMemoLines)].join("\n") || undefined;
+      const allGenreIds = [...new Set([primary, ...rest].flatMap((w) => w.genres.map((g) => g.id)))];
+      const allRegionIds = [...new Set([primary, ...rest].flatMap((w) => w.regions.map((r) => r.id)))];
+      const mergedSeasons = [...new Set([primary, ...rest].flatMap((w) => w.seasons))];
+      const mergedFavorite = [primary, ...rest].some((w) => w.isFavorite);
+      try {
+        await updateWish(primary.id, { memo: mergedMemo, genreIds: allGenreIds, regionIds: allRegionIds, seasons: mergedSeasons, isFavorite: mergedFavorite });
+        for (const dup of rest) { await deleteWish(dup.id); }
+        mergedWishes += rest.length;
+      } catch {
+        toast.error(`「${primary.title}」の統合に失敗しました`);
+      }
+    }
+
+    const specificRegs = regions.filter((r) => !isBroadRegionTag(r.name));
+    const regionNameGroups = new Map<string, typeof regions>();
+    for (const r of specificRegs) {
+      const group = regionNameGroups.get(r.name) ?? [];
+      group.push(r);
+      regionNameGroups.set(r.name, group);
+    }
+    for (const group of regionNameGroups.values()) {
+      if (group.length < 2) continue;
+      const [keep, ...dups] = group;
+      for (const dup of dups) {
+        const affected = wishes.filter((w) => w.regions.some((r) => r.id === dup.id));
+        for (const w of affected) {
+          const newIds = [
+            ...w.regions.map((r) => r.id).filter((id) => id !== dup.id),
+            ...(w.regions.some((r) => r.id === keep.id) ? [] : [keep.id]),
+          ];
+          await updateWish(w.id, { regionIds: newIds });
+        }
+        try { await deleteRegion(dup.id); mergedRegions++; }
+        catch { toast.error(`地域タグ「${dup.name}」の削除に失敗しました`); }
+      }
+    }
+
+    if (mergedWishes > 0 || mergedRegions > 0) {
+      toast.success(`統合完了: スポット${mergedWishes}件、地域タグ${mergedRegions}件`);
+    } else {
+      toast.success("重複は見つかりませんでした");
+    }
+  };
+
   const handleAddBroadRegion = async () => {
     if (!newBroadRegionName.trim()) return;
     try {
@@ -536,6 +613,14 @@ export default function SettingsPage() {
               <MapPin size={16} />
               {retryingLocation ? "取得中..." : "位置情報を再取得"}
             </Button>
+            <Button
+              variant="outline"
+              onClick={handleMergeDuplicates}
+              className="w-full gap-2"
+            >
+              <GitMerge size={16} />
+              重複を統合
+            </Button>
           </div>
         </section>
 
@@ -650,23 +735,23 @@ export default function SettingsPage() {
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              className="flex items-center gap-1 flex-1 text-left"
-              onClick={() => setGenreSectionOpen((v) => !v)}
-            >
-              <h2 className="font-semibold flex-1">ジャンル管理</h2>
-              {genreSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
-            </button>
+          <div className="flex items-center">
+            <h2 className="font-semibold flex-1">ジャンル管理</h2>
             {genreSectionOpen && (
               <button
                 onClick={() => { setAddingGenre(true); setNewGenreName(""); }}
-                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors ml-2"
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Plus size={16} />
               </button>
             )}
+            <button
+              type="button"
+              className="p-1.5"
+              onClick={() => setGenreSectionOpen((v) => !v)}
+            >
+              {genreSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+            </button>
           </div>
           {genreSectionOpen && <div className="flex flex-col gap-2">
             {(() => {
@@ -1051,12 +1136,10 @@ export default function SettingsPage() {
                                         key={r.id}
                                         type="button"
                                         disabled={savingRegionWishId === w.id}
-                                        onClick={async () => {
+                                        onClick={() => {
                                           const specificIds = currentRegionIds.filter((id) => specificRegions.some((s) => s.id === id));
                                           const next = selected ? specificIds : [...specificIds, r.id];
-                                          setSavingRegionWishId(w.id);
-                                          try { await updateWish(w.id, { regionIds: next }); } catch { toast.error("更新に失敗しました"); }
-                                          finally { setSavingRegionWishId(null); }
+                                          saveRegionTags(w.id, next);
                                         }}
                                         className={cn(
                                           "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
@@ -1081,12 +1164,10 @@ export default function SettingsPage() {
                                         key={r.id}
                                         type="button"
                                         disabled={savingRegionWishId === w.id}
-                                        onClick={async () => {
+                                        onClick={() => {
                                           const broadIds = currentRegionIds.filter((id) => broadRegions.some((b) => b.id === id));
                                           const next = selected ? broadIds : [...broadIds, r.id];
-                                          setSavingRegionWishId(w.id);
-                                          try { await updateWish(w.id, { regionIds: next }); } catch { toast.error("更新に失敗しました"); }
-                                          finally { setSavingRegionWishId(null); }
+                                          saveRegionTags(w.id, next);
                                         }}
                                         className={cn(
                                           "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
