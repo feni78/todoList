@@ -83,6 +83,7 @@ export default function SettingsPage() {
   const [mergeWishes, setMergeWishes] = useState(true);
   const [mergeRegionTags, setMergeRegionTags] = useState(true);
   const [merging, setMerging] = useState(false);
+  const [retryLocationDialogOpen, setRetryLocationDialogOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
 
@@ -645,24 +646,6 @@ export default function SettingsPage() {
               {importing ? "インポート中..." : "インポート"}
             </Button>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
-            <Button
-              variant="outline"
-              onClick={handleRetryLocation}
-              disabled={retryingLocation}
-              className="w-full gap-2"
-            >
-              <MapPin size={16} />
-              {retryingLocation ? "取得中..." : "位置情報を再取得"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setMergeDialogOpen(true)}
-              disabled={merging}
-              className="w-full gap-2"
-            >
-              <GitMerge size={16} />
-              {merging ? "統合中..." : "重複を統合"}
-            </Button>
           </div>
         </section>
 
@@ -1426,6 +1409,24 @@ export default function SettingsPage() {
           >
             タスクを選んで削除
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setRetryLocationDialogOpen(true)}
+            disabled={retryingLocation}
+            className="w-full gap-2"
+          >
+            <MapPin size={16} />
+            {retryingLocation ? "取得中..." : "位置情報を再取得"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setMergeDialogOpen(true)}
+            disabled={merging}
+            className="w-full gap-2"
+          >
+            <GitMerge size={16} />
+            {merging ? "統合中..." : "重複を統合"}
+          </Button>
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
@@ -1452,6 +1453,24 @@ export default function SettingsPage() {
       </div>}
 
       <BottomNav groupId={uuid} />
+
+      <Dialog open={retryLocationDialogOpen} onOpenChange={setRetryLocationDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>位置情報を再取得</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <p className="text-sm">Google Maps URLから位置情報を取得します。</p>
+            <p className="text-sm text-muted-foreground">この操作はGoogle Maps APIを消費します。対象件数が多い場合はAPIのクォータに影響する場合があります。</p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setRetryLocationDialogOpen(false)}>キャンセル</Button>
+            <Button onClick={() => { setRetryLocationDialogOpen(false); handleRetryLocation(); }}>
+              取得する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
         <DialogContent className="max-w-sm">
