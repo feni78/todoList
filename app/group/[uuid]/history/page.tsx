@@ -13,7 +13,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { toast } from "sonner";
-import { Star, SlidersHorizontal } from "lucide-react";
+import { Star, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
@@ -24,8 +24,13 @@ export default function HistoryPage() {
   const { regions } = useRegions(uuid);
   const filterStore = useFilterStore();
 
+  type SortOrder = "priority" | "createdAt" | "doneAt";
+  const SORT_LABELS: Record<SortOrder, string> = { priority: "やりたい度順", createdAt: "登録日順", doneAt: "実施日順" };
+  const SORT_CYCLE: SortOrder[] = ["priority", "createdAt", "doneAt"];
+
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
 
   const {
     memberIds: fMemberIds,
@@ -75,8 +80,15 @@ export default function HistoryPage() {
       const q = fSearchQuery.toLowerCase();
       result = result.filter((w) => w.title.toLowerCase().includes(q));
     }
+    if (sortOrder === "priority") {
+      result.sort((a, b) => b.avgScore - a.avgScore);
+    } else if (sortOrder === "createdAt") {
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else {
+      result.sort((a, b) => new Date(b.doneAt ?? 0).getTime() - new Date(a.doneAt ?? 0).getTime());
+    }
     return result;
-  }, [wishes, showFavoriteOnly, fMemberIds, fBudgets, fDurations, fSeasons, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery, regions]);
+  }, [wishes, showFavoriteOnly, sortOrder, fMemberIds, fBudgets, fDurations, fSeasons, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery, regions]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -134,18 +146,27 @@ export default function HistoryPage() {
           お気に入り
         </button>
 
-        <button
-          onClick={() => setFilterOpen(true)}
-          className={cn(
-            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
-            hasFilter
-              ? "border-primary text-primary bg-primary/10"
-              : "border-border text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <SlidersHorizontal size={13} />
-          絞り込み{hasFilter ? "中" : ""}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSortOrder((s) => { const i = SORT_CYCLE.indexOf(s); return SORT_CYCLE[(i + 1) % SORT_CYCLE.length]; })}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
+          >
+            <ArrowUpDown size={11} />
+            {SORT_LABELS[sortOrder]}
+          </button>
+          <button
+            onClick={() => setFilterOpen(true)}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
+              hasFilter
+                ? "border-primary text-primary bg-primary/10"
+                : "border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <SlidersHorizontal size={13} />
+            絞り込み{hasFilter ? "中" : ""}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 py-2">
