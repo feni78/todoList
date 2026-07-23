@@ -52,7 +52,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
 
   useEffect(() => {
     if (result && !isSpinning && animDone) {
-      const t = setTimeout(() => setShowResult(true), 600);
+      const t = setTimeout(() => setShowResult(true), 400);
       return () => clearTimeout(t);
     } else {
       setShowResult(false);

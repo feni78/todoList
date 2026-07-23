@@ -51,7 +51,7 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
 
   useEffect(() => {
     if (result && !isSpinning) {
-      const t = setTimeout(() => setShowResult(true), 600);
+      const t = setTimeout(() => setShowResult(true), 400);
       return () => clearTimeout(t);
     } else {
       setShowResult(false);
