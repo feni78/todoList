@@ -271,7 +271,12 @@ export default function ListPage() {
         right={
           <button
             onClick={() => setSearchOpen((v) => !v)}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground"
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              searchOpen || filterStore.searchQuery
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
           >
             {searchOpen ? <X size={18} /> : <Search size={18} />}
           </button>
@@ -321,13 +326,12 @@ export default function ListPage() {
           className={cn(
             "shrink-0 p-1.5 rounded-lg transition-colors",
             hasActiveFilters
-              ? "text-primary"
+              ? "bg-primary/15 text-primary"
               : "text-muted-foreground hover:text-foreground"
           )}
           title="絞り込み"
         >
           <SlidersHorizontal size={16} />
-          {hasActiveFilters && <span className="sr-only">●</span>}
         </button>
       </div>
 

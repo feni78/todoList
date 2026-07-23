@@ -338,11 +338,18 @@ export default function SettingsPage() {
   const handleRetryLocation = async () => {
     setRetryingLocation(true);
     try {
-      const count = await retryLocationEnrichment();
-      if (count === 0) {
+      const result = await retryLocationEnrichment();
+      if (!result) {
         toast.success("位置情報未設定でGoogle MapsのURLを持つデータはありませんでした");
+      } else if (result.failed.length === 0) {
+        toast.success(`位置情報を${result.succeeded}件取得しました`);
       } else {
-        toast.success(`${count}件の位置情報取得を試みました`);
+        const failDetails = result.failed.slice(0, 5).map((f) => `・${f.title}: ${f.reason}`).join("\n")
+          + (result.failed.length > 5 ? `\n他${result.failed.length - 5}件` : "");
+        toast.warning(`${result.succeeded}件成功 / ${result.failed.length}件失敗`, {
+          description: failDetails,
+          duration: 10000,
+        });
       }
     } catch {
       toast.error("位置情報の再取得に失敗しました");

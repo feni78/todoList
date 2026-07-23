@@ -46,6 +46,12 @@ export interface AnalyzeResult {
   skipItems: SkippedItem[];
 }
 
+export interface LocationEnrichResult {
+  attempted: number;
+  succeeded: number;
+  failed: { title: string; reason: string }[];
+}
+
 export interface ImportResult {
   inserted: number;
   updated: number;
@@ -53,6 +59,7 @@ export interface ImportResult {
   skippedItems: SkippedItem[];
   insertedItems: { title: string }[];
   updatedItems: { title: string }[];
+  locationResult?: LocationEnrichResult;
 }
 
 // 既存メモと新メモをマージ（行単位で重複除去して追記）
@@ -131,19 +138,24 @@ async function getOrCreateRegion(
   return id;
 }
 
+function isGoogleMapsUrl(url: string): boolean {
+  return url.includes("google.com/maps") || url.includes("maps.app.goo.gl");
+}
+
 async function enrichWithPlaces(
   supabase: ReturnType<typeof createClient>,
   groupId: string,
   items: { wishId: string; url: string; title: string }[]
-): Promise<void> {
+): Promise<LocationEnrichResult> {
   const regionCache = new Map<string, string>();
   const CONCURRENCY = 3;
+  const result: LocationEnrichResult = { attempted: items.length, succeeded: 0, failed: [] };
 
   for (let i = 0; i < items.length; i += CONCURRENCY) {
     const batch = items.slice(i, i + CONCURRENCY);
     await Promise.all(batch.map(async ({ wishId, url, title }) => {
       try {
-        // すでにplace_idがある場合はスキップ
+        // すでにplace_idがある場合はスキップ（カウントしない）
         const { data: existing } = await supabase
           .from("wishes").select("place_id").eq("id", wishId).single();
         if ((existing as { place_id: string | null } | null)?.place_id) return;
@@ -153,7 +165,12 @@ async function enrichWithPlaces(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url, name: title }),
         });
-        if (!resp.ok) return;
+        if (!resp.ok) {
+          let reason = `HTTP ${resp.status}`;
+          try { const e = await resp.json() as { error?: string }; if (e.error) reason = e.error; } catch { /* ignore */ }
+          result.failed.push({ title, reason });
+          return;
+        }
 
         const place = await resp.json() as PlaceLookupResult;
 
@@ -180,11 +197,15 @@ async function enrichWithPlaces(
             { onConflict: "wish_id,region_id", ignoreDuplicates: true }
           );
         }
-      } catch {
-        // 個別失敗は無視してインポート自体は成功させる
+
+        result.succeeded++;
+      } catch (err) {
+        result.failed.push({ title, reason: err instanceof Error ? err.message : "不明なエラー" });
       }
     }));
   }
+
+  return result;
 }
 
 export function parseCsvText(text: string): CsvRow[] {
@@ -332,7 +353,7 @@ async function insertGenresBatch(
 async function retryLocationEnrichmentImpl(
   supabase: ReturnType<typeof createClient>,
   groupId: string
-): Promise<number> {
+): Promise<LocationEnrichResult | null> {
   const PAGE = 1000;
   let allRows: { id: string; title: string; memo: string | null }[] = [];
   let from = 0;
@@ -354,12 +375,12 @@ async function retryLocationEnrichmentImpl(
   for (const row of allRows) {
     if (!row.memo) continue;
     const urls = row.memo.match(/https?:\/\/[^\s]+/g) ?? [];
-    const googleUrl = urls.find((u) => u.includes("google.com/maps") || u.includes("maps.app.goo.gl"));
+    const googleUrl = urls.find((u) => isGoogleMapsUrl(u));
     if (googleUrl) items.push({ wishId: row.id, url: googleUrl, title: row.title });
   }
 
-  if (items.length > 0) await enrichWithPlaces(supabase, groupId, items);
-  return items.length;
+  if (items.length === 0) return null;
+  return enrichWithPlaces(supabase, groupId, items);
 }
 
 export function useCsvImport(groupId: string) {
@@ -567,11 +588,12 @@ export function useCsvImport(groupId: string) {
 
         // Places API: URLのある行にplace_id・緯度経度・地域タグを付与
         const urlItems = [
-          ...toInsertWithIds.filter((i) => i.row.url && i.row.url.includes("google.com/maps")),
-          ...toUpdate.filter((i) => i.row.url && i.row.url.includes("google.com/maps")),
+          ...toInsertWithIds.filter((i) => i.row.url && isGoogleMapsUrl(i.row.url)),
+          ...toUpdate.filter((i) => i.row.url && isGoogleMapsUrl(i.row.url)),
         ];
+        let locationResult: LocationEnrichResult | undefined;
         if (urlItems.length > 0) {
-          await enrichWithPlaces(supabase, groupId, urlItems.map((i) => ({
+          locationResult = await enrichWithPlaces(supabase, groupId, urlItems.map((i) => ({
             wishId: "id" in i ? (i as typeof toInsertWithIds[0]).id : (i as typeof toUpdate[0]).wishId,
             url: i.row.url,
             title: i.row.title,
@@ -585,6 +607,7 @@ export function useCsvImport(groupId: string) {
           skippedItems,
           insertedItems: toInsert.map((item) => ({ title: item.row.title })),
           updatedItems: toUpdate.map((item) => ({ title: item.row.title })),
+          locationResult,
         };
 
         supabase.from("csv_import_logs").insert({
@@ -613,7 +636,7 @@ export function useCsvImport(groupId: string) {
     [groupId]
   );
 
-  const retryLocationEnrichment = useCallback(async (): Promise<number> => {
+  const retryLocationEnrichment = useCallback(async (): Promise<LocationEnrichResult | null> => {
     const supabase = createClient();
     return retryLocationEnrichmentImpl(supabase, groupId);
   }, [groupId]);

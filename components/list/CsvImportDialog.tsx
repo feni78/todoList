@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Genre } from "@/types";
 import {
-  useCsvImport, FileImportConfig, ImportResult, AnalyzeResult, UpdatePreviewItem, parseCsvText,
+  useCsvImport, FileImportConfig, ImportResult, AnalyzeResult, UpdatePreviewItem, parseCsvText, LocationEnrichResult,
 } from "@/hooks/useCsvImport";
 import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -90,6 +90,32 @@ function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label:
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+function LocationResultSection({ result }: { result: LocationEnrichResult }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="rounded-xl border border-border p-4 flex flex-col gap-2 text-sm">
+        <p className="font-medium text-muted-foreground">位置情報取得</p>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">成功</span>
+          <span className="font-semibold">{result.succeeded}件</span>
+        </div>
+        {result.failed.length > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">失敗</span>
+            <span className="font-semibold text-destructive">{result.failed.length}件</span>
+          </div>
+        )}
+      </div>
+      {result.failed.length > 0 && (
+        <DetailList
+          items={result.failed.map((f) => ({ title: `${f.title}（${f.reason}）` }))}
+          label="位置情報取得失敗の詳細を見る"
+        />
       )}
     </div>
   );
@@ -209,6 +235,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
               items={result.skippedItems.map((s) => ({ title: `${s.title}（${s.reason === "no_change" ? "変更なし" : "重複"}）` }))}
               label="スキップの詳細を見る"
             />
+            {result.locationResult && <LocationResultSection result={result.locationResult} />}
             <Button onClick={handleClose} className="w-full">閉じる</Button>
           </div>
         )}
