@@ -94,17 +94,18 @@ function FilterSection({ title, children, collapsible = false, defaultOpen = tru
   );
 }
 
-function IncludeExcludeSection({ title, children, collapsible = false, defaultOpen = true, count = 0 }: {
+function IncludeExcludeSection({ title, children, collapsible = false, defaultOpen = true, count = 0, noDivider = false }: {
   title: string;
   children: (mode: "include" | "exclude") => React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
   count?: number;
+  noDivider?: boolean;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   const [mode, setMode] = useState<"include" | "exclude">("include");
   return (
-    <div className="flex flex-col gap-3 py-4 border-t border-border/60">
+    <div className={cn("flex flex-col gap-3 py-4", !noDivider && "border-t border-border/60")}>
       <div className="flex items-center gap-1.5">
         <button
           type="button"
@@ -199,8 +200,79 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
         </SheetHeader>
 
         <div className="flex flex-col">
-          {/* 距離 — よく使うので最上部 */}
-          <FilterSection title="距離で絞り込み" noDivider count={store.nearbyKm !== null ? 1 : 0}>
+          {/* ジャンル — 含む/除外タブ */}
+          {genres.length > 0 && (
+            <IncludeExcludeSection title="ジャンル" count={store.genreIds.length + store.excludeGenreIds.length} noDivider>
+              {(mode) => {
+                if (mode === "include") {
+                  return (
+                    <>
+                      {genres.map((g) => (
+                        <FilterChip
+                          key={g.id}
+                          selected={store.genreIds.includes(g.id)}
+                          onClick={() => store.setGenreIds(toggle(store.genreIds, g.id))}
+                          label={g.name}
+                        />
+                      ))}
+                      <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
+                        <span className="text-xs text-muted-foreground">複数選択時:</span>
+                        <button
+                          type="button"
+                          onClick={() => store.setGenreSearchMode("OR")}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                            store.genreSearchMode === "OR"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/70"
+                          )}
+                        >
+                          いずれか (OR)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => store.setGenreSearchMode("AND")}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                            store.genreSearchMode === "AND"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/70"
+                          )}
+                        >
+                          すべて (AND)
+                        </button>
+                      </div>
+                    </>
+                  );
+                } else {
+                  return genres.map((g) => (
+                    <FilterChip
+                      key={g.id}
+                      selected={store.excludeGenreIds.includes(g.id)}
+                      onClick={() => store.setExcludeGenreIds(toggle(store.excludeGenreIds, g.id))}
+                      label={g.name}
+                      variant="exclude"
+                    />
+                  ));
+                }
+              }}
+            </IncludeExcludeSection>
+          )}
+
+          {/* シチュエーション */}
+          <FilterSection title="シチュエーション" count={store.situations.length}>
+            {SITUATIONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.situations.includes(s)}
+                onClick={() => store.setSituations(toggle(store.situations, s))}
+                label={SITUATION_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 距離 */}
+          <FilterSection title="距離で絞り込み" count={store.nearbyKm !== null ? 1 : 0}>
             <div className="w-full flex flex-col gap-3">
               <div className="flex gap-1.5">
                 <button
@@ -305,18 +377,6 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             </IncludeExcludeSection>
           )}
 
-          {/* シチュエーション */}
-          <FilterSection title="シチュエーション" count={store.situations.length}>
-            {SITUATIONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={store.situations.includes(s)}
-                onClick={() => store.setSituations(toggle(store.situations, s))}
-                label={SITUATION_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
           {/* 予算 */}
           <FilterSection title="予算" count={store.budgets.length}>
             {BUDGETS.map((b) => (
@@ -341,66 +401,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             ))}
           </FilterSection>
 
-          {/* ジャンル — 含む/除外タブ */}
-          {genres.length > 0 && (
-            <IncludeExcludeSection title="ジャンル" count={store.genreIds.length + store.excludeGenreIds.length}>
-              {(mode) => {
-                if (mode === "include") {
-                  return (
-                    <>
-                      {genres.map((g) => (
-                        <FilterChip
-                          key={g.id}
-                          selected={store.genreIds.includes(g.id)}
-                          onClick={() => store.setGenreIds(toggle(store.genreIds, g.id))}
-                          label={g.name}
-                        />
-                      ))}
-                      <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
-                        <span className="text-xs text-muted-foreground">複数選択時:</span>
-                        <button
-                          type="button"
-                          onClick={() => store.setGenreSearchMode("OR")}
-                          className={cn(
-                            "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                            store.genreSearchMode === "OR"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground hover:bg-muted/70"
-                          )}
-                        >
-                          いずれか (OR)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => store.setGenreSearchMode("AND")}
-                          className={cn(
-                            "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                            store.genreSearchMode === "AND"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground hover:bg-muted/70"
-                          )}
-                        >
-                          すべて (AND)
-                        </button>
-                      </div>
-                    </>
-                  );
-                } else {
-                  return genres.map((g) => (
-                    <FilterChip
-                      key={g.id}
-                      selected={store.excludeGenreIds.includes(g.id)}
-                      onClick={() => store.setExcludeGenreIds(toggle(store.excludeGenreIds, g.id))}
-                      label={g.name}
-                      variant="exclude"
-                    />
-                  ));
-                }
-              }}
-            </IncludeExcludeSection>
-          )}
-
-          {/* 季節・登録者 — 折りたたみ項目をまとめて下部に */}
+          {/* 季節・登録者 — 折りたたみ */}
           <FilterSection title="季節タグ" collapsible defaultOpen={store.seasons.length > 0} count={store.seasons.length}>
             {SEASONS.map((s) => (
               <FilterChip
