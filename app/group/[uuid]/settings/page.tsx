@@ -79,6 +79,10 @@ export default function SettingsPage() {
   const [regionlessSectionOpen, setRegionlessSectionOpen] = useState(false);
   const [regionlessExpandedId, setRegionlessExpandedId] = useState<string | null>(null);
   const [savingRegionWishId, setSavingRegionWishId] = useState<string | null>(null);
+  const [locationlessSectionOpen, setLocationlessSectionOpen] = useState(false);
+  const [locationlessExpandedId, setLocationlessExpandedId] = useState<string | null>(null);
+  const [locationInputs, setLocationInputs] = useState<Record<string, { lat: string; lng: string }>>({});
+  const [savingLocationWishId, setSavingLocationWishId] = useState<string | null>(null);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [mergeWishes, setMergeWishes] = useState(true);
   const [mergeRegionTags, setMergeRegionTags] = useState(true);
@@ -332,6 +336,21 @@ export default function SettingsPage() {
     } finally {
       if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
       setSavingRegionWishId(null);
+    }
+  };
+
+  const saveLocation = async (wishId: string, lat: number, lng: number) => {
+    setSavingLocationWishId(wishId);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("wishes").update({ latitude: lat, longitude: lng }).eq("id", wishId);
+      if (error) throw error;
+      await refetchWishes();
+      toast.success("位置情報を保存しました");
+    } catch {
+      toast.error("保存に失敗しました");
+    } finally {
+      setSavingLocationWishId(null);
     }
   };
 
@@ -1208,6 +1227,113 @@ export default function SettingsPage() {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
+        {(() => {
+          const locationlessWishes = wishes.filter((w) => {
+            if (w.status === "DONE") return false;
+            return w.latitude == null || w.longitude == null;
+          });
+          return (
+            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <h2 className="font-semibold">緯度経度未設定</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {locationlessWishes.length > 0 ? `${locationlessWishes.length}件未設定` : "全件設定済み"}
+                  </p>
+                </div>
+                <span className="p-1.5 invisible"><Plus size={16} /></span>
+                <button
+                  type="button"
+                  className="p-1.5"
+                  onClick={() => setLocationlessSectionOpen((v) => !v)}
+                >
+                  {locationlessSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                </button>
+              </div>
+              {locationlessSectionOpen && (
+                <div className="flex flex-col gap-2">
+                  {locationlessWishes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">緯度経度未設定のアイテムはありません</p>
+                  ) : locationlessWishes.map((w) => {
+                    const expanded = locationlessExpandedId === w.id;
+                    const mapsUrl = w.memo?.match(/https?:\/\/[^\s]+/g)?.find((u) => u.includes("google.com/maps") || u.includes("maps.app.goo.gl")) ?? null;
+                    const inputs = locationInputs[w.id] ?? { lat: w.latitude?.toString() ?? "", lng: w.longitude?.toString() ?? "" };
+                    const latNum = parseFloat(inputs.lat);
+                    const lngNum = parseFloat(inputs.lng);
+                    const canSave = !isNaN(latNum) && !isNaN(lngNum) && inputs.lat !== "" && inputs.lng !== "";
+                    return (
+                      <div key={w.id} className="border border-border rounded-xl overflow-hidden">
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            className="flex-1 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0 text-sm truncate"
+                            onClick={() => setLocationlessExpandedId(expanded ? null : w.id)}
+                          >
+                            {w.title}
+                          </button>
+                          {mapsUrl && (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                            >
+                              <MapPin size={14} />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            className="px-2.5 py-2.5 text-muted-foreground shrink-0"
+                            onClick={() => setLocationlessExpandedId(expanded ? null : w.id)}
+                          >
+                            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </div>
+                        {expanded && (
+                          <div className="px-3 pb-3 flex flex-col gap-2.5 border-t border-border pt-2.5">
+                            <div className="flex gap-2">
+                              <div className="flex-1 flex flex-col gap-1">
+                                <label className="text-xs text-muted-foreground font-medium">緯度</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  placeholder="例: 35.6812"
+                                  value={inputs.lat}
+                                  onChange={(e) => setLocationInputs((prev) => ({ ...prev, [w.id]: { ...inputs, lat: e.target.value } }))}
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-sm"
+                                />
+                              </div>
+                              <div className="flex-1 flex flex-col gap-1">
+                                <label className="text-xs text-muted-foreground font-medium">経度</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  placeholder="例: 139.7671"
+                                  value={inputs.lng}
+                                  onChange={(e) => setLocationInputs((prev) => ({ ...prev, [w.id]: { ...inputs, lng: e.target.value } }))}
+                                  className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-sm"
+                                />
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              disabled={!canSave || savingLocationWishId === w.id}
+                              onClick={() => saveLocation(w.id, latNum, lngNum)}
+                              className="w-full"
+                            >
+                              {savingLocationWishId === w.id ? "保存中..." : "保存"}
+                            </Button>
                           </div>
                         )}
                       </div>
