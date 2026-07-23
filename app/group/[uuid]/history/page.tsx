@@ -32,6 +32,7 @@ export default function HistoryPage() {
 
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
   const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
   const nearbyKmRef = useRef<number | null>(null);
 
@@ -83,7 +84,6 @@ export default function HistoryPage() {
       setNearbyWishIds(null);
     });
   }, [filterStore.nearbyKm, filterStore.stationName, uuid]);
-  const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
 
   const {
     memberIds: fMemberIds,
