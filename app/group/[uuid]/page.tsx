@@ -156,7 +156,12 @@ export default function ListPage() {
     }
 
     if (fMemberIds.length > 0) result = result.filter((w) => fMemberIds.includes(w.memberId));
-    if (fSituations.length > 0) result = result.filter((w) => fSituations.includes(w.situation));
+    if (fSituations.length > 0) {
+      const effectiveSituations = fSituations.includes("EITHER")
+        ? (["HOME", "OUTSIDE", "EITHER"] as typeof fSituations)
+        : fSituations;
+      result = result.filter((w) => effectiveSituations.includes(w.situation));
+    }
     if (fStatuses.length > 0) result = result.filter((w) => fStatuses.includes(w.status));
     if (fBudgets.length > 0) result = result.filter((w) => w.budget && fBudgets.includes(w.budget));
     if (fDurations.length > 0) result = result.filter((w) => w.duration && fDurations.includes(w.duration));

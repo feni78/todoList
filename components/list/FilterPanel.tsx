@@ -326,7 +326,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
           {/* 地域タグ — 含む/除外タブ */}
           {(broadRegions.length > 0 || specificRegions.length > 0) && (
-            <IncludeExcludeSection title="地域タグ" count={store.regionIds.length + store.excludeRegionIds.length}>
+            <IncludeExcludeSection title="地域タグ" count={store.regionIds.length + store.excludeRegionIds.filter((id) => !store.defaultExcludeRegionIds.includes(id)).length}>
               {(mode) => {
                 if (mode === "include") {
                   const broadIds = broadRegions.map((r) => r.id);
