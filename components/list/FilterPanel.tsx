@@ -19,7 +19,7 @@ import {
   SEASON_LABELS,
 } from "@/types";
 import { useFilterStore } from "@/lib/store/filterStore";
-import { isBroadRegionTag } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
@@ -94,7 +94,12 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
   const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
   const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
-    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+    .sort((a, b) => {
+      const [ga, na] = specificRegionSortKey(a.name);
+      const [gb, nb] = specificRegionSortKey(b.name);
+      if (ga !== gb) return ga - gb;
+      return na.localeCompare(nb, "ja");
+    });
 
   const excludeChanged =
     store.excludeGenreIds.some((id) => !store.defaultExcludeGenreIds.includes(id)) ||

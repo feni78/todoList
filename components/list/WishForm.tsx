@@ -25,7 +25,7 @@ import {
   ScoreValue,
 } from "@/types";
 import { cn } from "@/lib/utils";
-import { isBroadRegionTag } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey } from "@/lib/utils/regionTag";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface WishFormData {
@@ -406,7 +406,12 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       {regions.length > 0 && (() => {
         const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
         const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
-          .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+          .sort((a, b) => {
+            const [ga, na] = specificRegionSortKey(a.name);
+            const [gb, nb] = specificRegionSortKey(b.name);
+            if (ga !== gb) return ga - gb;
+            return na.localeCompare(nb, "ja");
+          });
         return (
           <div className="flex flex-col gap-3">
             {broadRegions.length > 0 && (
