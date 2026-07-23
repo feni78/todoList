@@ -1052,9 +1052,8 @@ export default function SettingsPage() {
                                         type="button"
                                         disabled={savingRegionWishId === w.id}
                                         onClick={async () => {
-                                          const next = selected
-                                            ? currentRegionIds.filter((id) => id !== r.id)
-                                            : [...currentRegionIds, r.id];
+                                          const specificIds = currentRegionIds.filter((id) => specificRegions.some((s) => s.id === id));
+                                          const next = selected ? specificIds : [...specificIds, r.id];
                                           setSavingRegionWishId(w.id);
                                           try { await updateWish(w.id, { regionIds: next }); } catch { toast.error("更新に失敗しました"); }
                                           finally { setSavingRegionWishId(null); }
@@ -1083,9 +1082,8 @@ export default function SettingsPage() {
                                         type="button"
                                         disabled={savingRegionWishId === w.id}
                                         onClick={async () => {
-                                          const next = selected
-                                            ? currentRegionIds.filter((id) => id !== r.id)
-                                            : [...currentRegionIds, r.id];
+                                          const broadIds = currentRegionIds.filter((id) => broadRegions.some((b) => b.id === id));
+                                          const next = selected ? broadIds : [...broadIds, r.id];
                                           setSavingRegionWishId(w.id);
                                           try { await updateWish(w.id, { regionIds: next }); } catch { toast.error("更新に失敗しました"); }
                                           finally { setSavingRegionWishId(null); }
