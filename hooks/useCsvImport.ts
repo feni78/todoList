@@ -145,9 +145,9 @@ function isGoogleMapsUrl(url: string): boolean {
 async function enrichWithPlaces(
   supabase: ReturnType<typeof createClient>,
   groupId: string,
-  items: { wishId: string; url: string; title: string }[]
+  items: { wishId: string; url: string; title: string }[],
+  regionCache = new Map<string, string>()
 ): Promise<LocationEnrichResult> {
-  const regionCache = new Map<string, string>();
   const CONCURRENCY = 3;
   const result: LocationEnrichResult = { attempted: items.length, succeeded: 0, failed: [] };
 
@@ -353,12 +353,56 @@ async function insertGenresBatch(
   }
 }
 
+async function reverseGeocodeRegions(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  items: { wishId: string; title: string; lat: number; lng: number }[],
+  regionCache: Map<string, string>,
+  result: LocationEnrichResult
+): Promise<void> {
+  const CONCURRENCY = 3;
+  for (let i = 0; i < items.length; i += CONCURRENCY) {
+    const batch = items.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map(async ({ wishId, title, lat, lng }) => {
+      try {
+        const resp = await fetch("/api/geocode/reverse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lat, lng }),
+        });
+        if (!resp.ok) {
+          const e = await resp.json().catch(() => ({})) as { error?: string };
+          result.failed.push({ title, reason: e.error ?? `HTTP ${resp.status}` });
+          return;
+        }
+        const { prefecture, city } = await resp.json() as { prefecture: string | null; city: string | null };
+        if (prefecture && city) {
+          const tagNames = [toSpecificRegionTag(prefecture, city), toBroadRegionTag(prefecture, city)].filter(Boolean);
+          const regionIds = await Promise.all(
+            tagNames.map((name) => getOrCreateRegion(supabase, groupId, name, regionCache))
+          );
+          await supabase.from("wish_regions").upsert(
+            regionIds.map((region_id) => ({ wish_id: wishId, region_id })),
+            { onConflict: "wish_id,region_id", ignoreDuplicates: true }
+          );
+        }
+        result.succeeded++;
+      } catch (err) {
+        result.failed.push({ title, reason: err instanceof Error ? err.message : "不明なエラー" });
+      }
+    }));
+  }
+}
+
 async function retryLocationEnrichmentImpl(
   supabase: ReturnType<typeof createClient>,
   groupId: string
 ): Promise<LocationEnrichResult | null> {
   const PAGE = 200;
-  let allRows: { id: string; title: string; memo: string | null }[] = [];
+  const regionCache = new Map<string, string>();
+
+  // Phase 1: 緯度経度なし → Google Maps URL があれば Places API で取得
+  let phase1Rows: { id: string; title: string; memo: string | null }[] = [];
   let from = 0;
   while (true) {
     const { data, error } = await supabase
@@ -370,21 +414,58 @@ async function retryLocationEnrichmentImpl(
       .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw error;
-    allRows = allRows.concat((data ?? []) as typeof allRows);
+    phase1Rows = phase1Rows.concat((data ?? []) as typeof phase1Rows);
     if ((data ?? []).length < PAGE) break;
     from += PAGE;
   }
 
-  const items: { wishId: string; url: string; title: string }[] = [];
-  for (const row of allRows) {
+  const phase1Items: { wishId: string; url: string; title: string }[] = [];
+  for (const row of phase1Rows) {
     if (!row.memo) continue;
     const urls = row.memo.match(/https?:\/\/[^\s]+/g) ?? [];
     const googleUrl = urls.find((u) => isGoogleMapsUrl(u));
-    if (googleUrl) items.push({ wishId: row.id, url: googleUrl, title: row.title });
+    if (googleUrl) phase1Items.push({ wishId: row.id, url: googleUrl, title: row.title });
   }
 
-  if (items.length === 0) return null;
-  return enrichWithPlaces(supabase, groupId, items);
+  // Phase 2: 緯度経度あり・地域タグなし → Geocoding API でリバースジオコーディング
+  let phase2Rows: { id: string; title: string; latitude: number; longitude: number }[] = [];
+  // wish_regions が空（left join で null）のもの = 地域タグ未設定
+  from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("wishes")
+      .select("id, title, latitude, longitude, wish_regions!left(wish_id)")
+      .eq("group_id", groupId)
+      .is("deleted_at", null)
+      .not("latitude", "is", null)
+      .not("longitude", "is", null)
+      .is("wish_regions.wish_id", null)
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as unknown as { id: string; title: string; latitude: number; longitude: number }[];
+    phase2Rows = phase2Rows.concat(rows);
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const phase2Items = phase2Rows.map((r) => ({ wishId: r.id, title: r.title, lat: r.latitude, lng: r.longitude }));
+
+  if (phase1Items.length === 0 && phase2Items.length === 0) return null;
+
+  const result: LocationEnrichResult = { attempted: phase1Items.length + phase2Items.length, succeeded: 0, failed: [] };
+
+  if (phase1Items.length > 0) {
+    const p1 = await enrichWithPlaces(supabase, groupId, phase1Items, regionCache);
+    result.succeeded += p1.succeeded;
+    result.failed.push(...p1.failed);
+  }
+
+  if (phase2Items.length > 0) {
+    await reverseGeocodeRegions(supabase, groupId, phase2Items, regionCache, result);
+  }
+
+  return result;
 }
 
 export function useCsvImport(groupId: string) {
