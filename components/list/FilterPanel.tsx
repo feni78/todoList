@@ -19,7 +19,7 @@ import {
   SEASON_LABELS,
 } from "@/types";
 import { useFilterStore } from "@/lib/store/filterStore";
-import { isBroadRegionTag, specificRegionSortKey } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
@@ -207,14 +207,19 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
           {specificRegions.length > 0 && (
             <FilterSection title="小地域タグ" collapsible defaultOpen={false}>
-              {specificRegions.map((r) => (
-                <FilterChip
-                  key={r.id}
-                  selected={store.regionIds.includes(r.id)}
-                  onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
-                  label={r.name}
-                />
-              ))}
+              {specificRegions.map((r) => {
+                const selected = store.regionIds.includes(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
+                    className={cn("px-3 py-1.5 rounded-full text-xs font-medium transition-colors", specificRegionColorClasses(r.name, selected))}
+                  >
+                    {r.name}
+                  </button>
+                );
+              })}
             </FilterSection>
           )}
 

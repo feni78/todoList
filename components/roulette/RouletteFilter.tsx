@@ -19,7 +19,7 @@ import {
   SEASON_LABELS,
 } from "@/types";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
-import { isBroadRegionTag, specificRegionSortKey } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
@@ -200,14 +200,19 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
 
           {specificRegions.length > 0 && (
             <Section title="小地域タグ" collapsible defaultOpen={false}>
-              {specificRegions.map((r) => (
-                <FilterChip
-                  key={r.id}
-                  selected={filter.regionIds.includes(r.id)}
-                  onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
-                  label={r.name}
-                />
-              ))}
+              {specificRegions.map((r) => {
+                const selected = filter.regionIds.includes(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
+                    className={cn("px-3 py-1.5 rounded-full text-xs font-medium transition-colors", specificRegionColorClasses(r.name, selected))}
+                  >
+                    {r.name}
+                  </button>
+                );
+              })}
             </Section>
           )}
 

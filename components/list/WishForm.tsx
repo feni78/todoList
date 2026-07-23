@@ -25,7 +25,7 @@ import {
   ScoreValue,
 } from "@/types";
 import { cn } from "@/lib/utils";
-import { isBroadRegionTag, specificRegionSortKey } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface WishFormData {
@@ -90,9 +90,7 @@ function SpecificRegionSection({ regions, selectedIds, onToggle }: {
               onClick={() => onToggle(r.id, false)}
               className={cn(
                 "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
-                selectedIds.includes(r.id)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                specificRegionColorClasses(r.name, selectedIds.includes(r.id))
               )}
             >
               {r.name}
