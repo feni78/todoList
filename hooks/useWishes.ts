@@ -238,11 +238,13 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         genreIds?: string[];
         regionIds?: string[];
         myScore?: ScoreValue | null;
+        latitude?: number | null;
+        longitude?: number | null;
       }
     ) => {
       const entry = getGroupMember(groupId);
       const supabase = createClient();
-      const { seasons, genreIds, regionIds, myScore, ...rest } = data;
+      const { seasons, genreIds, regionIds, myScore, latitude, longitude, ...rest } = data;
 
       // 楽観的更新：DB完了を待たずにローカル状態を即時反映
       setWishes((prev) => prev.map((w) => {
@@ -255,6 +257,8 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         if (rest.memo !== undefined) next.memo = rest.memo;
         if (rest.budget !== undefined) next.budget = rest.budget;
         if (rest.duration !== undefined) next.duration = rest.duration;
+        if (latitude !== undefined) next.latitude = latitude ?? null;
+        if (longitude !== undefined) next.longitude = longitude ?? null;
         if (seasons !== undefined) next.seasons = seasons;
         if (myScore !== undefined && entry) {
           const filteredVotes = next.votes.filter((v) => v.memberId !== entry.memberId);
@@ -274,6 +278,8 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
       if (rest.memo !== undefined) updatePayload.memo = rest.memo;
       if (rest.budget !== undefined) updatePayload.budget = rest.budget;
       if (rest.duration !== undefined) updatePayload.duration = rest.duration;
+      if (latitude !== undefined) updatePayload.latitude = latitude;
+      if (longitude !== undefined) updatePayload.longitude = longitude;
 
       if (Object.keys(updatePayload).length > 0) {
         const { error } = await supabase.from("wishes").update(updatePayload).eq("id", wishId);

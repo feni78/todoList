@@ -40,6 +40,8 @@ interface WishFormData {
   genreIds: string[];
   regionIds: string[];
   myScore: ScoreValue | null;
+  latInput: string;
+  lngInput: string;
 }
 
 interface WishFormProps {
@@ -60,6 +62,8 @@ interface WishFormProps {
     genreIds?: string[];
     regionIds?: string[];
     myScore?: ScoreValue | null;
+    latitude?: number | null;
+    longitude?: number | null;
   }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
@@ -155,6 +159,8 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
     genreIds: initial?.genres.map((g) => g.id) ?? [],
     regionIds: initial?.regions.map((r) => r.id) ?? [],
     myScore: existingVote?.score ?? null,
+    latInput: initial?.latitude?.toString() ?? "",
+    lngInput: initial?.longitude?.toString() ?? "",
   });
 
   const toggleSeason = (season: Season) => {
@@ -195,6 +201,8 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
     e.preventDefault();
     if (!form.title.trim()) return;
     if (scoreRequired && !form.myScore) return;
+    const lat = form.latInput.trim() ? parseFloat(form.latInput) : null;
+    const lng = form.lngInput.trim() ? parseFloat(form.lngInput) : null;
     await onSubmit({
       title: form.title.trim(),
       memberId: form.memberId || undefined,
@@ -207,6 +215,8 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       genreIds: form.genreIds,
       regionIds: form.regionIds,
       myScore: form.myScore,
+      latitude: isNaN(lat as number) ? null : lat,
+      longitude: isNaN(lng as number) ? null : lng,
     });
   };
 
@@ -444,6 +454,33 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
           </div>
         );
       })()}
+
+      {initial && (
+        <div className="flex flex-col gap-1.5">
+          <Label>緯度・経度（任意）</Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="緯度（例: 35.6812）"
+              value={form.latInput}
+              onChange={(e) => setForm((f) => ({ ...f, latInput: e.target.value }))}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData("text");
+                const m = text.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+                if (m) {
+                  e.preventDefault();
+                  setForm((f) => ({ ...f, latInput: m[1], lngInput: m[2] }));
+                }
+              }}
+            />
+            <Input
+              placeholder="経度（例: 139.7671）"
+              value={form.lngInput}
+              onChange={(e) => setForm((f) => ({ ...f, lngInput: e.target.value }))}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">「緯度, 経度」形式でペーストすると自動分割されます</p>
+        </div>
+      )}
 
       <div className="flex gap-2 mt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
