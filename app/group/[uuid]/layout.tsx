@@ -16,6 +16,7 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
   const [checking, setChecking] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const groupTitle = group?.name || groupName;
 
   useEffect(() => {
     const init = async () => {
@@ -36,7 +37,6 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
       const g = groupData as Group & { members: GroupMember[] };
       setGroup({ id: g.id, name: g.name, members: g.members });
       setGroupName(g.name);
-      document.title = g.name;
 
       if (!stored) {
         setNeedsJoin(true);
@@ -119,5 +119,10 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {groupTitle && <title>{groupTitle}</title>}
+      {children}
+    </>
+  );
 }

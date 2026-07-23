@@ -301,7 +301,6 @@ export default function SettingsPage() {
     const { error } = await supabase.from("groups").update({ name: groupNameInput.trim() }).eq("id", uuid);
     if (error) { toast.error("更新に失敗しました"); return; }
     setGroup({ ...group!, name: groupNameInput.trim() });
-    document.title = groupNameInput.trim();
     setEditingGroupName(false);
     toast.success("グループ名を更新しました");
   };
