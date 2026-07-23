@@ -99,6 +99,21 @@ export default function ListPage() {
     }
   }, [uuid]);
 
+  const {
+    memberIds: fMemberIds,
+    situations: fSituations,
+    statuses: fStatuses,
+    budgets: fBudgets,
+    durations: fDurations,
+    seasons: fSeasons,
+    genreIds: fGenreIds,
+    genreSearchMode: fGenreSearchMode,
+    excludeGenreIds: fExcludeGenreIds,
+    regionIds: fRegionIds,
+    excludeRegionIds: fExcludeRegionIds,
+    searchQuery: fSearchQuery,
+  } = filterStore;
+
   const filtered = useMemo(() => {
     let result = [...wishes];
 
@@ -108,45 +123,25 @@ export default function ListPage() {
       result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
     }
 
-    if (filterStore.memberIds.length > 0) {
-      result = result.filter((w) => filterStore.memberIds.includes(w.memberId));
-    }
-    if (filterStore.situations.length > 0) {
-      result = result.filter((w) => filterStore.situations.includes(w.situation));
-    }
-    if (filterStore.statuses.length > 0) {
-      result = result.filter((w) => filterStore.statuses.includes(w.status));
-    }
-    if (filterStore.budgets.length > 0) {
-      result = result.filter((w) => w.budget && filterStore.budgets.includes(w.budget));
-    }
-    if (filterStore.durations.length > 0) {
-      result = result.filter((w) => w.duration && filterStore.durations.includes(w.duration));
-    }
-    if (filterStore.seasons.length > 0) {
-      result = result.filter((w) => w.seasons.some((s) => filterStore.seasons.includes(s)));
-    }
-    if (filterStore.genreIds.length > 0) {
-      if (filterStore.genreSearchMode === "AND") {
-        result = result.filter((w) => filterStore.genreIds.every((id) => w.genres.some((g) => g.id === id)));
+    if (fMemberIds.length > 0) result = result.filter((w) => fMemberIds.includes(w.memberId));
+    if (fSituations.length > 0) result = result.filter((w) => fSituations.includes(w.situation));
+    if (fStatuses.length > 0) result = result.filter((w) => fStatuses.includes(w.status));
+    if (fBudgets.length > 0) result = result.filter((w) => w.budget && fBudgets.includes(w.budget));
+    if (fDurations.length > 0) result = result.filter((w) => w.duration && fDurations.includes(w.duration));
+    if (fSeasons.length > 0) result = result.filter((w) => w.seasons.some((s) => fSeasons.includes(s)));
+    if (fGenreIds.length > 0) {
+      if (fGenreSearchMode === "AND") {
+        result = result.filter((w) => fGenreIds.every((id) => w.genres.some((g) => g.id === id)));
       } else {
-        result = result.filter((w) => w.genres.some((g) => filterStore.genreIds.includes(g.id)));
+        result = result.filter((w) => w.genres.some((g) => fGenreIds.includes(g.id)));
       }
     }
-    if (filterStore.excludeGenreIds.length > 0) {
-      result = result.filter((w) => !w.genres.some((g) => filterStore.excludeGenreIds.includes(g.id)));
-    }
-    if (filterStore.regionIds.length > 0) {
-      result = result.filter((w) => w.regions.some((r) => filterStore.regionIds.includes(r.id)));
-    }
-    if (filterStore.excludeRegionIds.length > 0) {
-      result = result.filter((w) => !w.regions.some((r) => filterStore.excludeRegionIds.includes(r.id)));
-    }
-    if (nearbyWishIds !== null) {
-      result = result.filter((w) => nearbyWishIds.has(w.id));
-    }
-    if (filterStore.searchQuery) {
-      const q = filterStore.searchQuery.toLowerCase();
+    if (fExcludeGenreIds.length > 0) result = result.filter((w) => !w.genres.some((g) => fExcludeGenreIds.includes(g.id)));
+    if (fRegionIds.length > 0) result = result.filter((w) => w.regions.some((r) => fRegionIds.includes(r.id)));
+    if (fExcludeRegionIds.length > 0) result = result.filter((w) => !w.regions.some((r) => fExcludeRegionIds.includes(r.id)));
+    if (nearbyWishIds !== null) result = result.filter((w) => nearbyWishIds.has(w.id));
+    if (fSearchQuery) {
+      const q = fSearchQuery.toLowerCase();
       result = result.filter((w) => w.title.toLowerCase().includes(q));
     }
 
@@ -155,7 +150,7 @@ export default function ListPage() {
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, sortOrder, filterStore, nearbyWishIds]);
+  }, [wishes, statusTab, situationTab, sortOrder, nearbyWishIds, fMemberIds, fSituations, fStatuses, fBudgets, fDurations, fSeasons, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);

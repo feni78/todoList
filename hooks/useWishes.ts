@@ -90,6 +90,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
   // statuses はページごとに固定なので ref で安定参照する
   const statusesRef = useRef<Status[]>(options?.statuses ?? ["PENDING", "HOLD"]);
   const fetchIdRef = useRef(0);
+  const realtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchWishes = useCallback(async () => {
     const fetchId = ++fetchIdRef.current;
@@ -129,15 +130,23 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
   }, [fetchWishes]);
 
   useEffect(() => {
+    const debouncedFetch = () => {
+      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
+      realtimeTimerRef.current = setTimeout(() => fetchWishes(), 600);
+    };
+
     const supabase = createClient();
     const channel = supabase
       .channel(`group:${groupId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wishes", filter: `group_id=eq.${groupId}` }, () => fetchWishes())
-      .on("postgres_changes", { event: "*", schema: "public", table: "wish_seasons" }, () => fetchWishes())
-      .on("postgres_changes", { event: "*", schema: "public", table: "wish_votes" }, () => fetchWishes())
+      .on("postgres_changes", { event: "*", schema: "public", table: "wishes", filter: `group_id=eq.${groupId}` }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "wish_seasons" }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "wish_votes" }, debouncedFetch)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
+      supabase.removeChannel(channel);
+    };
   }, [groupId, fetchWishes]);
 
   const createWish = useCallback(
@@ -196,7 +205,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         await saveVote(supabase, wish.id, entry.memberId, data.myScore);
       }
 
-      await fetchWishes();
+      fetchWishes();
       return wish;
     },
     [groupId, fetchWishes]
@@ -223,6 +232,27 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
       const entry = getGroupMember(groupId);
       const supabase = createClient();
       const { seasons, genreIds, regionIds, myScore, ...rest } = data;
+
+      // 楽観的更新：DB完了を待たずにローカル状態を即時反映
+      setWishes((prev) => prev.map((w) => {
+        if (w.id !== wishId) return w;
+        const next = { ...w };
+        if (rest.title !== undefined) next.title = rest.title;
+        if (rest.situation !== undefined) next.situation = rest.situation;
+        if (rest.status !== undefined) next.status = rest.status;
+        if (rest.doneAt !== undefined) next.doneAt = rest.doneAt ?? null;
+        if (rest.memo !== undefined) next.memo = rest.memo;
+        if (rest.budget !== undefined) next.budget = rest.budget;
+        if (rest.duration !== undefined) next.duration = rest.duration;
+        if (seasons !== undefined) next.seasons = seasons;
+        if (myScore !== undefined && entry) {
+          const filteredVotes = next.votes.filter((v) => v.memberId !== entry.memberId);
+          next.votes = myScore === null ? filteredVotes : [...filteredVotes, { id: "optimistic", wishId, memberId: entry.memberId, score: myScore }];
+          next.avgScore = next.votes.length > 0 ? next.votes.reduce((s, v) => s + v.score, 0) / next.votes.length : 0;
+          next.hasMaxVote = next.votes.some((v) => v.score === 100);
+        }
+        return next;
+      }));
 
       const updatePayload: Record<string, unknown> = {};
       if (rest.memberId !== undefined) updatePayload.member_id = rest.memberId;
@@ -274,17 +304,18 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         }
       }
 
-      await fetchWishes();
+      // バックグラウンドで最新データを取得（UIはブロックしない）
+      fetchWishes();
     },
     [groupId, fetchWishes]
   );
 
   const deleteWish = useCallback(
     async (wishId: string) => {
+      setWishes((prev) => prev.filter((w) => w.id !== wishId));
       const supabase = createClient();
       const { error } = await supabase.from("wishes").update({ deleted_at: new Date().toISOString() }).eq("id", wishId);
-      if (error) throw error;
-      await fetchWishes();
+      if (error) { fetchWishes(); throw error; }
     },
     [fetchWishes]
   );
@@ -327,15 +358,16 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
 
   const bulkDeleteWishes = useCallback(
     async (wishIds: string[]) => {
+      const idSet = new Set(wishIds);
+      setWishes((prev) => prev.filter((w) => !idSet.has(w.id)));
       const supabase = createClient();
       const CHUNK = 200;
       for (let i = 0; i < wishIds.length; i += CHUNK) {
         const { error } = await supabase.from("wishes")
           .update({ deleted_at: new Date().toISOString() })
           .in("id", wishIds.slice(i, i + CHUNK));
-        if (error) throw error;
+        if (error) { fetchWishes(); throw error; }
       }
-      await fetchWishes();
     },
     [fetchWishes]
   );
