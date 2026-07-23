@@ -172,6 +172,12 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     store.excludeRegionIds.some((id) => !store.defaultExcludeRegionIds.includes(id)) ||
     store.defaultExcludeRegionIds.some((id) => !store.excludeRegionIds.includes(id));
 
+  const regionIncludeCount = store.regionIds.length;
+  const regionExcludeCount = store.excludeRegionIds.filter(
+    (id) => !store.defaultExcludeRegionIds.includes(id)
+  ).length;
+  const regionCount = regionIncludeCount + regionExcludeCount;
+
   const hasFilters =
     store.memberIds.length > 0 ||
     store.situations.length > 0 ||
@@ -326,7 +332,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
           {/* 地域タグ — 含む/除外タブ */}
           {(broadRegions.length > 0 || specificRegions.length > 0) && (
-            <IncludeExcludeSection title="地域タグ" count={store.regionIds.length + store.excludeRegionIds.filter((id) => !store.defaultExcludeRegionIds.includes(id)).length}>
+            <IncludeExcludeSection title="地域タグ" count={regionCount}>
               {(mode) => {
                 if (mode === "include") {
                   const broadIds = broadRegions.map((r) => r.id);
