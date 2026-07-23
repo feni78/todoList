@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -78,6 +79,10 @@ export default function SettingsPage() {
   const [regionlessSectionOpen, setRegionlessSectionOpen] = useState(false);
   const [regionlessExpandedId, setRegionlessExpandedId] = useState<string | null>(null);
   const [savingRegionWishId, setSavingRegionWishId] = useState<string | null>(null);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeWishes, setMergeWishes] = useState(true);
+  const [mergeRegionTags, setMergeRegionTags] = useState(true);
+  const [merging, setMerging] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
 
@@ -330,38 +335,41 @@ export default function SettingsPage() {
     }
   };
 
-  const handleMergeDuplicates = async () => {
-    if (!confirm("重複するスポット名を統合し、重複する中地域・小地域タグを削除します。よろしいですか？")) return;
+  const handleMergeDuplicates = async (opts: { wishes: boolean; regionTags: boolean }) => {
+    setMergeDialogOpen(false);
+    setMerging(true);
     let mergedWishes = 0;
     let mergedRegions = 0;
 
-    const uniqueWishes = wishes.filter((w, i) => wishes.findIndex((x) => x.id === w.id) === i);
-    const titleGroups = new Map<string, typeof wishes>();
-    for (const w of uniqueWishes) {
-      const group = titleGroups.get(w.title) ?? [];
-      group.push(w);
-      titleGroups.set(w.title, group);
-    }
-    for (const group of titleGroups.values()) {
-      if (group.length < 2) continue;
-      const [primary, ...rest] = group;
-      const allMemoLines = [primary, ...rest]
-        .map((w) => w.memo).filter(Boolean)
-        .flatMap((m) => m!.split("\n").filter(Boolean));
-      const mergedMemo = [...new Set(allMemoLines)].join("\n") || undefined;
-      const allGenreIds = [...new Set([primary, ...rest].flatMap((w) => w.genres.map((g) => g.id)))];
-      const allRegionIds = [...new Set([primary, ...rest].flatMap((w) => w.regions.map((r) => r.id)))];
-      const mergedSeasons = [...new Set([primary, ...rest].flatMap((w) => w.seasons))];
-      const mergedFavorite = [primary, ...rest].some((w) => w.isFavorite);
-      try {
-        await updateWish(primary.id, { memo: mergedMemo, genreIds: allGenreIds, regionIds: allRegionIds, seasons: mergedSeasons });
-        for (const dup of rest) { await deleteWish(dup.id); }
-        mergedWishes += rest.length;
-      } catch {
-        toast.error(`「${primary.title}」の統合に失敗しました`);
+    if (opts.wishes) {
+      const uniqueWishes = wishes.filter((w, i) => wishes.findIndex((x) => x.id === w.id) === i);
+      const titleGroups = new Map<string, typeof wishes>();
+      for (const w of uniqueWishes) {
+        const group = titleGroups.get(w.title) ?? [];
+        group.push(w);
+        titleGroups.set(w.title, group);
+      }
+      for (const group of titleGroups.values()) {
+        if (group.length < 2) continue;
+        const [primary, ...rest] = group;
+        const allMemoLines = [primary, ...rest]
+          .map((w) => w.memo).filter(Boolean)
+          .flatMap((m) => m!.split("\n").filter(Boolean));
+        const mergedMemo = [...new Set(allMemoLines)].join("\n") || undefined;
+        const allGenreIds = [...new Set([primary, ...rest].flatMap((w) => w.genres.map((g) => g.id)))];
+        const allRegionIds = [...new Set([primary, ...rest].flatMap((w) => w.regions.map((r) => r.id)))];
+        const mergedSeasons = [...new Set([primary, ...rest].flatMap((w) => w.seasons))];
+        try {
+          await updateWish(primary.id, { memo: mergedMemo, genreIds: allGenreIds, regionIds: allRegionIds, seasons: mergedSeasons });
+          for (const dup of rest) { await deleteWish(dup.id); }
+          mergedWishes += rest.length;
+        } catch {
+          toast.error(`「${primary.title}」の統合に失敗しました`);
+        }
       }
     }
 
+    if (opts.regionTags) {
     const supabase = createClient();
 
     const mergeRegionGroup = async (group: typeof regions) => {
@@ -402,7 +410,9 @@ export default function SettingsPage() {
       regionNameGroups.set(key, group);
     }
     for (const group of regionNameGroups.values()) { await mergeRegionGroup(group); }
+    } // opts.regionTags
 
+    setMerging(false);
     if (mergedWishes > 0 || mergedRegions > 0) {
       toast.success(`統合完了: スポット${mergedWishes}件、地域タグ${mergedRegions}件`);
     } else {
@@ -633,11 +643,12 @@ export default function SettingsPage() {
             </Button>
             <Button
               variant="outline"
-              onClick={handleMergeDuplicates}
+              onClick={() => setMergeDialogOpen(true)}
+              disabled={merging}
               className="w-full gap-2"
             >
               <GitMerge size={16} />
-              重複を統合
+              {merging ? "統合中..." : "重複を統合"}
             </Button>
           </div>
         </section>
@@ -1411,6 +1422,49 @@ export default function SettingsPage() {
       </div>}
 
       <BottomNav groupId={uuid} />
+
+      <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>重複を統合</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 shrink-0"
+                checked={mergeWishes}
+                onChange={(e) => setMergeWishes(e.target.checked)}
+              />
+              <div>
+                <p className="text-sm font-medium">同名スポットを統合する</p>
+                <p className="text-xs text-muted-foreground mt-0.5">タスク名が同じスポットをひとつにまとめます（メモ・ジャンル・地域・季節はマージ）</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 shrink-0"
+                checked={mergeRegionTags}
+                onChange={(e) => setMergeRegionTags(e.target.checked)}
+              />
+              <div>
+                <p className="text-sm font-medium">重複する地域タグを統合する</p>
+                <p className="text-xs text-muted-foreground mt-0.5">名前が同じ中地域・小地域タグをひとつにまとめます</p>
+              </div>
+            </label>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setMergeDialogOpen(false)}>キャンセル</Button>
+            <Button
+              disabled={!mergeWishes && !mergeRegionTags}
+              onClick={() => handleMergeDuplicates({ wishes: mergeWishes, regionTags: mergeRegionTags })}
+            >
+              統合する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
