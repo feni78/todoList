@@ -142,12 +142,16 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
       realtimeTimerRef.current = setTimeout(() => fetchWishes(), 600);
     };
 
+    const debouncedFetchSlow = () => {
+      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
+      realtimeTimerRef.current = setTimeout(() => fetchWishes(), 2000);
+    };
+
     const supabase = createClient();
     const channel = supabase
       .channel(`group:${groupId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "wishes", filter: `group_id=eq.${groupId}` }, debouncedFetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wish_seasons" }, debouncedFetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wish_votes" }, debouncedFetch)
+      .on("postgres_changes", { event: "*", schema: "public", table: "wish_votes" }, debouncedFetchSlow)
       .subscribe();
 
     return () => {
