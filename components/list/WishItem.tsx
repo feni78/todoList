@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WishForm } from "./WishForm";
-import { Trash2, Pencil, ExternalLink, Star, MapPin } from "lucide-react";
+import { Trash2, Pencil, Star, MapPin } from "lucide-react";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { useGroupStore } from "@/lib/store/groupStore";
@@ -35,7 +35,6 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
   const hasMyVote = wish.votes.some((v) => v.memberId === currentMemberId);
   const memoUrls = wish.memo?.match(/https?:\/\/[^\s]+/g) ?? [];
   const googleUrl = memoUrls.find((u) => u.includes("google")) ?? null;
-  const otherUrl = memoUrls.find((u) => !u.includes("google")) ?? null;
 
   const handleDoneAtChange = async (dateStr: string) => {
     if (!dateStr) return;
