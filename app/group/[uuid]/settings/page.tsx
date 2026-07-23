@@ -1007,27 +1007,32 @@ export default function SettingsPage() {
                     const currentRegionIds = w.regions.map((r) => r.id);
                     return (
                       <div key={w.id} className="border border-border rounded-xl overflow-hidden">
-                        <div className="flex items-center">
-                          <button
-                            type="button"
-                            className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0"
-                            onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
-                          >
-                            <span className="flex-1 text-sm truncate">{w.title}</span>
-                            {expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
-                          </button>
-                          {w.placeId && (
-                            <a
-                              href={`https://www.google.com/maps/place/?q=place_id:${w.placeId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MapPin size={14} />
-                            </a>
-                          )}
-                        </div>
+                        {(() => {
+                          const mapsUrl = w.memo?.match(/https?:\/\/[^\s]+/g)?.find((u) => u.includes("google.com/maps") || u.includes("maps.app.goo.gl")) ?? null;
+                          return (
+                            <div className="flex items-center">
+                              <button
+                                type="button"
+                                className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0"
+                                onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
+                              >
+                                <span className="flex-1 text-sm truncate">{w.title}</span>
+                                {expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
+                              </button>
+                              {mapsUrl && (
+                                <a
+                                  href={mapsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MapPin size={14} />
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {expanded && (
                           <div className="px-3 pb-3 flex flex-col gap-3 border-t border-border">
                             {broadRegions.length > 0 && (
