@@ -1,3 +1,35 @@
+// 都道府県コード順（優先グループ以外）
+const PREFECTURE_JIS_ORDER: string[] = [
+  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+  "栃木県", "群馬県",
+  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県", "静岡県", "愛知県",
+  "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県",
+  "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+  "徳島県", "香川県", "愛媛県", "高知県",
+  "福岡県", "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
+];
+
+function extractPrefecture(name: string): string | null {
+  const m = name.match(/^(.+?[都道府県])/);
+  return m ? m[1] : null;
+}
+
+export function specificRegionSortKey(name: string): [number, string] {
+  const pref = extractPrefecture(name);
+  const city = pref ? name.slice(pref.length) : "";
+  if (pref === "千葉県") return [0, name];
+  if (pref === "東京都" && TOKYO_23KU.has(city)) return [1, name];
+  if (pref === "埼玉県") return [2, name];
+  if (pref === "神奈川県") return [3, name];
+  if (pref === "茨城県") return [4, name];
+  if (pref === "東京都") return [5, name];
+  if (pref) {
+    const idx = PREFECTURE_JIS_ORDER.indexOf(pref);
+    if (idx >= 0) return [6 + idx, name];
+  }
+  return [999, name];
+}
+
 export const BROAD_TAG_NAMES = new Set([
   "東京23区", "東京市部", "神奈川", "千葉", "埼玉", "茨城", "旅行先",
 ]);

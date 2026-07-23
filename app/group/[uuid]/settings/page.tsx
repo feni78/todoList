@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
-import { isBroadRegionTag } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey } from "@/lib/utils/regionTag";
 import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
@@ -67,8 +67,10 @@ export default function SettingsPage() {
   const [specificRegionSectionOpen, setSpecificRegionSectionOpen] = useState(false);
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
   const [editingRegionName, setEditingRegionName] = useState("");
-  const [addingRegion, setAddingRegion] = useState(false);
-  const [newRegionName, setNewRegionName] = useState("");
+  const [addingBroadRegion, setAddingBroadRegion] = useState(false);
+  const [newBroadRegionName, setNewBroadRegionName] = useState("");
+  const [addingSpecificRegion, setAddingSpecificRegion] = useState(false);
+  const [newSpecificRegionName, setNewSpecificRegionName] = useState("");
   const [defaultExcludeIds, setDefaultExcludeIds] = useState<string[]>(() => getDefaultExcludeGenreIds(uuid ?? ""));
   const [defaultExcludeRegionIds, setDefaultExcludeRegionIdsState] = useState<string[]>(() => getDefaultExcludeRegionIds(uuid ?? ""));
   const [defaultExcludeGenreSectionOpen, setDefaultExcludeGenreSectionOpen] = useState(false);
@@ -285,12 +287,24 @@ export default function SettingsPage() {
     await reorderRegions(next.map((r) => r.id));
   };
 
-  const handleAddRegion = async () => {
-    if (!newRegionName.trim()) return;
+  const handleAddBroadRegion = async () => {
+    if (!newBroadRegionName.trim()) return;
     try {
-      await createRegion(newRegionName.trim());
-      setAddingRegion(false);
-      setNewRegionName("");
+      await createRegion(newBroadRegionName.trim());
+      setAddingBroadRegion(false);
+      setNewBroadRegionName("");
+      toast.success("地域タグを追加しました");
+    } catch {
+      toast.error("追加に失敗しました");
+    }
+  };
+
+  const handleAddSpecificRegion = async () => {
+    if (!newSpecificRegionName.trim()) return;
+    try {
+      await createRegion(newSpecificRegionName.trim());
+      setAddingSpecificRegion(false);
+      setNewSpecificRegionName("");
       toast.success("地域タグを追加しました");
     } catch {
       toast.error("追加に失敗しました");
@@ -735,7 +749,15 @@ export default function SettingsPage() {
           const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {broadRegionSectionOpen && (
+                  <button
+                    onClick={() => { setAddingBroadRegion(true); setNewBroadRegionName(""); }}
+                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
                 <button
                   type="button"
                   className="flex items-center gap-1 flex-1 text-left"
@@ -744,14 +766,6 @@ export default function SettingsPage() {
                   <h2 className="font-semibold flex-1">中地域タグ管理</h2>
                   {broadRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
-                {broadRegionSectionOpen && (
-                  <button
-                    onClick={() => { setAddingRegion(true); setNewRegionName(""); }}
-                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors ml-2"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
               </div>
               {broadRegionSectionOpen && (
                 <div className="flex flex-col gap-2">
@@ -782,21 +796,21 @@ export default function SettingsPage() {
                       )}
                     </div>
                   ))}
-                  {addingRegion && (
+                  {addingBroadRegion && (
                     <div className="flex items-center gap-2 py-1">
                       <input
                         className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
                         placeholder="中地域タグ名"
-                        value={newRegionName}
-                        onChange={(e) => setNewRegionName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleAddRegion(); if (e.key === "Escape") setAddingRegion(false); }}
+                        value={newBroadRegionName}
+                        onChange={(e) => setNewBroadRegionName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleAddBroadRegion(); if (e.key === "Escape") setAddingBroadRegion(false); }}
                         autoFocus
                       />
-                      <button onClick={handleAddRegion} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
-                      <button onClick={() => setAddingRegion(false)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
+                      <button onClick={handleAddBroadRegion} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                      <button onClick={() => setAddingBroadRegion(false)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
                     </div>
                   )}
-                  {broadRegions.length === 0 && !addingRegion && (
+                  {broadRegions.length === 0 && !addingBroadRegion && (
                     <p className="text-sm text-muted-foreground">+ボタンで中地域タグを追加できます</p>
                   )}
                 </div>
@@ -847,13 +861,26 @@ export default function SettingsPage() {
           );
         })()}
 
-        {/* 小地域タグ管理（50音順・並び替えなし） */}
+        {/* 小地域タグ管理 */}
         {(() => {
           const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
-            .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+            .sort((a, b) => {
+              const [ga, na] = specificRegionSortKey(a.name);
+              const [gb, nb] = specificRegionSortKey(b.name);
+              if (ga !== gb) return ga - gb;
+              return na.localeCompare(nb, "ja");
+            });
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {specificRegionSectionOpen && (
+                  <button
+                    onClick={() => { setAddingSpecificRegion(true); setNewSpecificRegionName(""); }}
+                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
                 <button
                   type="button"
                   className="flex items-center gap-1 flex-1 text-left"
@@ -888,8 +915,22 @@ export default function SettingsPage() {
                       )}
                     </div>
                   ))}
-                  {specificRegions.length === 0 && (
-                    <p className="text-sm text-muted-foreground">CSVインポート時に自動生成されます</p>
+                  {addingSpecificRegion && (
+                    <div className="flex items-center gap-2 py-1">
+                      <input
+                        className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                        placeholder="小地域タグ名（例：東京都新宿区）"
+                        value={newSpecificRegionName}
+                        onChange={(e) => setNewSpecificRegionName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleAddSpecificRegion(); if (e.key === "Escape") setAddingSpecificRegion(false); }}
+                        autoFocus
+                      />
+                      <button onClick={handleAddSpecificRegion} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                      <button onClick={() => setAddingSpecificRegion(false)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
+                    </div>
+                  )}
+                  {specificRegions.length === 0 && !addingSpecificRegion && (
+                    <p className="text-sm text-muted-foreground">CSVインポート時に自動生成、または+ボタンで追加できます</p>
                   )}
                 </div>
               )}
