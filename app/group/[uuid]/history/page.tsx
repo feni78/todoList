@@ -16,6 +16,7 @@ import { findStation } from "@/lib/utils/station";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Star, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { FilterSummary } from "@/components/list/FilterSummary";
 import { cn } from "@/lib/utils";
 
 export default function HistoryPage() {
@@ -227,6 +228,8 @@ export default function HistoryPage() {
           </button>
         </div>
       </div>
+
+      <FilterSummary genres={genres} regions={regions} members={group?.members ?? []} />
 
       <div className="flex-1 py-2">
         {loading ? (

@@ -57,13 +57,14 @@ function FilterChip({ selected, onClick, label, variant = "default" }: {
   );
 }
 
-function FilterSection({ title, children, collapsible = false, defaultOpen = true, onClear, noDivider = false }: {
+function FilterSection({ title, children, collapsible = false, defaultOpen = true, onClear, noDivider = false, count = 0 }: {
   title: string;
   children: React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
   onClear?: () => void;
   noDivider?: boolean;
+  count?: number;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   return (
@@ -75,6 +76,11 @@ function FilterSection({ title, children, collapsible = false, defaultOpen = tru
           onClick={() => collapsible && setOpen((v) => !v)}
         >
           <p className="text-sm font-semibold text-foreground">{title}</p>
+          {count > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none">
+              {count}
+            </span>
+          )}
           {collapsible && (open ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />)}
         </button>
         {onClear && (
@@ -88,11 +94,12 @@ function FilterSection({ title, children, collapsible = false, defaultOpen = tru
   );
 }
 
-function IncludeExcludeSection({ title, children, collapsible = false, defaultOpen = true }: {
+function IncludeExcludeSection({ title, children, collapsible = false, defaultOpen = true, count = 0 }: {
   title: string;
   children: (mode: "include" | "exclude") => React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  count?: number;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   const [mode, setMode] = useState<"include" | "exclude">("include");
@@ -105,6 +112,11 @@ function IncludeExcludeSection({ title, children, collapsible = false, defaultOp
           onClick={() => collapsible && setOpen((v) => !v)}
         >
           <p className="text-sm font-semibold text-foreground">{title}</p>
+          {count > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none">
+              {count}
+            </span>
+          )}
           {collapsible && (open ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />)}
         </button>
         {open && (
@@ -188,7 +200,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
         <div className="flex flex-col">
           {/* 距離 — よく使うので最上部 */}
-          <FilterSection title="距離で絞り込み" noDivider>
+          <FilterSection title="距離で絞り込み" noDivider count={store.nearbyKm !== null ? 1 : 0}>
             <div className="w-full flex flex-col gap-3">
               <div className="flex gap-1.5">
                 <button
@@ -240,57 +252,9 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             </div>
           </FilterSection>
 
-          {/* シチュエーション */}
-          <FilterSection title="シチュエーション">
-            {SITUATIONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={store.situations.includes(s)}
-                onClick={() => store.setSituations(toggle(store.situations, s))}
-                label={SITUATION_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* 季節 */}
-          <FilterSection title="季節タグ" collapsible defaultOpen={store.seasons.length > 0}>
-            {SEASONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={store.seasons.includes(s)}
-                onClick={() => store.setSeasons(toggle(store.seasons, s))}
-                label={SEASON_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* 予算 */}
-          <FilterSection title="予算">
-            {BUDGETS.map((b) => (
-              <FilterChip
-                key={b}
-                selected={store.budgets.includes(b)}
-                onClick={() => store.setBudgets(toggle(store.budgets, b))}
-                label={BUDGET_LABELS[b]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* 所要時間 */}
-          <FilterSection title="所要時間">
-            {DURATIONS.map((d) => (
-              <FilterChip
-                key={d}
-                selected={store.durations.includes(d)}
-                onClick={() => store.setDurations(toggle(store.durations, d))}
-                label={DURATION_LABELS[d]}
-              />
-            ))}
-          </FilterSection>
-
           {/* 地域タグ — 含む/除外タブ */}
           {(broadRegions.length > 0 || specificRegions.length > 0) && (
-            <IncludeExcludeSection title="地域タグ">
+            <IncludeExcludeSection title="地域タグ" count={store.regionIds.length + store.excludeRegionIds.length}>
               {(mode) => {
                 if (mode === "include") {
                   const broadIds = broadRegions.map((r) => r.id);
@@ -341,9 +305,57 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             </IncludeExcludeSection>
           )}
 
+          {/* シチュエーション */}
+          <FilterSection title="シチュエーション" count={store.situations.length}>
+            {SITUATIONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.situations.includes(s)}
+                onClick={() => store.setSituations(toggle(store.situations, s))}
+                label={SITUATION_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 季節 */}
+          <FilterSection title="季節タグ" collapsible defaultOpen={store.seasons.length > 0} count={store.seasons.length}>
+            {SEASONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.seasons.includes(s)}
+                onClick={() => store.setSeasons(toggle(store.seasons, s))}
+                label={SEASON_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 予算 */}
+          <FilterSection title="予算" count={store.budgets.length}>
+            {BUDGETS.map((b) => (
+              <FilterChip
+                key={b}
+                selected={store.budgets.includes(b)}
+                onClick={() => store.setBudgets(toggle(store.budgets, b))}
+                label={BUDGET_LABELS[b]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 所要時間 */}
+          <FilterSection title="所要時間" count={store.durations.length}>
+            {DURATIONS.map((d) => (
+              <FilterChip
+                key={d}
+                selected={store.durations.includes(d)}
+                onClick={() => store.setDurations(toggle(store.durations, d))}
+                label={DURATION_LABELS[d]}
+              />
+            ))}
+          </FilterSection>
+
           {/* ジャンル — 含む/除外タブ */}
           {genres.length > 0 && (
-            <IncludeExcludeSection title="ジャンル">
+            <IncludeExcludeSection title="ジャンル" count={store.genreIds.length + store.excludeGenreIds.length}>
               {(mode) => {
                 if (mode === "include") {
                   return (
@@ -402,7 +414,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
           {/* 登録者 — 使用頻度低めなので下部、折りたたみ */}
           {members.length > 0 && (
-            <FilterSection title="登録者" collapsible defaultOpen={store.memberIds.length > 0}>
+            <FilterSection title="登録者" collapsible defaultOpen={store.memberIds.length > 0} count={store.memberIds.length}>
               {members.map((m) => (
                 <FilterChip
                   key={m.id}

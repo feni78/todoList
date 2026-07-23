@@ -23,6 +23,7 @@ import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
 import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
+import { FilterSummary } from "@/components/list/FilterSummary";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -378,6 +379,8 @@ export default function ListPage() {
           <SlidersHorizontal size={16} />
         </button>
       </div>
+
+      <FilterSummary genres={genres} regions={regions} members={group?.members ?? []} />
 
       {loading ? (
         <div className="flex justify-center py-20">
