@@ -57,23 +57,31 @@ function FilterChip({ selected, onClick, label, variant = "default" }: {
   );
 }
 
-function FilterSection({ title, children, collapsible = false, defaultOpen = true }: {
+function FilterSection({ title, children, collapsible = false, defaultOpen = true, onClear }: {
   title: string;
   children: React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  onClear?: () => void;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   return (
     <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        className="flex items-center gap-1 text-left"
-        onClick={() => collapsible && setOpen((v) => !v)}
-      >
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1">{title}</p>
-        {collapsible && (open ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />)}
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          className="flex items-center gap-1 text-left flex-1"
+          onClick={() => collapsible && setOpen((v) => !v)}
+        >
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1">{title}</p>
+          {collapsible && (open ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />)}
+        </button>
+        {onClear && (
+          <button type="button" onClick={onClear} className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            クリア
+          </button>
+        )}
+      </div>
       {open && <div className="flex flex-wrap gap-2">{children}</div>}
     </div>
   );
@@ -192,36 +200,52 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             ))}
           </FilterSection>
 
-          {broadRegions.length > 0 && (
-            <FilterSection title="中地域タグ">
-              {broadRegions.map((r) => (
-                <FilterChip
-                  key={r.id}
-                  selected={store.regionIds.includes(r.id)}
-                  onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
-                  label={r.name}
-                />
-              ))}
-            </FilterSection>
-          )}
-
-          {specificRegions.length > 0 && (
-            <FilterSection title="小地域タグ" collapsible defaultOpen={false}>
-              {specificRegions.map((r) => {
-                const selected = store.regionIds.includes(r.id);
-                return (
-                  <button
+          {broadRegions.length > 0 && (() => {
+            const broadIds = broadRegions.map((r) => r.id);
+            const hasBroad = store.regionIds.some((id) => broadIds.includes(id));
+            return (
+              <FilterSection
+                title="中地域タグ"
+                onClear={hasBroad ? () => store.setRegionIds(store.regionIds.filter((id) => !broadIds.includes(id))) : undefined}
+              >
+                {broadRegions.map((r) => (
+                  <FilterChip
                     key={r.id}
-                    type="button"
+                    selected={store.regionIds.includes(r.id)}
                     onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
-                    className={cn("px-3 py-1.5 rounded-full text-xs font-medium transition-colors", specificRegionColorClasses(r.name, selected))}
-                  >
-                    {r.name}
-                  </button>
-                );
-              })}
-            </FilterSection>
-          )}
+                    label={r.name}
+                  />
+                ))}
+              </FilterSection>
+            );
+          })()}
+
+          {specificRegions.length > 0 && (() => {
+            const specificIds = specificRegions.map((r) => r.id);
+            const hasSpecific = store.regionIds.some((id) => specificIds.includes(id));
+            return (
+              <FilterSection
+                title="小地域タグ"
+                collapsible
+                defaultOpen={false}
+                onClear={hasSpecific ? () => store.setRegionIds(store.regionIds.filter((id) => !specificIds.includes(id))) : undefined}
+              >
+                {specificRegions.map((r) => {
+                  const selected = store.regionIds.includes(r.id);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
+                      className={cn("px-3 py-1.5 rounded-full text-xs font-medium transition-colors", specificRegionColorClasses(r.name, selected))}
+                    >
+                      {r.name}
+                    </button>
+                  );
+                })}
+              </FilterSection>
+            );
+          })()}
 
           {broadRegions.length > 0 && (
             <FilterSection title="中地域タグ（除外）">

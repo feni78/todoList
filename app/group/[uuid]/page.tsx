@@ -18,6 +18,7 @@ import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { getGroupMember } from "@/lib/utils/localStorage";
+import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
@@ -167,7 +168,10 @@ export default function ListPage() {
       }
     }
     if (fExcludeGenreIds.length > 0) result = result.filter((w) => !w.genres.some((g) => fExcludeGenreIds.includes(g.id)));
-    if (fRegionIds.length > 0) result = result.filter((w) => w.regions.some((r) => fRegionIds.includes(r.id)));
+    const fBroadIds = fRegionIds.filter((id) => regions.some((r) => r.id === id && isBroadRegionTag(r.name)));
+    const fSpecificIds = fRegionIds.filter((id) => regions.some((r) => r.id === id && !isBroadRegionTag(r.name)));
+    if (fBroadIds.length > 0) result = result.filter((w) => w.regions.some((r) => fBroadIds.includes(r.id)));
+    if (fSpecificIds.length > 0) result = result.filter((w) => w.regions.some((r) => fSpecificIds.includes(r.id)));
     if (fExcludeRegionIds.length > 0) result = result.filter((w) => !w.regions.some((r) => fExcludeRegionIds.includes(r.id)));
     if (nearbyWishIds !== null) result = result.filter((w) => nearbyWishIds.has(w.id));
     if (fSearchQuery) {

@@ -31,7 +31,7 @@ export default function RoulettePage() {
   const { mode, setMode, settings, devMode, filter } = useRouletteStore();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const nearbyKmRef = useRef<number | null>(null);
-  const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes, userLocation);
+  const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes, userLocation, regions);
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
   const [filterOpen, setFilterOpen] = useState(false);
   const [specialAnimDone, setSpecialAnimDone] = useState(true);
