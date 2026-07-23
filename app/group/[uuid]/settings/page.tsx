@@ -331,7 +331,7 @@ export default function SettingsPage() {
   };
 
   const handleMergeDuplicates = async () => {
-    if (!confirm("重複するスポット名を統合し、重複する小地域タグを削除します。よろしいですか？")) return;
+    if (!confirm("重複するスポット名を統合し、重複する中地域・小地域タグを削除します。よろしいですか？")) return;
     let mergedWishes = 0;
     let mergedRegions = 0;
 
@@ -363,16 +363,9 @@ export default function SettingsPage() {
     }
 
     const supabase = createClient();
-    const specificRegs = regions.filter((r) => !isBroadRegionTag(r.name));
-    const regionNameGroups = new Map<string, typeof regions>();
-    for (const r of specificRegs) {
-      const key = r.name.trim().normalize("NFC");
-      const group = regionNameGroups.get(key) ?? [];
-      group.push(r);
-      regionNameGroups.set(key, group);
-    }
-    for (const group of regionNameGroups.values()) {
-      if (group.length < 2) continue;
+
+    const mergeRegionGroup = async (group: typeof regions) => {
+      if (group.length < 2) return;
       const [keep, ...dups] = group;
       for (const dup of dups) {
         const affected = wishes.filter((w) => w.regions.some((r) => r.id === dup.id));
@@ -384,11 +377,31 @@ export default function SettingsPage() {
           await updateWish(w.id, { regionIds: newIds });
         }
         const { error: wrErr } = await supabase.from("wish_regions").delete().eq("region_id", dup.id);
-        if (wrErr) { toast.error(`wish_regions削除失敗: ${wrErr.message}`); continue; }
+        if (wrErr) { toast.error(`wish_regions削除失敗: ${wrErr.message}`); return; }
         try { await deleteRegion(dup.id); mergedRegions++; }
         catch (e) { toast.error(`地域タグ「${dup.name}」削除失敗: ${e instanceof Error ? e.message : String(e)}`); }
       }
+    };
+
+    const broadRegs = regions.filter((r) => isBroadRegionTag(r.name));
+    const broadNameGroups = new Map<string, typeof regions>();
+    for (const r of broadRegs) {
+      const key = r.name.trim().normalize("NFC");
+      const group = broadNameGroups.get(key) ?? [];
+      group.push(r);
+      broadNameGroups.set(key, group);
     }
+    for (const group of broadNameGroups.values()) { await mergeRegionGroup(group); }
+
+    const specificRegs = regions.filter((r) => !isBroadRegionTag(r.name));
+    const regionNameGroups = new Map<string, typeof regions>();
+    for (const r of specificRegs) {
+      const key = r.name.trim().normalize("NFC");
+      const group = regionNameGroups.get(key) ?? [];
+      group.push(r);
+      regionNameGroups.set(key, group);
+    }
+    for (const group of regionNameGroups.values()) { await mergeRegionGroup(group); }
 
     if (mergedWishes > 0 || mergedRegions > 0) {
       toast.success(`統合完了: スポット${mergedWishes}件、地域タグ${mergedRegions}件`);
