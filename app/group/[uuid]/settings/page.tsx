@@ -948,7 +948,12 @@ export default function SettingsPage() {
           });
           const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
           const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
-            .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+            .sort((a, b) => {
+              const [ga, na] = specificRegionSortKey(a.name);
+              const [gb, nb] = specificRegionSortKey(b.name);
+              if (ga !== gb) return ga - gb;
+              return na.localeCompare(nb, "ja");
+            });
           if (regions.length === 0) return null;
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
@@ -974,14 +979,27 @@ export default function SettingsPage() {
                     const currentRegionIds = w.regions.map((r) => r.id);
                     return (
                       <div key={w.id} className="border border-border rounded-xl overflow-hidden">
-                        <button
-                          type="button"
-                          className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
-                          onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
-                        >
-                          <span className="flex-1 text-sm truncate">{w.title}</span>
-                          {expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
-                        </button>
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0"
+                            onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
+                          >
+                            <span className="flex-1 text-sm truncate">{w.title}</span>
+                            {expanded ? <ChevronUp size={14} className="text-muted-foreground shrink-0" /> : <ChevronDown size={14} className="text-muted-foreground shrink-0" />}
+                          </button>
+                          {w.placeId && (
+                            <a
+                              href={`https://www.google.com/maps/place/?q=place_id:${w.placeId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MapPin size={14} />
+                            </a>
+                          )}
+                        </div>
                         {expanded && (
                           <div className="px-3 pb-3 flex flex-col gap-3 border-t border-border">
                             {broadRegions.length > 0 && (
