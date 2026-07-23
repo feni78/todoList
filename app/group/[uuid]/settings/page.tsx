@@ -1372,8 +1372,9 @@ export default function SettingsPage() {
                       size="sm"
                       onClick={async () => {
                         try {
-                          await Promise.all(trashItems.map((item) => restoreWish(item.id)));
-                          toast.success(`${trashItems.length}件を復元しました`);
+                          const items = [...trashItems];
+                          for (const item of items) { await restoreWish(item.id); }
+                          toast.success(`${items.length}件を復元しました`);
                         } catch { toast.error("復元に失敗しました"); }
                       }}
                       className="flex-1"
