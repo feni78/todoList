@@ -121,7 +121,14 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
     }
 
     if (fetchId !== fetchIdRef.current) return;
-    setWishes(allData.map((row) => mapRow(row as Record<string, unknown>)));
+    const seen = new Set<string>();
+    const uniqueData = allData.filter((row) => {
+      const id = row.id as string;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    setWishes(uniqueData.map((row) => mapRow(row as Record<string, unknown>)));
     setLoading(false);
   }, [groupId]);
 

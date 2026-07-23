@@ -335,8 +335,9 @@ export default function SettingsPage() {
     let mergedWishes = 0;
     let mergedRegions = 0;
 
+    const uniqueWishes = wishes.filter((w, i) => wishes.findIndex((x) => x.id === w.id) === i);
     const titleGroups = new Map<string, typeof wishes>();
-    for (const w of wishes) {
+    for (const w of uniqueWishes) {
       const group = titleGroups.get(w.title) ?? [];
       group.push(w);
       titleGroups.set(w.title, group);
