@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { WishForm } from "./WishForm";
 import { Trash2, Pencil, ExternalLink, Star, MapPin } from "lucide-react";
 import { getGroupMember } from "@/lib/utils/localStorage";
+import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { useGroupStore } from "@/lib/store/groupStore";
 
 type WishUpdateData = (Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) & { doneAt?: string | null };
@@ -122,11 +123,13 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
                 {g.name}
               </Badge>
             ))}
-            {wish.regions.map((r) => (
-              <Badge key={r.id} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400 text-blue-600 dark:text-blue-400">
-                {r.name}
-              </Badge>
-            ))}
+            {[...wish.regions]
+              .sort((a, b) => (isBroadRegionTag(a.name) ? 0 : 1) - (isBroadRegionTag(b.name) ? 0 : 1))
+              .map((r) => (
+                <Badge key={r.id} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-400 text-blue-600 dark:text-blue-400">
+                  {r.name}
+                </Badge>
+              ))}
           </div>
           {wish.votes.length > 0 && (
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">

@@ -1,3 +1,11 @@
+export const BROAD_TAG_NAMES = new Set([
+  "東京23区", "東京市部", "神奈川", "千葉", "埼玉", "茨城", "旅行先",
+]);
+
+export function isBroadRegionTag(name: string): boolean {
+  return BROAD_TAG_NAMES.has(name);
+}
+
 // 東京都の島しょ部（旅行先扱い）
 const TOKYO_ISLAND_CITIES = new Set([
   "大島町", "利島村", "新島村", "神津島村", "三宅村", "御蔵島村",

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
+import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
@@ -61,6 +62,9 @@ export default function SettingsPage() {
   const [addingGenre, setAddingGenre] = useState(false);
   const [newGenreName, setNewGenreName] = useState("");
   const [retryingLocation, setRetryingLocation] = useState(false);
+  const [genreSectionOpen, setGenreSectionOpen] = useState(false);
+  const [broadRegionSectionOpen, setBroadRegionSectionOpen] = useState(false);
+  const [specificRegionSectionOpen, setSpecificRegionSectionOpen] = useState(false);
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
   const [editingRegionName, setEditingRegionName] = useState("");
   const [addingRegion, setAddingRegion] = useState(false);
@@ -574,15 +578,24 @@ export default function SettingsPage() {
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">ジャンル管理</h2>
             <button
-              onClick={() => { setAddingGenre(true); setNewGenreName(""); }}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              type="button"
+              className="flex items-center gap-1 flex-1 text-left"
+              onClick={() => setGenreSectionOpen((v) => !v)}
             >
-              <Plus size={16} />
+              <h2 className="font-semibold flex-1">ジャンル管理</h2>
+              {genreSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
             </button>
+            {genreSectionOpen && (
+              <button
+                onClick={() => { setAddingGenre(true); setNewGenreName(""); }}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors ml-2"
+              >
+                <Plus size={16} />
+              </button>
+            )}
           </div>
-          <div className="flex flex-col gap-2">
+          {genreSectionOpen && <div className="flex flex-col gap-2">
             {(() => {
               return genres.map((g, idx) => (
                 <div key={g.id} className="flex items-center gap-2 py-1">
@@ -645,7 +658,7 @@ export default function SettingsPage() {
             {genres.length === 0 && !addingGenre && (
               <p className="text-sm text-muted-foreground">+ボタンでジャンルを追加できます</p>
             )}
-          </div>
+          </div>}
         </section>
 
         {genres.length > 0 && (
@@ -677,79 +690,130 @@ export default function SettingsPage() {
           </section>
         )}
 
-        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">地域タグ管理</h2>
-            <button
-              onClick={() => { setAddingRegion(true); setNewRegionName(""); }}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {regions.map((r, idx) => (
-              <div key={r.id} className="flex items-center gap-2 py-1">
-                {editingRegionId === r.id ? (
-                  <>
-                    <input
-                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                      value={editingRegionName}
-                      onChange={(e) => setEditingRegionName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleEditRegion(r.id); if (e.key === "Escape") setEditingRegionId(null); }}
-                      autoFocus
-                    />
-                    <button onClick={() => handleEditRegion(r.id)} className="p-1.5 text-primary transition-colors">
-                      <Check size={15} />
-                    </button>
-                    <button onClick={() => setEditingRegionId(null)} className="p-1.5 text-muted-foreground transition-colors">
-                      <X size={15} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex flex-col">
-                      <button onClick={() => moveRegion(idx, -1)} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
-                        <ArrowUp size={12} />
-                      </button>
-                      <button onClick={() => moveRegion(idx, 1)} disabled={idx === regions.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
-                        <ArrowDown size={12} />
-                      </button>
-                    </div>
-                    <span className="flex-1 text-sm">{r.name}</span>
-                    <button onClick={() => { setEditingRegionId(r.id); setEditingRegionName(r.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                      <Pencil size={15} />
-                    </button>
-                    <button onClick={() => handleDeleteRegion(r.id, r.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                      <Trash2 size={15} />
-                    </button>
-                  </>
+        {/* 中地域タグ管理 */}
+        {(() => {
+          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+          return (
+            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 flex-1 text-left"
+                  onClick={() => setBroadRegionSectionOpen((v) => !v)}
+                >
+                  <h2 className="font-semibold flex-1">中地域タグ管理</h2>
+                  {broadRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                </button>
+                {broadRegionSectionOpen && (
+                  <button
+                    onClick={() => { setAddingRegion(true); setNewRegionName(""); }}
+                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors ml-2"
+                  >
+                    <Plus size={16} />
+                  </button>
                 )}
               </div>
-            ))}
-            {addingRegion && (
-              <div className="flex items-center gap-2 py-1">
-                <input
-                  className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                  placeholder="地域タグ名"
-                  value={newRegionName}
-                  onChange={(e) => setNewRegionName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddRegion(); if (e.key === "Escape") setAddingRegion(false); }}
-                  autoFocus
-                />
-                <button onClick={handleAddRegion} className="p-1.5 text-primary transition-colors">
-                  <Check size={15} />
-                </button>
-                <button onClick={() => setAddingRegion(false)} className="p-1.5 text-muted-foreground transition-colors">
-                  <X size={15} />
+              {broadRegionSectionOpen && (
+                <div className="flex flex-col gap-2">
+                  {broadRegions.map((r, idx) => (
+                    <div key={r.id} className="flex items-center gap-2 py-1">
+                      {editingRegionId === r.id ? (
+                        <>
+                          <input
+                            className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                            value={editingRegionName}
+                            onChange={(e) => setEditingRegionName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleEditRegion(r.id); if (e.key === "Escape") setEditingRegionId(null); }}
+                            autoFocus
+                          />
+                          <button onClick={() => handleEditRegion(r.id)} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                          <button onClick={() => setEditingRegionId(null)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex flex-col">
+                            <button onClick={() => moveRegion(regions.indexOf(r), -1)} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={12} /></button>
+                            <button onClick={() => moveRegion(regions.indexOf(r), 1)} disabled={idx === broadRegions.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={12} /></button>
+                          </div>
+                          <span className="flex-1 text-sm">{r.name}</span>
+                          <button onClick={() => { setEditingRegionId(r.id); setEditingRegionName(r.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></button>
+                          <button onClick={() => handleDeleteRegion(r.id, r.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={15} /></button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {addingRegion && (
+                    <div className="flex items-center gap-2 py-1">
+                      <input
+                        className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                        placeholder="中地域タグ名"
+                        value={newRegionName}
+                        onChange={(e) => setNewRegionName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleAddRegion(); if (e.key === "Escape") setAddingRegion(false); }}
+                        autoFocus
+                      />
+                      <button onClick={handleAddRegion} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                      <button onClick={() => setAddingRegion(false)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
+                    </div>
+                  )}
+                  {broadRegions.length === 0 && !addingRegion && (
+                    <p className="text-sm text-muted-foreground">+ボタンで中地域タグを追加できます</p>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
+        {/* 小地域タグ管理（50音順・並び替えなし） */}
+        {(() => {
+          const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+            .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+          return (
+            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 flex-1 text-left"
+                  onClick={() => setSpecificRegionSectionOpen((v) => !v)}
+                >
+                  <h2 className="font-semibold flex-1">小地域タグ管理</h2>
+                  {specificRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
               </div>
-            )}
-            {regions.length === 0 && !addingRegion && (
-              <p className="text-sm text-muted-foreground">+ボタンで地域タグを追加できます</p>
-            )}
-          </div>
-        </section>
+              {specificRegionSectionOpen && (
+                <div className="flex flex-col gap-2">
+                  {specificRegions.map((r) => (
+                    <div key={r.id} className="flex items-center gap-2 py-1">
+                      {editingRegionId === r.id ? (
+                        <>
+                          <input
+                            className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                            value={editingRegionName}
+                            onChange={(e) => setEditingRegionName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleEditRegion(r.id); if (e.key === "Escape") setEditingRegionId(null); }}
+                            autoFocus
+                          />
+                          <button onClick={() => handleEditRegion(r.id)} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                          <button onClick={() => setEditingRegionId(null)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-sm">{r.name}</span>
+                          <button onClick={() => { setEditingRegionId(r.id); setEditingRegionName(r.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></button>
+                          <button onClick={() => handleDeleteRegion(r.id, r.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={15} /></button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {specificRegions.length === 0 && (
+                    <p className="text-sm text-muted-foreground">CSVインポート時に自動生成されます</p>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">

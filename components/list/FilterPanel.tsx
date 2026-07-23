@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   GroupMember,
   Genre,
@@ -17,6 +18,7 @@ import {
   SEASON_LABELS,
 } from "@/types";
 import { useFilterStore } from "@/lib/store/filterStore";
+import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
@@ -54,12 +56,13 @@ function FilterChip({ selected, onClick, label, variant = "default" }: {
   );
 }
 
-function FilterSection({ title, children, collapsible = false }: {
+function FilterSection({ title, children, collapsible = false, defaultOpen = true }: {
   title: string;
   children: React.ReactNode;
   collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(!collapsible);
+  const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   return (
     <div className="flex flex-col gap-2">
       <button
@@ -83,9 +86,14 @@ const SITUATIONS: Situation[] = ["HOME", "OUTSIDE", "EITHER"];
 const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
+const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100];
 
 export function FilterPanel({ open, onClose, members, genres = [], regions = [] }: FilterPanelProps) {
   const store = useFilterStore();
+
+  const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+  const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
 
   const excludeChanged =
     store.excludeGenreIds.some((id) => !store.defaultExcludeGenreIds.includes(id)) ||
@@ -101,6 +109,14 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     store.regionIds.length > 0 ||
     store.nearbyKm !== null ||
     excludeChanged;
+
+  const sliderPos = store.nearbyKm === null ? 0 : DISTANCE_VALUES.indexOf(store.nearbyKm) + 1;
+  const distanceLabel = store.nearbyKm === null ? "指定なし" : `${store.nearbyKm}km以内`;
+
+  const handleSlider = (vals: number | readonly number[]) => {
+    const pos = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
+    store.setNearbyKm(pos === 0 ? null : DISTANCE_VALUES[pos - 1]);
+  };
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -167,9 +183,22 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             ))}
           </FilterSection>
 
-          {regions.length > 0 && (
-            <FilterSection title="地域タグ">
-              {regions.map((r) => (
+          {broadRegions.length > 0 && (
+            <FilterSection title="中地域タグ">
+              {broadRegions.map((r) => (
+                <FilterChip
+                  key={r.id}
+                  selected={store.regionIds.includes(r.id)}
+                  onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
+                  label={r.name}
+                />
+              ))}
+            </FilterSection>
+          )}
+
+          {specificRegions.length > 0 && (
+            <FilterSection title="小地域タグ" collapsible defaultOpen={false}>
+              {specificRegions.map((r) => (
                 <FilterChip
                   key={r.id}
                   selected={store.regionIds.includes(r.id)}
@@ -237,22 +266,32 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
           )}
 
           <FilterSection title="現在地からの距離">
-            <div className="w-full flex flex-wrap gap-2">
-              {([null, 1, 3, 5, 10] as (number | null)[]).map((km) => (
-                <button
-                  key={km ?? "none"}
-                  type="button"
-                  onClick={() => store.setNearbyKm(km)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                    store.nearbyKm === km
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/70"
-                  )}
-                >
-                  {km === null ? "指定なし" : `${km}km以内`}
-                </button>
-              ))}
+            <div className="w-full flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className={cn("text-sm font-medium", store.nearbyKm !== null && "text-primary")}>
+                  {distanceLabel}
+                </span>
+                {store.nearbyKm !== null && (
+                  <button
+                    type="button"
+                    onClick={() => store.setNearbyKm(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    クリア
+                  </button>
+                )}
+              </div>
+              <Slider
+                min={0}
+                max={DISTANCE_VALUES.length}
+                step={1}
+                value={[sliderPos]}
+                onValueChange={handleSlider}
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>指定なし</span>
+                <span>100km</span>
+              </div>
             </div>
           </FilterSection>
         </div>

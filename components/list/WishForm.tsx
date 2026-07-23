@@ -25,6 +25,8 @@ import {
   ScoreValue,
 } from "@/types";
 import { cn } from "@/lib/utils";
+import { isBroadRegionTag } from "@/lib/utils/regionTag";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface WishFormData {
   title: string;
@@ -61,6 +63,45 @@ interface WishFormProps {
   }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
+}
+
+function SpecificRegionSection({ regions, selectedIds, onToggle }: {
+  regions: Region[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        className="flex items-center gap-1 text-left"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Label className="pointer-events-none">小地域タグ（任意・複数選択可）</Label>
+        {open ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="flex flex-wrap gap-1.5">
+          {regions.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onToggle(r.id)}
+              className={cn(
+                "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                selectedIds.includes(r.id)
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const SITUATIONS: Situation[] = ["HOME", "OUTSIDE"];
@@ -355,28 +396,44 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
         </div>
       )}
 
-      {regions.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <Label>地域タグ（任意・複数選択可）</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {regions.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => toggleRegion(r.id)}
-                className={cn(
-                  "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
-                  form.regionIds.includes(r.id)
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {r.name}
-              </button>
-            ))}
+      {regions.length > 0 && (() => {
+        const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+        const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+          .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+        return (
+          <div className="flex flex-col gap-3">
+            {broadRegions.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <Label>中地域タグ（任意・複数選択可）</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {broadRegions.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => toggleRegion(r.id)}
+                      className={cn(
+                        "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                        form.regionIds.includes(r.id)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {r.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {specificRegions.length > 0 && (
+              <SpecificRegionSection
+                regions={specificRegions}
+                selectedIds={form.regionIds}
+                onToggle={toggleRegion}
+              />
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="flex gap-2 mt-2">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
