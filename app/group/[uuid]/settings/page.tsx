@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
-  const { wishes, createWish, updateWish } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
+  const { wishes, loading: wishesLoading, createWish, updateWish } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
   const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
@@ -49,8 +49,8 @@ export default function SettingsPage() {
   const [editingNickname, setEditingNickname] = useState("");
   const [addingMember, setAddingMember] = useState(false);
   const [newNickname, setNewNickname] = useState("");
-  const { genres, createGenre, updateGenre, deleteGenre, reorderGenres } = useGenres(uuid);
-  const { regions, createRegion, updateRegion, deleteRegion, reorderRegions } = useRegions(uuid);
+  const { genres, loading: genresLoading, createGenre, updateGenre, deleteGenre, reorderGenres } = useGenres(uuid);
+  const { regions, loading: regionsLoading, createRegion, updateRegion, deleteRegion, reorderRegions } = useRegions(uuid);
   const { items: trashItems, loading: trashLoading, fetchTrash, restoreWish, permanentDelete, emptyTrash } = useTrash(uuid);
   const { logs: importLogs, loading: logsLoading, error: logsError, fetchLogs } = useCsvImportLogs(uuid);
   const { retryLocationEnrichment } = useCsvImport(uuid);
@@ -382,9 +382,17 @@ export default function SettingsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const pageLoading = !group || wishesLoading || genresLoading || regionsLoading;
+
   return (
     <div className="flex flex-col min-h-screen pb-16">
       <TopBar title="設定" />
+      {pageLoading && (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      )}
+      {pageLoading ? null :
 
       <div className="flex-1 flex flex-col gap-6 p-4 pb-8 max-w-md mx-auto w-full">
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
@@ -1203,7 +1211,7 @@ export default function SettingsPage() {
             {copied ? "コピーしました" : "招待URLをコピー"}
           </Button>
         </section>
-      </div>
+      </div>}
 
       <BottomNav groupId={uuid} />
     </div>
