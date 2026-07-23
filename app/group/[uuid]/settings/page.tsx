@@ -742,14 +742,12 @@ export default function SettingsPage() {
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <div className="flex items-center">
             <h2 className="font-semibold flex-1">ジャンル管理</h2>
-            {genreSectionOpen && (
-              <button
-                onClick={() => { setAddingGenre(true); setNewGenreName(""); }}
-                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Plus size={16} />
-              </button>
-            )}
+            <button
+              onClick={() => { setAddingGenre(true); setNewGenreName(""); }}
+              className={cn("p-1.5 text-muted-foreground hover:text-foreground transition-colors", !genreSectionOpen && "invisible")}
+            >
+              <Plus size={16} />
+            </button>
             <button
               type="button"
               className="p-1.5"
@@ -869,14 +867,12 @@ export default function SettingsPage() {
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
               <div className="flex items-center">
                 <h2 className="font-semibold flex-1">中地域タグ管理</h2>
-                {broadRegionSectionOpen && (
-                  <button
-                    onClick={() => { setAddingBroadRegion(true); setNewBroadRegionName(""); }}
-                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
+                <button
+                  onClick={() => { setAddingBroadRegion(true); setNewBroadRegionName(""); }}
+                  className={cn("p-1.5 text-muted-foreground hover:text-foreground transition-colors", !broadRegionSectionOpen && "invisible")}
+                >
+                  <Plus size={16} />
+                </button>
                 <button
                   type="button"
                   className="p-1.5"
@@ -992,14 +988,12 @@ export default function SettingsPage() {
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
               <div className="flex items-center">
                 <h2 className="font-semibold flex-1">小地域タグ管理</h2>
-                {specificRegionSectionOpen && (
-                  <button
-                    onClick={() => { setAddingSpecificRegion(true); setNewSpecificRegionName(""); }}
-                    className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Plus size={16} />
-                  </button>
-                )}
+                <button
+                  onClick={() => { setAddingSpecificRegion(true); setNewSpecificRegionName(""); }}
+                  className={cn("p-1.5 text-muted-foreground hover:text-foreground transition-colors", !specificRegionSectionOpen && "invisible")}
+                >
+                  <Plus size={16} />
+                </button>
                 <button
                   type="button"
                   className="p-1.5"
