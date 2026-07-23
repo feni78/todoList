@@ -1100,7 +1100,7 @@ export default function SettingsPage() {
             const hasBroad = w.regions.some((r) => isBroadRegionTag(r.name));
             const hasSpecific = w.regions.some((r) => !isBroadRegionTag(r.name));
             return !hasBroad || !hasSpecific;
-          });
+          }).sort((a, b) => a.id.localeCompare(b.id));
           const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
           const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
             .sort((a, b) => {
@@ -1253,7 +1253,7 @@ export default function SettingsPage() {
         {(() => {
           const locationlessWishes = wishes.filter((w) => {
             return w.latitude == null || w.longitude == null;
-          });
+          }).sort((a, b) => a.id.localeCompare(b.id));
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
               <div className="flex items-center">
