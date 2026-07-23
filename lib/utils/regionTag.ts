@@ -42,12 +42,12 @@ export function specificRegionSortKey(name: string): [number, string] {
 
 // グループ番号 → 選択済み / 未選択のTailwindクラス
 const REGION_GROUP_COLORS: Record<number, { selected: string; unselected: string }> = {
-  0: { selected: "bg-amber-200 text-amber-800",         unselected: "bg-amber-50 text-amber-600 hover:bg-amber-100" },   // 千葉
-  1: { selected: "bg-blue-200 text-blue-800",           unselected: "bg-blue-50 text-blue-600 hover:bg-blue-100" },      // 東京23区
-  2: { selected: "bg-green-200 text-green-800",         unselected: "bg-green-50 text-green-600 hover:bg-green-100" },   // 埼玉
-  3: { selected: "bg-teal-200 text-teal-800",           unselected: "bg-teal-50 text-teal-600 hover:bg-teal-100" },      // 神奈川
-  4: { selected: "bg-violet-200 text-violet-800",       unselected: "bg-violet-50 text-violet-600 hover:bg-violet-100" },// 東京市部
-  5: { selected: "bg-orange-200 text-orange-800",       unselected: "bg-orange-50 text-orange-600 hover:bg-orange-100" },// 茨城
+  0: { selected: "bg-amber-200 text-gray-900",         unselected: "bg-amber-50 text-gray-700 hover:bg-amber-100" },   // 千葉
+  1: { selected: "bg-blue-200 text-gray-900",           unselected: "bg-blue-50 text-gray-700 hover:bg-blue-100" },      // 東京23区
+  2: { selected: "bg-green-200 text-gray-900",         unselected: "bg-green-50 text-gray-700 hover:bg-green-100" },   // 埼玉
+  3: { selected: "bg-teal-200 text-gray-900",           unselected: "bg-teal-50 text-gray-700 hover:bg-teal-100" },      // 神奈川
+  4: { selected: "bg-violet-200 text-gray-900",       unselected: "bg-violet-50 text-gray-700 hover:bg-violet-100" },// 東京市部
+  5: { selected: "bg-orange-200 text-gray-900",       unselected: "bg-orange-50 text-gray-700 hover:bg-orange-100" },// 茨城
 };
 
 export function specificRegionColorClasses(name: string, selected: boolean): string {
