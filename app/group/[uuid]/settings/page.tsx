@@ -362,17 +362,18 @@ export default function SettingsPage() {
       }
     }
 
+    const supabase = createClient();
     const specificRegs = regions.filter((r) => !isBroadRegionTag(r.name));
     const regionNameGroups = new Map<string, typeof regions>();
     for (const r of specificRegs) {
-      const group = regionNameGroups.get(r.name) ?? [];
+      const key = r.name.trim().normalize("NFC");
+      const group = regionNameGroups.get(key) ?? [];
       group.push(r);
-      regionNameGroups.set(r.name, group);
+      regionNameGroups.set(key, group);
     }
     for (const group of regionNameGroups.values()) {
       if (group.length < 2) continue;
       const [keep, ...dups] = group;
-      const supabase = createClient();
       for (const dup of dups) {
         const affected = wishes.filter((w) => w.regions.some((r) => r.id === dup.id));
         for (const w of affected) {
@@ -382,10 +383,10 @@ export default function SettingsPage() {
           ];
           await updateWish(w.id, { regionIds: newIds });
         }
-        // ゴミ箱内のwishなど、stateに含まれない参照も含めて全削除
-        await supabase.from("wish_regions").delete().eq("region_id", dup.id);
+        const { error: wrErr } = await supabase.from("wish_regions").delete().eq("region_id", dup.id);
+        if (wrErr) { toast.error(`wish_regions削除失敗: ${wrErr.message}`); continue; }
         try { await deleteRegion(dup.id); mergedRegions++; }
-        catch { toast.error(`地域タグ「${dup.name}」の削除に失敗しました`); }
+        catch (e) { toast.error(`地域タグ「${dup.name}」削除失敗: ${e instanceof Error ? e.message : String(e)}`); }
       }
     }
 
