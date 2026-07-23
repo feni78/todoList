@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -12,6 +12,8 @@ import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
+import { findStation } from "@/lib/utils/station";
+import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Star, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,10 +32,62 @@ export default function HistoryPage() {
 
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
+  const nearbyKmRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const km = filterStore.nearbyKm;
+    const stationName = filterStore.stationName;
+    nearbyKmRef.current = km;
+    if (km === null) { setNearbyWishIds(null); return; }
+
+    if (stationName !== null) {
+      const station = findStation(stationName);
+      if (!station) { setNearbyWishIds(null); return; }
+      (async () => {
+        if (nearbyKmRef.current !== km) return;
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase.rpc("get_wishes_by_distance", {
+            p_group_id: uuid, p_lat: station.lat, p_lng: station.lng, p_max_km: km, p_limit: 500,
+          });
+          if (nearbyKmRef.current !== km) return;
+          if (error) throw error;
+          setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
+        } catch {
+          if (nearbyKmRef.current !== km) return;
+          toast.error("距離フィルターの取得に失敗しました");
+          setNearbyWishIds(null);
+        }
+      })();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      if (nearbyKmRef.current !== km) return;
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.rpc("get_wishes_by_distance", {
+          p_group_id: uuid, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_max_km: km, p_limit: 500,
+        });
+        if (nearbyKmRef.current !== km) return;
+        if (error) throw error;
+        setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
+      } catch {
+        if (nearbyKmRef.current !== km) return;
+        toast.error("現在地の取得に失敗しました");
+        setNearbyWishIds(null);
+      }
+    }, () => {
+      toast.error("位置情報の取得を許可してください");
+      setNearbyWishIds(null);
+    });
+  }, [filterStore.nearbyKm, filterStore.stationName, uuid]);
   const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
 
   const {
     memberIds: fMemberIds,
+    situations: fSituations,
     budgets: fBudgets,
     durations: fDurations,
     seasons: fSeasons,
@@ -43,10 +97,12 @@ export default function HistoryPage() {
     regionIds: fRegionIds,
     excludeRegionIds: fExcludeRegionIds,
     searchQuery: fSearchQuery,
+    nearbyKm: fNearbyKm,
   } = filterStore;
 
   const hasFilter =
     fMemberIds.length > 0 ||
+    fSituations.length > 0 ||
     fBudgets.length > 0 ||
     fDurations.length > 0 ||
     fSeasons.length > 0 ||
@@ -54,12 +110,14 @@ export default function HistoryPage() {
     fExcludeGenreIds.length > 0 ||
     fRegionIds.length > 0 ||
     fExcludeRegionIds.length > 0 ||
-    !!fSearchQuery;
+    !!fSearchQuery ||
+    fNearbyKm !== null;
 
   const filtered = useMemo(() => {
     let result = [...wishes];
     if (showFavoriteOnly) result = result.filter((w) => w.isFavorite);
     if (fMemberIds.length > 0) result = result.filter((w) => fMemberIds.includes(w.memberId));
+    if (fSituations.length > 0) result = result.filter((w) => fSituations.includes(w.situation));
     if (fBudgets.length > 0) result = result.filter((w) => w.budget && fBudgets.includes(w.budget));
     if (fDurations.length > 0) result = result.filter((w) => w.duration && fDurations.includes(w.duration));
     if (fSeasons.length > 0) result = result.filter((w) => w.seasons.some((s) => fSeasons.includes(s)));
@@ -76,6 +134,7 @@ export default function HistoryPage() {
     if (fBroadIds.length > 0) result = result.filter((w) => w.regions.some((r) => fBroadIds.includes(r.id)));
     if (fSpecificIds.length > 0) result = result.filter((w) => w.regions.some((r) => fSpecificIds.includes(r.id)));
     if (fExcludeRegionIds.length > 0) result = result.filter((w) => !w.regions.some((r) => fExcludeRegionIds.includes(r.id)));
+    if (nearbyWishIds !== null) result = result.filter((w) => nearbyWishIds.has(w.id));
     if (fSearchQuery) {
       const q = fSearchQuery.toLowerCase();
       result = result.filter((w) => w.title.toLowerCase().includes(q));
@@ -88,7 +147,7 @@ export default function HistoryPage() {
       result.sort((a, b) => new Date(b.doneAt ?? 0).getTime() - new Date(a.doneAt ?? 0).getTime());
     }
     return result;
-  }, [wishes, showFavoriteOnly, sortOrder, fMemberIds, fBudgets, fDurations, fSeasons, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery, regions]);
+  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery, regions]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });

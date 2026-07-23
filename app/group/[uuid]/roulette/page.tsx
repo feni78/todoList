@@ -25,7 +25,7 @@ type RouletteMode = "normal" | "special";
 export default function RoulettePage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
-  const { wishes, changeStatus } = useWishes(uuid);
+  const { wishes, changeStatus } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
   const { mode, setMode, settings, devMode, filter } = useRouletteStore();
@@ -74,6 +74,7 @@ export default function RoulettePage() {
   const hasActiveFilters =
     filter.memberIds.length > 0 ||
     filter.situations.length > 0 ||
+    filter.statuses.includes("DONE") ||
     filter.budgets.length > 0 ||
     filter.durations.length > 0 ||
     filter.seasons.length > 0 ||

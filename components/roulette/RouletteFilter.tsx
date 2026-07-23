@@ -13,6 +13,7 @@ import {
   Budget,
   Duration,
   Season,
+  Status,
   SITUATION_LABELS,
   BUDGET_LABELS,
   DURATION_LABELS,
@@ -120,6 +121,7 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
   const hasFilters =
     filter.memberIds.length > 0 ||
     filter.situations.length > 0 ||
+    filter.statuses.includes("DONE") ||
     filter.budgets.length > 0 ||
     filter.durations.length > 0 ||
     filter.seasons.length > 0 ||
@@ -136,6 +138,14 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
         </SheetHeader>
 
         <div className="flex flex-col gap-5">
+          <Section title="実施済み">
+            <FilterChip
+              selected={filter.statuses.includes("DONE")}
+              onClick={() => setFilter({ statuses: toggle(filter.statuses as Status[], "DONE" as Status) as Status[] })}
+              label="実施済みを含む"
+            />
+          </Section>
+
           {members.length > 0 && (
             <Section title="登録者">
               {members.map((m) => (
