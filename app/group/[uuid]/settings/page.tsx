@@ -824,17 +824,20 @@ export default function SettingsPage() {
 
         {genres.length > 0 && (
           <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-            <button
-              type="button"
-              className="flex items-center gap-1 text-left"
-              onClick={() => setDefaultExcludeGenreSectionOpen((v) => !v)}
-            >
+            <div className="flex items-center">
               <div className="flex-1">
                 <h2 className="font-semibold">デフォルト非表示ジャンル</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">タップしたジャンルはデフォルトで除外されます</p>
               </div>
-              {defaultExcludeGenreSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
-            </button>
+              <span className="p-1.5 invisible"><Plus size={16} /></span>
+              <button
+                type="button"
+                className="p-1.5"
+                onClick={() => setDefaultExcludeGenreSectionOpen((v) => !v)}
+              >
+                {defaultExcludeGenreSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+              </button>
+            </div>
             {defaultExcludeGenreSectionOpen && (
               <div className="flex flex-wrap gap-2">
                 {genres.map((g) => {
@@ -938,17 +941,20 @@ export default function SettingsPage() {
           if (broadRegions.length === 0) return null;
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <button
-                type="button"
-                className="flex items-center gap-1 text-left"
-                onClick={() => setDefaultExcludeRegionSectionOpen((v) => !v)}
-              >
+              <div className="flex items-center">
                 <div className="flex-1">
                   <h2 className="font-semibold">デフォルト非表示中地域タグ</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">タップした中地域タグはデフォルトで除外されます</p>
                 </div>
-                {defaultExcludeRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
-              </button>
+                <span className="p-1.5 invisible"><Plus size={16} /></span>
+                <button
+                  type="button"
+                  className="p-1.5"
+                  onClick={() => setDefaultExcludeRegionSectionOpen((v) => !v)}
+                >
+                  {defaultExcludeRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                </button>
+              </div>
               {defaultExcludeRegionSectionOpen && (
                 <div className="flex flex-wrap gap-2">
                   {broadRegions.map((r) => {
@@ -1069,19 +1075,22 @@ export default function SettingsPage() {
           if (regions.length === 0) return null;
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <button
-                type="button"
-                className="flex items-center gap-1 text-left"
-                onClick={() => setRegionlessSectionOpen((v) => !v)}
-              >
+              <div className="flex items-center">
                 <div className="flex-1">
                   <h2 className="font-semibold">地域タグ未設定</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {regionlessWishes.length > 0 ? `${regionlessWishes.length}件未設定` : "全件設定済み"}
                   </p>
                 </div>
-                {regionlessSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
-              </button>
+                <span className="p-1.5 invisible"><Plus size={16} /></span>
+                <button
+                  type="button"
+                  className="p-1.5"
+                  onClick={() => setRegionlessSectionOpen((v) => !v)}
+                >
+                  {regionlessSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                </button>
+              </div>
               {regionlessSectionOpen && (
                 <div className="flex flex-col gap-2">
                   {regionlessWishes.length === 0 ? (
