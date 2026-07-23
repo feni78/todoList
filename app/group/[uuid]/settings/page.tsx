@@ -1170,7 +1170,7 @@ export default function SettingsPage() {
                           <button
                             type="button"
                             className="px-2 py-2.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                            onClick={() => deleteWish(w.id)}
+                            onClick={() => { if (confirm(`「${w.title}」を削除しますか？`)) deleteWish(w.id); }}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1318,7 +1318,7 @@ export default function SettingsPage() {
                           <button
                             type="button"
                             className="px-2 py-2.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                            onClick={() => deleteWish(w.id)}
+                            onClick={() => { if (confirm(`「${w.title}」を削除しますか？`)) deleteWish(w.id); }}
                           >
                             <Trash2 size={14} />
                           </button>
