@@ -138,10 +138,13 @@ export default function SettingsPage() {
       title: w.title,
       situation: w.situation,
       status: w.status,
-      memo: w.memo,
-      budget: w.budget,
-      duration: w.duration,
+      memo: w.memo ?? null,
+      budget: w.budget ?? null,
+      duration: w.duration ?? null,
       seasons: w.seasons,
+      genres: w.genres.map((g) => g.name),
+      regions: w.regions.map((r) => r.name),
+      isFavorite: w.isFavorite,
     }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -159,8 +162,27 @@ export default function SettingsPage() {
     setImporting(true);
     try {
       const text = await file.text();
-      const data = JSON.parse(text) as Partial<Wish>[];
+      const data = JSON.parse(text) as (Partial<Wish> & { genres?: string[]; regions?: string[] })[];
       if (!Array.isArray(data)) throw new Error("不正なフォーマットです");
+
+      const supabase = createClient();
+      // ジャンル・地域名→IDキャッシュ（インポート中に作成したものも追記）
+      const genreCache = new Map(genres.map((g) => [g.name, g.id]));
+      const regionCache = new Map(regions.map((r) => [r.name, r.id]));
+
+      const resolveIds = async (names: string[], cache: Map<string, string>, table: "genres" | "regions") => {
+        const ids: string[] = [];
+        for (const name of names) {
+          if (cache.has(name)) {
+            ids.push(cache.get(name)!);
+          } else {
+            const { data: created } = await supabase.from(table).insert({ group_id: uuid, name }).select("id").single();
+            if (created) { cache.set(name, created.id as string); ids.push(created.id as string); }
+          }
+        }
+        return ids;
+      };
+
       let imported = 0;
       let skipped = 0;
       for (const item of data) {
@@ -176,6 +198,10 @@ export default function SettingsPage() {
             JSON.stringify([...(w.seasons ?? [])].sort()) === JSON.stringify([...(item.seasons ?? [])].sort())
         );
         if (isDuplicate) { skipped++; continue; }
+
+        const genreIds = await resolveIds(item.genres ?? [], genreCache, "genres");
+        const regionIds = await resolveIds(item.regions ?? [], regionCache, "regions");
+
         await createWish({
           title: item.title,
           situation: item.situation ?? "HOME",
@@ -184,6 +210,8 @@ export default function SettingsPage() {
           budget: item.budget,
           duration: item.duration,
           seasons: item.seasons ?? [],
+          genreIds,
+          regionIds,
         });
         imported++;
       }
@@ -486,7 +514,7 @@ export default function SettingsPage() {
           <p className="text-sm text-muted-foreground">タスクをJSONファイルでエクスポート・インポートできます</p>
           <div className="flex flex-col gap-2">
             <Button variant="outline" onClick={handleExport} className="w-full gap-2">
-              <Download size={16} />
+              <Upload size={16} />
               エクスポート（{wishes.length}件）
             </Button>
             <Button
@@ -495,7 +523,7 @@ export default function SettingsPage() {
               disabled={importing}
               className="w-full gap-2"
             >
-              <Upload size={16} />
+              <Download size={16} />
               {importing ? "インポート中..." : "インポート"}
             </Button>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
