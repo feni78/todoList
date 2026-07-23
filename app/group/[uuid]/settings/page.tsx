@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
-import { isBroadRegionTag, specificRegionSortKey } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
@@ -1216,7 +1216,7 @@ export default function SettingsPage() {
                                         }}
                                         className={cn(
                                           "px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
-                                          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                          specificRegionColorClasses(r.name, selected)
                                         )}
                                       >
                                         {r.name}
