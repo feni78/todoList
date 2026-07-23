@@ -155,10 +155,11 @@ async function enrichWithPlaces(
     const batch = items.slice(i, i + CONCURRENCY);
     await Promise.all(batch.map(async ({ wishId, url, title }) => {
       try {
-        // すでにplace_idがある場合はスキップ（カウントしない）
+        // すでに座標がある場合はスキップ（カウントしない）
         const { data: existing } = await supabase
-          .from("wishes").select("place_id").eq("id", wishId).single();
-        if ((existing as { place_id: string | null } | null)?.place_id) return;
+          .from("wishes").select("latitude,longitude").eq("id", wishId).single();
+        const ex = existing as { latitude: number | null; longitude: number | null } | null;
+        if (ex?.latitude != null && ex?.longitude != null) return;
 
         const resp = await fetch("/api/places/lookup", {
           method: "POST",
@@ -356,7 +357,7 @@ async function retryLocationEnrichmentImpl(
   supabase: ReturnType<typeof createClient>,
   groupId: string
 ): Promise<LocationEnrichResult | null> {
-  const PAGE = 1000;
+  const PAGE = 200;
   let allRows: { id: string; title: string; memo: string | null }[] = [];
   let from = 0;
   while (true) {
@@ -365,7 +366,8 @@ async function retryLocationEnrichmentImpl(
       .select("id, title, memo")
       .eq("group_id", groupId)
       .is("deleted_at", null)
-      .is("place_id", null)
+      .or("latitude.is.null,longitude.is.null")
+      .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw error;
     allRows = allRows.concat((data ?? []) as typeof allRows);
