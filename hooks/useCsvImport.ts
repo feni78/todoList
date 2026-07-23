@@ -13,9 +13,12 @@ export interface CsvRow {
   url: string;
 }
 
+export type ImportMode = "normal" | "done";
+
 export interface FileImportConfig {
   file: File;
   genreIds: string[];
+  importMode?: ImportMode;
 }
 
 export interface SkippedItem {
@@ -255,6 +258,12 @@ function scoreFromMemo(memo: string): ScoreValue {
   return 5;
 }
 
+function scoreFromStars(memo: string): ScoreValue {
+  if (memo.includes("★★★★★") || memo.includes("★★★★☆")) return 30;
+  if (memo.includes("★★★★")) return 10;
+  return 5;
+}
+
 function buildMemo(csvMemo: string, url: string): string | null {
   if (!csvMemo && !url) return null;
   if (!csvMemo) return url;
@@ -322,7 +331,7 @@ async function fetchExisting(supabase: ReturnType<typeof createClient>, groupId:
 
 async function insertBatch(
   supabase: ReturnType<typeof createClient>,
-  rows: { id: string; group_id: string; member_id: string; title: string; situation: string; status: string; memo: string | null }[]
+  rows: { id: string; group_id: string; member_id: string; title: string; situation: string; status: string; done_at: string | null; memo: string | null }[]
 ): Promise<void> {
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
@@ -527,11 +536,13 @@ export function useCsvImport(groupId: string) {
   // ドライラン：DB書き込みなしで件数と要確認アイテムを返す
   const analyzeImport = useCallback(async (configs: FileImportConfig[]): Promise<AnalyzeResult> => {
     const supabase = createClient();
+    const importMode: ImportMode = configs[0]?.importMode ?? "normal";
 
     const allItems: { row: CsvRow; genreIds: string[] }[] = [];
     for (const config of configs) {
       const text = await readFileAsText(config.file);
       for (const row of parseCsvText(text)) {
+        if (importMode === "done" && !row.memo.includes("★")) continue;
         allItems.push({ row, genreIds: config.genreIds });
       }
     }
@@ -606,12 +617,15 @@ export function useCsvImport(groupId: string) {
       if (!entry) throw new Error("メンバー情報が見つかりません");
 
       const supabase = createClient();
+      const importMode: ImportMode = configs[0]?.importMode ?? "normal";
+      const doneAt = importMode === "done" ? new Date().toISOString() : null;
 
       interface ParsedItem { row: CsvRow; genreIds: string[]; }
       const allItems: ParsedItem[] = [];
       for (const config of configs) {
         const text = await readFileAsText(config.file);
         for (const row of parseCsvText(text)) {
+          if (importMode === "done" && !row.memo.includes("★")) continue;
           allItems.push({ row, genreIds: config.genreIds });
         }
       }
@@ -631,7 +645,7 @@ export function useCsvImport(groupId: string) {
         const { row } = item;
         if (!row.title) continue;
 
-        const score = scoreFromMemo(row.memo);
+        const score = importMode === "done" ? scoreFromStars(row.memo) : scoreFromMemo(row.memo);
         const memoText = buildMemo(row.memo, row.url);
 
         const matchByUrl = row.url ? urlToExisting.get(normalizeUrl(row.url)) : undefined;
@@ -673,7 +687,8 @@ export function useCsvImport(groupId: string) {
             member_id: entry.memberId,
             title: item.row.title,
             situation: "OUTSIDE" as const,
-            status: "PENDING" as const,
+            status: (importMode === "done" ? "DONE" : "PENDING") as "DONE" | "PENDING",
+            done_at: doneAt,
             memo: item.memoText ?? null,
           })));
 

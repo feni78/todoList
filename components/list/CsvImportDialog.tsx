@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Genre } from "@/types";
 import {
-  useCsvImport, FileImportConfig, ImportResult, AnalyzeResult, UpdatePreviewItem, parseCsvText, LocationEnrichResult,
+  useCsvImport, FileImportConfig, ImportMode, ImportResult, AnalyzeResult, UpdatePreviewItem, parseCsvText, LocationEnrichResult,
 } from "@/hooks/useCsvImport";
 import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -122,6 +122,7 @@ function LocationResultSection({ result }: { result: LocationEnrichResult }) {
 }
 
 export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genres }: Props) {
+  const [importMode, setImportMode] = useState<ImportMode>("normal");
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [globalGenreIds, setGlobalGenreIds] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("idle");
@@ -160,7 +161,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
     }));
 
   const buildConfigs = (): FileImportConfig[] =>
-    entries.map((e) => ({ file: e.file, genreIds: [...new Set([...globalGenreIds, ...e.genreIds])] }));
+    entries.map((e) => ({ file: e.file, genreIds: [...new Set([...globalGenreIds, ...e.genreIds])], importMode }));
 
   const handleAnalyze = async () => {
     setMode("analyzing");
@@ -193,10 +194,22 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
     setEntries([]);
     setGlobalGenreIds([]);
     setMode("idle");
+    setImportMode("normal");
     setAnalysis(null);
     setResult(null);
     setError(null);
     onClose();
+  };
+
+  const handleTabChange = (tab: ImportMode) => {
+    if (tab === importMode) return;
+    setImportMode(tab);
+    setEntries([]);
+    setGlobalGenreIds([]);
+    setMode("idle");
+    setAnalysis(null);
+    setResult(null);
+    setError(null);
   };
 
   const totalRows = entries.reduce((sum, e) => sum + (e.rowCount ?? 0), 0);
@@ -207,6 +220,25 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
         <DialogHeader>
           <DialogTitle>CSV一括取り込み</DialogTitle>
         </DialogHeader>
+
+        {(mode === "idle" || mode === "analyzing") && (
+          <div className="flex rounded-lg border border-border overflow-hidden text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => handleTabChange("normal")}
+              className={cn("flex-1 py-2 transition-colors", importMode === "normal" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70")}
+            >
+              通常
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("done")}
+              className={cn("flex-1 py-2 transition-colors border-l border-border", importMode === "done" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70")}
+            >
+              実施済み（Google Maps）
+            </button>
+          </div>
+        )}
 
         {/* 結果画面 */}
         {mode === "done" && result && (
@@ -335,6 +367,11 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
         {/* ファイル選択画面 */}
         {(mode === "idle" || mode === "analyzing") && (
           <div className="flex flex-col gap-4">
+            {importMode === "done" && (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                メモに「★」が含まれる行のみ取り込みます。★の数で金（★★★★★/★★★★☆）・銀（★★★★）・銅（その他）を自動設定し、実施済みとして登録します。
+              </p>
+            )}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
