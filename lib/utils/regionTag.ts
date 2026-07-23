@@ -31,8 +31,8 @@ export function specificRegionSortKey(name: string): [number, string] {
   if (pref === "東京都" && TOKYO_23KU.has(city)) return [1, name];
   if (pref === "埼玉県") return [2, name];
   if (pref === "神奈川県") return [3, name];
-  if (pref === "茨城県") return [4, name];
-  if (pref === "東京都") return [5, name];
+  if (pref === "東京都") return [4, name];
+  if (pref === "茨城県") return [5, name];
   if (pref) {
     const idx = PREFECTURE_JIS_ORDER.indexOf(pref);
     if (idx >= 0) return [6 + idx, name];
