@@ -777,7 +777,8 @@ export default function SettingsPage() {
           const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                <h2 className="font-semibold flex-1">中地域タグ管理</h2>
                 {broadRegionSectionOpen && (
                   <button
                     onClick={() => { setAddingBroadRegion(true); setNewBroadRegionName(""); }}
@@ -788,10 +789,9 @@ export default function SettingsPage() {
                 )}
                 <button
                   type="button"
-                  className="flex items-center gap-1 flex-1 text-left"
+                  className="p-1.5"
                   onClick={() => setBroadRegionSectionOpen((v) => !v)}
                 >
-                  <h2 className="font-semibold flex-1">中地域タグ管理</h2>
                   {broadRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
               </div>
@@ -900,7 +900,8 @@ export default function SettingsPage() {
             });
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                <h2 className="font-semibold flex-1">小地域タグ管理</h2>
                 {specificRegionSectionOpen && (
                   <button
                     onClick={() => { setAddingSpecificRegion(true); setNewSpecificRegionName(""); }}
@@ -911,10 +912,9 @@ export default function SettingsPage() {
                 )}
                 <button
                   type="button"
-                  className="flex items-center gap-1 flex-1 text-left"
+                  className="p-1.5"
                   onClick={() => setSpecificRegionSectionOpen((v) => !v)}
                 >
-                  <h2 className="font-semibold flex-1">小地域タグ管理</h2>
                   {specificRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
               </div>
