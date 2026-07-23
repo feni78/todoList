@@ -158,17 +158,6 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
               <Star size={15} fill={wish.isFavorite ? "currentColor" : "none"} />
             </button>
           )}
-          {!selectionMode && otherUrl && (
-            <a
-              href={otherUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-muted-foreground hover:text-primary p-1.5 rounded-lg transition-colors"
-            >
-              <ExternalLink size={15} />
-            </a>
-          )}
           {!selectionMode && googleUrl && (
             <a
               href={googleUrl}
