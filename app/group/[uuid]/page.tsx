@@ -78,9 +78,11 @@ export default function ListPage() {
           p_max_km: km,
           p_limit: 500,
         });
+        if (nearbyKmRef.current !== km) return;
         if (error) throw error;
         setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
       } catch {
+        if (nearbyKmRef.current !== km) return;
         toast.error("現在地の取得に失敗しました");
         setNearbyWishIds(null);
       }
