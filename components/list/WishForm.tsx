@@ -68,7 +68,7 @@ interface WishFormProps {
 function SpecificRegionSection({ regions, selectedIds, onToggle }: {
   regions: Region[];
   selectedIds: string[];
-  onToggle: (id: string) => void;
+  onToggle: (id: string, isBroad: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -78,7 +78,7 @@ function SpecificRegionSection({ regions, selectedIds, onToggle }: {
         className="flex items-center gap-1 text-left"
         onClick={() => setOpen((v) => !v)}
       >
-        <Label className="pointer-events-none">小地域タグ（任意・複数選択可）</Label>
+        <Label className="pointer-events-none">小地域タグ（任意）</Label>
         {open ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
       </button>
       {open && (
@@ -87,7 +87,7 @@ function SpecificRegionSection({ regions, selectedIds, onToggle }: {
             <button
               key={r.id}
               type="button"
-              onClick={() => onToggle(r.id)}
+              onClick={() => onToggle(r.id, false)}
               className={cn(
                 "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
                 selectedIds.includes(r.id)
@@ -168,13 +168,20 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
     }));
   };
 
-  const toggleRegion = (regionId: string) => {
-    setForm((f) => ({
-      ...f,
-      regionIds: f.regionIds.includes(regionId)
-        ? f.regionIds.filter((id) => id !== regionId)
-        : [...f.regionIds, regionId],
-    }));
+  const toggleRegion = (regionId: string, isBroad: boolean) => {
+    setForm((f) => {
+      const selected = f.regionIds.includes(regionId);
+      if (selected) {
+        return { ...f, regionIds: f.regionIds.filter((id) => id !== regionId) };
+      }
+      if (isBroad) {
+        const specificIds = f.regionIds.filter((id) => !regions.some((r) => isBroadRegionTag(r.name) && r.id === id));
+        return { ...f, regionIds: [...specificIds, regionId] };
+      } else {
+        const broadIds = f.regionIds.filter((id) => regions.some((r) => isBroadRegionTag(r.name) && r.id === id));
+        return { ...f, regionIds: [...broadIds, regionId] };
+      }
+    });
   };
 
   const toggleGenre = (genreId: string) => {
@@ -404,13 +411,13 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
           <div className="flex flex-col gap-3">
             {broadRegions.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <Label>中地域タグ（任意・複数選択可）</Label>
+                <Label>中地域タグ（任意）</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {broadRegions.map((r) => (
                     <button
                       key={r.id}
                       type="button"
-                      onClick={() => toggleRegion(r.id)}
+                      onClick={() => toggleRegion(r.id, true)}
                       className={cn(
                         "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
                         form.regionIds.includes(r.id)
