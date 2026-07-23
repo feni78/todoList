@@ -14,13 +14,14 @@ import { useRegions } from "@/hooks/useRegions";
 import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
+import { useCsvImport } from "@/hooks/useCsvImport";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish } from "@/types";
-import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
+import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin } from "lucide-react";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -51,6 +52,7 @@ export default function SettingsPage() {
   const { regions, createRegion, updateRegion, deleteRegion, reorderRegions } = useRegions(uuid);
   const { items: trashItems, loading: trashLoading, fetchTrash, restoreWish, permanentDelete, emptyTrash } = useTrash(uuid);
   const { logs: importLogs, loading: logsLoading, error: logsError, fetchLogs } = useCsvImportLogs(uuid);
+  const { retryLocationEnrichment } = useCsvImport(uuid);
   const [trashOpen, setTrashOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export default function SettingsPage() {
   const [editingGenreName, setEditingGenreName] = useState("");
   const [addingGenre, setAddingGenre] = useState(false);
   const [newGenreName, setNewGenreName] = useState("");
+  const [retryingLocation, setRetryingLocation] = useState(false);
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
   const [editingRegionName, setEditingRegionName] = useState("");
   const [addingRegion, setAddingRegion] = useState(false);
@@ -328,6 +331,22 @@ export default function SettingsPage() {
     }
   };
 
+  const handleRetryLocation = async () => {
+    setRetryingLocation(true);
+    try {
+      const count = await retryLocationEnrichment();
+      if (count === 0) {
+        toast.success("位置情報未設定でGoogle MapsのURLを持つデータはありませんでした");
+      } else {
+        toast.success(`${count}件の位置情報取得を試みました`);
+      }
+    } catch {
+      toast.error("位置情報の再取得に失敗しました");
+    } finally {
+      setRetryingLocation(false);
+    }
+  };
+
   const handleCopyUrl = async () => {
     const url = `${window.location.origin}/group/${uuid}`;
     await navigator.clipboard.writeText(url);
@@ -431,6 +450,15 @@ export default function SettingsPage() {
               {importing ? "インポート中..." : "インポート"}
             </Button>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+            <Button
+              variant="outline"
+              onClick={handleRetryLocation}
+              disabled={retryingLocation}
+              className="w-full gap-2"
+            >
+              <MapPin size={16} />
+              {retryingLocation ? "取得中..." : "位置情報を再取得"}
+            </Button>
           </div>
         </section>
 

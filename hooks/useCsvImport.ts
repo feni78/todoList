@@ -329,6 +329,39 @@ async function insertGenresBatch(
   }
 }
 
+async function retryLocationEnrichmentImpl(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string
+): Promise<number> {
+  const PAGE = 1000;
+  let allRows: { id: string; title: string; memo: string | null }[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("wishes")
+      .select("id, title, memo")
+      .eq("group_id", groupId)
+      .is("deleted_at", null)
+      .is("place_id", null)
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    allRows = allRows.concat((data ?? []) as typeof allRows);
+    if ((data ?? []).length < PAGE) break;
+    from += PAGE;
+  }
+
+  const items: { wishId: string; url: string; title: string }[] = [];
+  for (const row of allRows) {
+    if (!row.memo) continue;
+    const urls = row.memo.match(/https?:\/\/[^\s]+/g) ?? [];
+    const googleUrl = urls.find((u) => u.includes("google.com/maps") || u.includes("maps.app.goo.gl"));
+    if (googleUrl) items.push({ wishId: row.id, url: googleUrl, title: row.title });
+  }
+
+  if (items.length > 0) await enrichWithPlaces(supabase, groupId, items);
+  return items.length;
+}
+
 export function useCsvImport(groupId: string) {
   // ドライラン：DB書き込みなしで件数と要確認アイテムを返す
   const analyzeImport = useCallback(async (configs: FileImportConfig[]): Promise<AnalyzeResult> => {
@@ -580,5 +613,10 @@ export function useCsvImport(groupId: string) {
     [groupId]
   );
 
-  return { analyzeImport, importFiles };
+  const retryLocationEnrichment = useCallback(async (): Promise<number> => {
+    const supabase = createClient();
+    return retryLocationEnrichmentImpl(supabase, groupId);
+  }, [groupId]);
+
+  return { analyzeImport, importFiles, retryLocationEnrichment };
 }
