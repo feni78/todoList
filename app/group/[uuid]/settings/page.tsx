@@ -1325,6 +1325,14 @@ export default function SettingsPage() {
                                   placeholder="例: 35.6812"
                                   value={inputs.lat}
                                   onChange={(e) => setLocationInputs((prev) => ({ ...prev, [w.id]: { ...inputs, lat: e.target.value } }))}
+                                  onPaste={(e) => {
+                                    const text = e.clipboardData.getData("text");
+                                    const match = text.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+                                    if (match) {
+                                      e.preventDefault();
+                                      setLocationInputs((prev) => ({ ...prev, [w.id]: { lat: match[1], lng: match[2] } }));
+                                    }
+                                  }}
                                   className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background text-sm"
                                 />
                               </div>
