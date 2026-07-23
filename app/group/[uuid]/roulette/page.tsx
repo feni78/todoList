@@ -29,6 +29,7 @@ export default function RoulettePage() {
   const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes);
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
   const [filterOpen, setFilterOpen] = useState(false);
+  const [specialAnimDone, setSpecialAnimDone] = useState(true);
 
   const handleSetMode = (m: RouletteMode) => {
     if (isSpinning) completeNow();
@@ -40,6 +41,7 @@ export default function RoulettePage() {
       toast.error("条件に合うアイテムがありません");
       return;
     }
+    if (mode === "special") setSpecialAnimDone(false);
     spin(mode === "special" ? 8500 : 3500);
   };
 
@@ -101,22 +103,23 @@ export default function RoulettePage() {
             result={result}
             pendingResult={pendingResult}
             probabilities={probabilities}
+            onAnimDone={() => setSpecialAnimDone(true)}
           />
         )}
 
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <Button
             onClick={() => handleSpin()}
-            disabled={isSpinning || filteredWishes.length === 0}
+            disabled={isSpinning || !specialAnimDone || filteredWishes.length === 0}
             size="lg"
             className="w-full rounded-full text-base font-bold h-14 shadow-lg"
           >
-            {isSpinning ? "回転中..." : result ? (
+            {isSpinning || !specialAnimDone ? "回転中..." : result ? (
               <><RefreshCw size={18} className="mr-2" />もう一度</>
             ) : "スタート！"}
           </Button>
 
-          {result && !isSpinning && (
+          {result && !isSpinning && specialAnimDone && (
             <Button
               variant="outline"
               onClick={handleDone}

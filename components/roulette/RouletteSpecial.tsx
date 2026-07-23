@@ -32,6 +32,7 @@ interface RouletteSpecialProps {
   result: Wish | null;
   pendingResult: Wish | null;
   probabilities?: Map<string, number> | null;
+  onAnimDone?: () => void;
 }
 
 const ITEM_HEIGHT = 64;
@@ -39,7 +40,7 @@ const VISIBLE = 5;
 const MAX_SPIN_ITEMS = 250; // 移動距離の上限（これ以上だと減速が視覚的に見えなくなる）
 const MAX_DOM_ITEMS = 2000; // DOM ノード上限
 
-export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, probabilities }: RouletteSpecialProps) {
+export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, probabilities, onAnimDone }: RouletteSpecialProps) {
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
@@ -131,7 +132,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
           <motion.div
             animate={controls}
             style={{ willChange: "transform" }}
-            onAnimationComplete={() => setAnimDone(true)}
+            onAnimationComplete={() => { setAnimDone(true); onAnimDone?.(); }}
           >
             {slotItems}
           </motion.div>
