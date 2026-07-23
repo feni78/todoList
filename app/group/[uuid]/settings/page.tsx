@@ -341,6 +341,13 @@ export default function SettingsPage() {
     let mergedWishes = 0;
     let mergedRegions = 0;
 
+    const extractMemoUrl = (memo: string | undefined | null): string | null => {
+      if (!memo) return null;
+      const lines = memo.split("\n");
+      const last = lines[lines.length - 1].trim();
+      return /^https?:\/\//.test(last) ? last : null;
+    };
+
     if (opts.wishes) {
       const uniqueWishes = wishes.filter((w, i) => wishes.findIndex((x) => x.id === w.id) === i);
       const titleGroups = new Map<string, typeof wishes>();
@@ -352,17 +359,23 @@ export default function SettingsPage() {
       for (const group of titleGroups.values()) {
         if (group.length < 2) continue;
         const [primary, ...rest] = group;
-        const allMemoLines = [primary, ...rest]
+        const primaryUrl = extractMemoUrl(primary.memo);
+        const toMerge = rest.filter((w) => {
+          const url = extractMemoUrl(w.memo);
+          return !(primaryUrl && url && primaryUrl !== url);
+        });
+        if (toMerge.length === 0) continue;
+        const allMemoLines = [primary, ...toMerge]
           .map((w) => w.memo).filter(Boolean)
           .flatMap((m) => m!.split("\n").filter(Boolean));
         const mergedMemo = [...new Set(allMemoLines)].join("\n") || undefined;
-        const allGenreIds = [...new Set([primary, ...rest].flatMap((w) => w.genres.map((g) => g.id)))];
-        const allRegionIds = [...new Set([primary, ...rest].flatMap((w) => w.regions.map((r) => r.id)))];
-        const mergedSeasons = [...new Set([primary, ...rest].flatMap((w) => w.seasons))];
+        const allGenreIds = [...new Set([primary, ...toMerge].flatMap((w) => w.genres.map((g) => g.id)))];
+        const allRegionIds = [...new Set([primary, ...toMerge].flatMap((w) => w.regions.map((r) => r.id)))];
+        const mergedSeasons = [...new Set([primary, ...toMerge].flatMap((w) => w.seasons))];
         try {
           await updateWish(primary.id, { memo: mergedMemo, genreIds: allGenreIds, regionIds: allRegionIds, seasons: mergedSeasons });
-          for (const dup of rest) { await deleteWish(dup.id); }
-          mergedWishes += rest.length;
+          for (const dup of toMerge) { await deleteWish(dup.id); }
+          mergedWishes += toMerge.length;
         } catch {
           toast.error(`「${primary.title}」の統合に失敗しました`);
         }

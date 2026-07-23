@@ -270,7 +270,7 @@ async function readFileAsText(file: File): Promise<string> {
   });
 }
 
-interface ExistingWish { id: string; title: string; memo: string | null; genreIds: string[]; }
+interface ExistingWish { id: string; title: string; memo: string | null; genreIds: string[]; url: string | null; }
 
 interface ExistingMaps {
   urlToExisting: Map<string, ExistingWish>;
@@ -302,12 +302,14 @@ async function fetchExisting(supabase: ReturnType<typeof createClient>, groupId:
 
   for (const w of allRows) {
     const genreIds = (w.wish_genres ?? []).map((g) => g.genre_id).sort();
-    const existing: ExistingWish = { id: w.id, title: w.title, memo: w.memo, genreIds };
+    let existingUrl: string | null = null;
     if (w.memo) {
       const lines = w.memo.split("\n");
       const lastLine = lines[lines.length - 1].trim();
-      if (/^https?:\/\//.test(lastLine)) urlToExisting.set(normalizeUrl(lastLine), existing);
+      if (/^https?:\/\//.test(lastLine)) existingUrl = normalizeUrl(lastLine);
     }
+    const existing: ExistingWish = { id: w.id, title: w.title, memo: w.memo, genreIds, url: existingUrl };
+    if (existingUrl) urlToExisting.set(existingUrl, existing);
     if (w.title) {
       titleToExisting.set(w.title, existing);
       titleToExistingCI.set(w.title.toLowerCase(), existing);
@@ -411,7 +413,11 @@ export function useCsvImport(groupId: string) {
 
       const memoText = buildMemo(row.memo, row.url);
       const matchByUrl = row.url ? urlToExisting.get(normalizeUrl(row.url)) : undefined;
-      const matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
+      let matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
+      if (matchByTitle) {
+        const newUrl = row.url ? normalizeUrl(row.url) : null;
+        if (matchByTitle.url && newUrl && matchByTitle.url !== newUrl) matchByTitle = undefined;
+      }
       const existingMatch = matchByUrl ?? matchByTitle;
 
       if (existingMatch) {
@@ -492,6 +498,10 @@ export function useCsvImport(groupId: string) {
 
         const matchByUrl = row.url ? urlToExisting.get(normalizeUrl(row.url)) : undefined;
         let matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
+        if (matchByTitle) {
+          const newUrl = row.url ? normalizeUrl(row.url) : null;
+          if (matchByTitle.url && newUrl && matchByTitle.url !== newUrl) matchByTitle = undefined;
+        }
         // 要確認アイテムを既存として扱うモード：大文字小文字違いも一致とみなす
         if (!matchByUrl && !matchByTitle && treatSuspiciousAsExisting) {
           matchByTitle = titleToExistingCI.get(row.title.toLowerCase());
