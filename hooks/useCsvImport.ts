@@ -452,20 +452,53 @@ async function retryLocationEnrichmentImpl(
   let phase2Items: { wishId: string; title: string; lat: number; lng: number }[] = [];
   if (phase2Candidates.length > 0) {
     const candidateIds = phase2Candidates.map((r) => r.id);
-    const { data: taggedData } = await supabase
-      .from("wish_regions")
-      .select("wish_id, regions(name)")
-      .in("wish_id", candidateIds);
-    // wish_id ごとに 中地域あり・小地域あり をまとめる
+
+    // グループの全地域タグを取得して broad/specific を分類
+    const { data: allRegions, error: regionsError } = await supabase
+      .from("regions")
+      .select("id, name")
+      .eq("group_id", groupId);
+    if (regionsError) throw regionsError;
+
+    const regionNameMap = new Map<string, string>(
+      (allRegions ?? []).map((r) => [(r as { id: string; name: string }).id, (r as { id: string; name: string }).name])
+    );
+    const groupHasBroadTags = [...regionNameMap.values()].some((name) => isBroadRegionTag(name));
+
+    // candidateIds に付いている wish_regions をページネーションで全件取得
+    let allWishRegions: { wish_id: string; region_id: string }[] = [];
+    let wrFrom = 0;
+    while (true) {
+      const { data: wrData, error: wrError } = await supabase
+        .from("wish_regions")
+        .select("wish_id, region_id")
+        .in("wish_id", candidateIds)
+        .range(wrFrom, wrFrom + PAGE - 1);
+      if (wrError) throw wrError;
+      allWishRegions = allWishRegions.concat((wrData ?? []) as typeof allWishRegions);
+      if ((wrData ?? []).length < PAGE) break;
+      wrFrom += PAGE;
+    }
+
     const hasBroad = new Set<string>();
     const hasSpecific = new Set<string>();
-    for (const row of (taggedData ?? []) as unknown as { wish_id: string; regions: { name: string } | null }[]) {
-      if (!row.regions) continue;
-      if (isBroadRegionTag(row.regions.name)) hasBroad.add(row.wish_id);
+    for (const row of allWishRegions) {
+      const name = regionNameMap.get(row.region_id);
+      if (!name) continue;
+      if (isBroadRegionTag(name)) hasBroad.add(row.wish_id);
       else hasSpecific.add(row.wish_id);
     }
+
     phase2Items = phase2Candidates
-      .filter((r) => !hasBroad.has(r.id) || !hasSpecific.has(r.id))
+      .filter((r) => {
+        if (groupHasBroadTags) {
+          // 中地域・小地域のどちらかが欠けていれば対象
+          return !hasBroad.has(r.id) || !hasSpecific.has(r.id);
+        } else {
+          // グループに中地域タグが存在しない場合は小地域タグがないものを対象
+          return !hasSpecific.has(r.id);
+        }
+      })
       .map((r) => ({ wishId: r.id, title: r.title, lat: r.latitude, lng: r.longitude }));
   }
 
