@@ -372,6 +372,7 @@ export default function SettingsPage() {
     for (const group of regionNameGroups.values()) {
       if (group.length < 2) continue;
       const [keep, ...dups] = group;
+      const supabase = createClient();
       for (const dup of dups) {
         const affected = wishes.filter((w) => w.regions.some((r) => r.id === dup.id));
         for (const w of affected) {
@@ -381,6 +382,8 @@ export default function SettingsPage() {
           ];
           await updateWish(w.id, { regionIds: newIds });
         }
+        // ゴミ箱内のwishなど、stateに含まれない参照も含めて全削除
+        await supabase.from("wish_regions").delete().eq("region_id", dup.id);
         try { await deleteRegion(dup.id); mergedRegions++; }
         catch { toast.error(`地域タグ「${dup.name}」の削除に失敗しました`); }
       }
