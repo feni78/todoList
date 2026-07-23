@@ -76,6 +76,9 @@ function mapRow(row: Record<string, unknown>): Wish {
     avgScore,
     hasMaxVote,
     isFavorite: (row.is_favorite as boolean) ?? false,
+    placeId: (row.place_id as string | null) ?? null,
+    latitude: (row.latitude as number | null) ?? null,
+    longitude: (row.longitude as number | null) ?? null,
   };
 }
 
@@ -99,7 +102,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
     while (true) {
       const { data, error } = await supabase
         .from("wishes")
-        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), wish_regions(region:regions(id, group_id, name)), member:group_members!member_id(id, nickname), wish_votes(id, member_id, score)`)
+        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), wish_regions(region:regions(id, group_id, name)), member:group_members!member_id(id, nickname), wish_votes(id, member_id, score), place_id, latitude, longitude`)
         .eq("group_id", groupId)
         .is("deleted_at", null)
         .in("status", statuses)

@@ -15,6 +15,7 @@ interface FilterStore extends FilterState {
   setExcludeGenreIds: (ids: string[]) => void;
   setRegionIds: (ids: string[]) => void;
   setSearchQuery: (q: string) => void;
+  setNearbyKm: (km: number | null) => void;
   reset: () => void;
 }
 
@@ -30,6 +31,7 @@ const initialState: FilterState = {
   excludeGenreIds: [],
   regionIds: [],
   searchQuery: "",
+  nearbyKm: null,
 };
 
 export const useFilterStore = create<FilterStore>((set) => ({
@@ -47,6 +49,7 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setExcludeGenreIds: (excludeGenreIds) => set({ excludeGenreIds }),
   setRegionIds: (regionIds) => set({ regionIds }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+  setNearbyKm: (nearbyKm) => set({ nearbyKm }),
   // リセット時はデフォルト除外ジャンルを維持する
   reset: () => set((state) => ({ ...initialState, defaultExcludeGenreIds: state.defaultExcludeGenreIds, excludeGenreIds: [...state.defaultExcludeGenreIds] })),
 }));

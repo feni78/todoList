@@ -61,6 +61,9 @@ export interface Wish {
   seasons: Season[];
   genres: Genre[];
   regions: Region[];
+  placeId?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: string;
   updatedAt: string;
   doneAt: string | null;
@@ -112,6 +115,7 @@ export interface FilterState {
   excludeGenreIds: string[];
   regionIds: string[];
   searchQuery: string;
+  nearbyKm: number | null;
 }
 
 export const SITUATION_LABELS: Record<Situation, string> = {

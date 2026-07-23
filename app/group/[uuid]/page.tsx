@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -24,6 +24,7 @@ import { BulkGenreBar } from "@/components/list/BulkGenreBar";
 import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
 type TabValue = "PENDING" | "HOLD";
 type SortOrder = "priority" | "createdAt";
@@ -58,6 +59,36 @@ export default function ListPage() {
   const [adding, setAdding] = useState(false);
   const [selectionMode, setSelectionMode] = useState<"genre" | "delete" | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
+  const nearbyKmRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const km = filterStore.nearbyKm;
+    nearbyKmRef.current = km;
+    if (km === null) { setNearbyWishIds(null); return; }
+
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      if (nearbyKmRef.current !== km) return;
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.rpc("get_wishes_by_distance", {
+          p_group_id: uuid,
+          p_lat: pos.coords.latitude,
+          p_lng: pos.coords.longitude,
+          p_max_km: km,
+          p_limit: 500,
+        });
+        if (error) throw error;
+        setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
+      } catch {
+        toast.error("現在地の取得に失敗しました");
+        setNearbyWishIds(null);
+      }
+    }, () => {
+      toast.error("位置情報の取得を許可してください");
+      setNearbyWishIds(null);
+    });
+  }, [filterStore.nearbyKm, uuid]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -108,6 +139,9 @@ export default function ListPage() {
     if (filterStore.regionIds.length > 0) {
       result = result.filter((w) => w.regions.some((r) => filterStore.regionIds.includes(r.id)));
     }
+    if (nearbyWishIds !== null) {
+      result = result.filter((w) => nearbyWishIds.has(w.id));
+    }
     if (filterStore.searchQuery) {
       const q = filterStore.searchQuery.toLowerCase();
       result = result.filter((w) => w.title.toLowerCase().includes(q));
@@ -118,7 +152,7 @@ export default function ListPage() {
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, sortOrder, filterStore]);
+  }, [wishes, statusTab, situationTab, sortOrder, filterStore, nearbyWishIds]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);
@@ -227,6 +261,8 @@ export default function ListPage() {
     filterStore.durations.length > 0 ||
     filterStore.seasons.length > 0 ||
     filterStore.genreIds.length > 0 ||
+    filterStore.regionIds.length > 0 ||
+    filterStore.nearbyKm !== null ||
     excludeChanged;
 
   return (

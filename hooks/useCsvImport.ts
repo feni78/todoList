@@ -4,6 +4,8 @@ import { useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ScoreValue } from "@/types";
 import { getGroupMember } from "@/lib/utils/localStorage";
+import { toBroadRegionTag, toSpecificRegionTag } from "@/lib/utils/regionTag";
+import type { PlaceLookupResult } from "@/app/api/places/lookup/route";
 
 export interface CsvRow {
   title: string;
@@ -108,6 +110,80 @@ function normalizeUrl(url: string): string {
     return (u.origin + path).toLowerCase() + u.search + u.hash;
   } catch {
     return url.toLowerCase().trim();
+  }
+}
+
+async function getOrCreateRegion(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  name: string,
+  cache: Map<string, string>
+): Promise<string> {
+  if (cache.has(name)) return cache.get(name)!;
+  const { data: existing } = await supabase
+    .from("regions").select("id").eq("group_id", groupId).eq("name", name).maybeSingle();
+  if (existing) { cache.set(name, existing.id as string); return existing.id as string; }
+  const { data: created, error } = await supabase
+    .from("regions").insert({ group_id: groupId, name }).select("id").single();
+  if (error) throw error;
+  const id = (created as { id: string }).id;
+  cache.set(name, id);
+  return id;
+}
+
+async function enrichWithPlaces(
+  supabase: ReturnType<typeof createClient>,
+  groupId: string,
+  items: { wishId: string; url: string; title: string }[]
+): Promise<void> {
+  const regionCache = new Map<string, string>();
+  const CONCURRENCY = 3;
+
+  for (let i = 0; i < items.length; i += CONCURRENCY) {
+    const batch = items.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map(async ({ wishId, url, title }) => {
+      try {
+        // すでにplace_idがある場合はスキップ
+        const { data: existing } = await supabase
+          .from("wishes").select("place_id").eq("id", wishId).single();
+        if ((existing as { place_id: string | null } | null)?.place_id) return;
+
+        const resp = await fetch("/api/places/lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, name: title }),
+        });
+        if (!resp.ok) return;
+
+        const place = await resp.json() as PlaceLookupResult;
+
+        // place_id・緯度経度をDBに保存
+        await supabase.from("wishes").update({
+          place_id: place.placeId,
+          latitude: place.latitude,
+          longitude: place.longitude,
+        }).eq("id", wishId);
+
+        // 地域タグを生成・付与
+        if (place.prefecture && place.city) {
+          const specificTag = toSpecificRegionTag(place.prefecture, place.city);
+          const broadTag = toBroadRegionTag(place.prefecture, place.city);
+
+          const tagNames = [specificTag, broadTag].filter(Boolean);
+          const regionIds = await Promise.all(
+            tagNames.map((name) => getOrCreateRegion(supabase, groupId, name, regionCache))
+          );
+
+          // 重複しないようにupsert
+          await supabase.from("wish_regions").upsert(
+            regionIds.map((region_id) => ({ wish_id: wishId, region_id })),
+            { onConflict: "wish_id,region_id", ignoreDuplicates: true }
+          );
+        }
+      } catch {
+        // 個別失敗は無視してインポート自体は成功させる
+      }
+    }));
   }
 }
 
@@ -454,6 +530,19 @@ export function useCsvImport(groupId: string) {
               if (genreErr) throw genreErr;
             }
           }
+        }
+
+        // Places API: URLのある行にplace_id・緯度経度・地域タグを付与
+        const urlItems = [
+          ...toInsertWithIds.filter((i) => i.row.url && i.row.url.includes("google.com/maps")),
+          ...toUpdate.filter((i) => i.row.url && i.row.url.includes("google.com/maps")),
+        ];
+        if (urlItems.length > 0) {
+          await enrichWithPlaces(supabase, groupId, urlItems.map((i) => ({
+            wishId: "id" in i ? (i as typeof toInsertWithIds[0]).id : (i as typeof toUpdate[0]).wishId,
+            url: i.row.url,
+            title: i.row.title,
+          })));
         }
 
         const result: ImportResult = {

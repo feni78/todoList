@@ -99,6 +99,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     store.seasons.length > 0 ||
     store.genreIds.length > 0 ||
     store.regionIds.length > 0 ||
+    store.nearbyKm !== null ||
     excludeChanged;
 
   return (
@@ -234,6 +235,26 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
               ))}
             </FilterSection>
           )}
+
+          <FilterSection title="現在地からの距離">
+            <div className="w-full flex flex-wrap gap-2">
+              {([null, 1, 3, 5, 10] as (number | null)[]).map((km) => (
+                <button
+                  key={km ?? "none"}
+                  type="button"
+                  onClick={() => store.setNearbyKm(km)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                    store.nearbyKm === km
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  )}
+                >
+                  {km === null ? "指定なし" : `${km}km以内`}
+                </button>
+              ))}
+            </div>
+          </FilterSection>
         </div>
 
         <div className="flex gap-2 mt-6 pb-8">
