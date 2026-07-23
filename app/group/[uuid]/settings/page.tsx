@@ -1136,46 +1136,52 @@ export default function SettingsPage() {
                   ) : regionlessWishes.map((w) => {
                     const expanded = regionlessExpandedId === w.id;
                     const currentRegionIds = w.regions.map((r) => r.id);
+                    const memoLines = w.memo?.split("\n") ?? [];
+                    const memoLastLine = memoLines[memoLines.length - 1]?.trim() ?? "";
+                    const memoUrl = /^https?:\/\//.test(memoLastLine) ? memoLastLine : null;
                     return (
                       <div key={w.id} className="border border-border rounded-xl overflow-hidden">
-                        {(() => {
-                          const mapsUrl = w.memo?.match(/https?:\/\/[^\s]+/g)?.find((u) => u.includes("google.com/maps") || u.includes("maps.app.goo.gl")) ?? null;
-                          return (
-                            <div className="flex items-center">
-                              <button
-                                type="button"
-                                className="flex-1 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0 text-sm truncate"
-                                onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
-                              >
-                                {w.title}
-                              </button>
-                              <button
-                                type="button"
-                                className="px-2 py-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                onClick={() => { navigator.clipboard.writeText(w.title); toast.success("コピーしました"); }}
-                              >
-                                <Copy size={14} />
-                              </button>
-                              {mapsUrl && (
-                                <a
-                                  href={mapsUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-2 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
-                                >
-                                  <MapPin size={14} />
-                                </a>
-                              )}
-                              <button
-                                type="button"
-                                className="px-2.5 py-2.5 text-muted-foreground shrink-0"
-                                onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
-                              >
-                                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                              </button>
-                            </div>
-                          );
-                        })()}
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            className="flex-1 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors min-w-0 text-sm truncate"
+                            onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
+                          >
+                            {w.title}
+                          </button>
+                          <button
+                            type="button"
+                            className="px-2 py-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            onClick={() => { navigator.clipboard.writeText(w.title); toast.success("コピーしました"); }}
+                          >
+                            <Copy size={14} />
+                          </button>
+                          {memoUrl && (
+                            <a
+                              href={memoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                              onClick={() => setRegionlessExpandedId(w.id)}
+                            >
+                              <MapPin size={14} />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            className="px-2 py-2.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                            onClick={() => deleteWish(w.id)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="px-2.5 py-2.5 text-muted-foreground shrink-0"
+                            onClick={() => setRegionlessExpandedId(expanded ? null : w.id)}
+                          >
+                            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </div>
                         {expanded && (
                           <div className="px-3 pb-3 flex flex-col gap-3 border-t border-border">
                             {broadRegions.length > 0 && (
@@ -1274,7 +1280,9 @@ export default function SettingsPage() {
                     <p className="text-sm text-muted-foreground">緯度経度未設定のアイテムはありません</p>
                   ) : locationlessWishes.map((w) => {
                     const expanded = locationlessExpandedId === w.id;
-                    const mapsUrl = w.memo?.match(/https?:\/\/[^\s]+/g)?.find((u) => u.includes("google.com/maps") || u.includes("maps.app.goo.gl")) ?? null;
+                    const memoLines = w.memo?.split("\n") ?? [];
+                    const memoLastLine = memoLines[memoLines.length - 1]?.trim() ?? "";
+                    const memoUrl = /^https?:\/\//.test(memoLastLine) ? memoLastLine : null;
                     const inputs = locationInputs[w.id] ?? { lat: w.latitude?.toString() ?? "", lng: w.longitude?.toString() ?? "" };
                     const latNum = parseFloat(inputs.lat);
                     const lngNum = parseFloat(inputs.lng);
@@ -1296,16 +1304,24 @@ export default function SettingsPage() {
                           >
                             <Copy size={14} />
                           </button>
-                          {mapsUrl && (
+                          {memoUrl && (
                             <a
-                              href={mapsUrl}
+                              href={memoUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="px-2 py-2.5 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                              onClick={() => setLocationlessExpandedId(w.id)}
                             >
                               <MapPin size={14} />
                             </a>
                           )}
+                          <button
+                            type="button"
+                            className="px-2 py-2.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                            onClick={() => deleteWish(w.id)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
                           <button
                             type="button"
                             className="px-2.5 py-2.5 text-muted-foreground shrink-0"
