@@ -42,7 +42,7 @@ function FilterChip({ selected, onClick, label, variant = "default" }: {
       type="button"
       onClick={onClick}
       className={cn(
-        "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+        "px-3 py-2 rounded-xl text-sm font-medium transition-colors",
         variant === "exclude"
           ? selected
             ? "bg-destructive text-destructive-foreground"
@@ -57,32 +57,76 @@ function FilterChip({ selected, onClick, label, variant = "default" }: {
   );
 }
 
-function FilterSection({ title, children, collapsible = false, defaultOpen = true, onClear }: {
+function FilterSection({ title, children, collapsible = false, defaultOpen = true, onClear, noDivider = false }: {
   title: string;
   children: React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
   onClear?: () => void;
+  noDivider?: boolean;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-1">
+    <div className={cn("flex flex-col gap-3 py-4", !noDivider && "border-t border-border/60")}>
+      <div className="flex items-center justify-between">
         <button
           type="button"
-          className="flex items-center gap-1 text-left flex-1"
+          className="flex items-center gap-1.5 text-left flex-1"
           onClick={() => collapsible && setOpen((v) => !v)}
         >
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1">{title}</p>
-          {collapsible && (open ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />)}
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          {collapsible && (open ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />)}
         </button>
         {onClear && (
-          <button type="button" onClick={onClear} className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">
+          <button type="button" onClick={onClear} className="text-xs text-primary hover:text-primary/80 transition-colors shrink-0 font-medium">
             クリア
           </button>
         )}
       </div>
       {open && <div className="flex flex-wrap gap-2">{children}</div>}
+    </div>
+  );
+}
+
+function IncludeExcludeSection({ title, children, collapsible = false, defaultOpen = true }: {
+  title: string;
+  children: (mode: "include" | "exclude") => React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(collapsible ? defaultOpen : true);
+  const [mode, setMode] = useState<"include" | "exclude">("include");
+  return (
+    <div className="flex flex-col gap-3 py-4 border-t border-border/60">
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-left flex-1"
+          onClick={() => collapsible && setOpen((v) => !v)}
+        >
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          {collapsible && (open ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />)}
+        </button>
+        {open && (
+          <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium shrink-0">
+            <button
+              type="button"
+              onClick={() => setMode("include")}
+              className={cn("px-3 py-1.5 transition-colors", mode === "include" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60")}
+            >
+              含む
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("exclude")}
+              className={cn("px-3 py-1.5 transition-colors border-l border-border", mode === "exclude" ? "bg-destructive text-destructive-foreground" : "text-muted-foreground hover:bg-muted/60")}
+            >
+              除外
+            </button>
+          </div>
+        )}
+      </div>
+      {open && <div className="flex flex-wrap gap-2">{children(mode)}</div>}
     </div>
   );
 }
@@ -137,200 +181,27 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl px-6">
-        <SheetHeader className="mt-6 mb-4 p-0">
-          <SheetTitle>絞り込み</SheetTitle>
+      <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl px-5">
+        <SheetHeader className="mt-5 mb-1 p-0">
+          <SheetTitle className="text-base">絞り込み</SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-col gap-5">
-          {members.length > 0 && (
-            <FilterSection title="登録者">
-              {members.map((m) => (
-                <FilterChip
-                  key={m.id}
-                  selected={store.memberIds.includes(m.id)}
-                  onClick={() => store.setMemberIds(toggle(store.memberIds, m.id))}
-                  label={m.nickname}
-                />
-              ))}
-            </FilterSection>
-          )}
-
-          <FilterSection title="シチュエーション">
-            {SITUATIONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={store.situations.includes(s)}
-                onClick={() => store.setSituations(toggle(store.situations, s))}
-                label={SITUATION_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
-          <FilterSection title="予算">
-            {BUDGETS.map((b) => (
-              <FilterChip
-                key={b}
-                selected={store.budgets.includes(b)}
-                onClick={() => store.setBudgets(toggle(store.budgets, b))}
-                label={BUDGET_LABELS[b]}
-              />
-            ))}
-          </FilterSection>
-
-          <FilterSection title="所要時間">
-            {DURATIONS.map((d) => (
-              <FilterChip
-                key={d}
-                selected={store.durations.includes(d)}
-                onClick={() => store.setDurations(toggle(store.durations, d))}
-                label={DURATION_LABELS[d]}
-              />
-            ))}
-          </FilterSection>
-
-          <FilterSection title="季節タグ">
-            {SEASONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={store.seasons.includes(s)}
-                onClick={() => store.setSeasons(toggle(store.seasons, s))}
-                label={SEASON_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
-          {broadRegions.length > 0 && (() => {
-            const broadIds = broadRegions.map((r) => r.id);
-            const hasBroad = store.regionIds.some((id) => broadIds.includes(id));
-            return (
-              <FilterSection
-                title="中地域タグ"
-                onClear={hasBroad ? () => store.setRegionIds(store.regionIds.filter((id) => !broadIds.includes(id))) : undefined}
-              >
-                {broadRegions.map((r) => (
-                  <FilterChip
-                    key={r.id}
-                    selected={store.regionIds.includes(r.id)}
-                    onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
-                    label={r.name}
-                  />
-                ))}
-              </FilterSection>
-            );
-          })()}
-
-          {specificRegions.length > 0 && (() => {
-            const specificIds = specificRegions.map((r) => r.id);
-            const hasSpecific = store.regionIds.some((id) => specificIds.includes(id));
-            return (
-              <FilterSection
-                title="小地域タグ"
-                collapsible
-                defaultOpen={false}
-                onClear={hasSpecific ? () => store.setRegionIds(store.regionIds.filter((id) => !specificIds.includes(id))) : undefined}
-              >
-                {specificRegions.map((r) => {
-                  const selected = store.regionIds.includes(r.id);
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
-                      className={cn("px-3 py-1.5 rounded-full text-xs font-medium transition-colors", specificRegionColorClasses(r.name, selected))}
-                    >
-                      {r.name}
-                    </button>
-                  );
-                })}
-              </FilterSection>
-            );
-          })()}
-
-          {broadRegions.length > 0 && (
-            <FilterSection title="中地域タグ（除外）">
-              {broadRegions.map((r) => (
-                <FilterChip
-                  key={r.id}
-                  selected={store.excludeRegionIds.includes(r.id)}
-                  onClick={() => store.setExcludeRegionIds(toggle(store.excludeRegionIds, r.id))}
-                  label={r.name}
-                  variant="exclude"
-                />
-              ))}
-            </FilterSection>
-          )}
-
-          {genres.length > 0 && (
-            <FilterSection title="ジャンル（含む）">
-              {genres.map((g) => (
-                <FilterChip
-                  key={g.id}
-                  selected={store.genreIds.includes(g.id)}
-                  onClick={() => store.setGenreIds(toggle(store.genreIds, g.id))}
-                  label={g.name}
-                />
-              ))}
-              {genres.length > 0 && (
-                <div className="w-full flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">検索方法:</span>
-                  <button
-                    type="button"
-                    onClick={() => store.setGenreSearchMode("OR")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-                      store.genreSearchMode === "OR"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/70"
-                    )}
-                  >
-                    OR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => store.setGenreSearchMode("AND")}
-                    className={cn(
-                      "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-                      store.genreSearchMode === "AND"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/70"
-                    )}
-                  >
-                    AND
-                  </button>
-                </div>
-              )}
-            </FilterSection>
-          )}
-
-          {genres.length > 0 && (
-            <FilterSection title="ジャンル（除外）">
-              {genres.map((g) => (
-                <FilterChip
-                  key={g.id}
-                  selected={store.excludeGenreIds.includes(g.id)}
-                  onClick={() => store.setExcludeGenreIds(toggle(store.excludeGenreIds, g.id))}
-                  label={g.name}
-                  variant="exclude"
-                />
-              ))}
-            </FilterSection>
-          )}
-
-          <FilterSection title="距離で絞り込み">
+        <div className="flex flex-col">
+          {/* 距離 — よく使うので最上部 */}
+          <FilterSection title="距離で絞り込み" noDivider>
             <div className="w-full flex flex-col gap-3">
               <div className="flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => store.setStationName(null)}
-                  className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors", store.stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", store.stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
                 >
                   現在地
                 </button>
                 <button
                   type="button"
                   onClick={() => store.setStationName(store.stationName ?? "")}
-                  className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors", store.stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", store.stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
                 >
                   駅名
                 </button>
@@ -342,14 +213,14 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                 />
               )}
               <div className="flex items-center justify-between">
-                <span className={cn("text-sm font-medium", store.nearbyKm !== null && "text-primary")}>
+                <span className={cn("text-sm font-semibold", store.nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
                   {distanceLabel}
                 </span>
                 {store.nearbyKm !== null && (
                   <button
                     type="button"
                     onClick={() => store.setNearbyKm(null)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
                   >
                     クリア
                   </button>
@@ -362,15 +233,189 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                 value={[sliderPos]}
                 onValueChange={handleSlider}
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex justify-between text-[11px] text-muted-foreground">
                 <span>指定なし</span>
                 <span>100km</span>
               </div>
             </div>
           </FilterSection>
+
+          {/* シチュエーション */}
+          <FilterSection title="シチュエーション">
+            {SITUATIONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.situations.includes(s)}
+                onClick={() => store.setSituations(toggle(store.situations, s))}
+                label={SITUATION_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 季節 */}
+          <FilterSection title="季節タグ">
+            {SEASONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.seasons.includes(s)}
+                onClick={() => store.setSeasons(toggle(store.seasons, s))}
+                label={SEASON_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 予算 */}
+          <FilterSection title="予算">
+            {BUDGETS.map((b) => (
+              <FilterChip
+                key={b}
+                selected={store.budgets.includes(b)}
+                onClick={() => store.setBudgets(toggle(store.budgets, b))}
+                label={BUDGET_LABELS[b]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 所要時間 */}
+          <FilterSection title="所要時間">
+            {DURATIONS.map((d) => (
+              <FilterChip
+                key={d}
+                selected={store.durations.includes(d)}
+                onClick={() => store.setDurations(toggle(store.durations, d))}
+                label={DURATION_LABELS[d]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 地域タグ — 含む/除外タブ */}
+          {(broadRegions.length > 0 || specificRegions.length > 0) && (
+            <IncludeExcludeSection title="地域タグ">
+              {(mode) => {
+                if (mode === "include") {
+                  const broadIds = broadRegions.map((r) => r.id);
+                  const hasBroad = store.regionIds.some((id) => broadIds.includes(id));
+                  const specificIds = specificRegions.map((r) => r.id);
+                  const hasSpecific = store.regionIds.some((id) => specificIds.includes(id));
+                  return (
+                    <>
+                      {broadRegions.map((r) => (
+                        <FilterChip
+                          key={r.id}
+                          selected={store.regionIds.includes(r.id)}
+                          onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
+                          label={r.name}
+                        />
+                      ))}
+                      {specificRegions.length > 0 && (
+                        <SpecificRegionExpander
+                          regions={specificRegions}
+                          selectedIds={store.regionIds}
+                          onToggle={(id) => store.setRegionIds(toggle(store.regionIds, id))}
+                          onClear={hasSpecific ? () => store.setRegionIds(store.regionIds.filter((id) => !specificIds.includes(id))) : undefined}
+                        />
+                      )}
+                      {(hasBroad) && (
+                        <button
+                          type="button"
+                          onClick={() => store.setRegionIds(store.regionIds.filter((id) => !broadIds.includes(id)))}
+                          className="text-xs text-primary hover:text-primary/80 font-medium ml-auto mt-1"
+                        >
+                          中地域クリア
+                        </button>
+                      )}
+                    </>
+                  );
+                } else {
+                  return broadRegions.map((r) => (
+                    <FilterChip
+                      key={r.id}
+                      selected={store.excludeRegionIds.includes(r.id)}
+                      onClick={() => store.setExcludeRegionIds(toggle(store.excludeRegionIds, r.id))}
+                      label={r.name}
+                      variant="exclude"
+                    />
+                  ));
+                }
+              }}
+            </IncludeExcludeSection>
+          )}
+
+          {/* ジャンル — 含む/除外タブ */}
+          {genres.length > 0 && (
+            <IncludeExcludeSection title="ジャンル">
+              {(mode) => {
+                if (mode === "include") {
+                  return (
+                    <>
+                      {genres.map((g) => (
+                        <FilterChip
+                          key={g.id}
+                          selected={store.genreIds.includes(g.id)}
+                          onClick={() => store.setGenreIds(toggle(store.genreIds, g.id))}
+                          label={g.name}
+                        />
+                      ))}
+                      <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
+                        <span className="text-xs text-muted-foreground">複数選択時:</span>
+                        <button
+                          type="button"
+                          onClick={() => store.setGenreSearchMode("OR")}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                            store.genreSearchMode === "OR"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/70"
+                          )}
+                        >
+                          いずれか (OR)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => store.setGenreSearchMode("AND")}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                            store.genreSearchMode === "AND"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/70"
+                          )}
+                        >
+                          すべて (AND)
+                        </button>
+                      </div>
+                    </>
+                  );
+                } else {
+                  return genres.map((g) => (
+                    <FilterChip
+                      key={g.id}
+                      selected={store.excludeGenreIds.includes(g.id)}
+                      onClick={() => store.setExcludeGenreIds(toggle(store.excludeGenreIds, g.id))}
+                      label={g.name}
+                      variant="exclude"
+                    />
+                  ));
+                }
+              }}
+            </IncludeExcludeSection>
+          )}
+
+          {/* 登録者 — 使用頻度低めなので下部、折りたたみ */}
+          {members.length > 0 && (
+            <FilterSection title="登録者" collapsible defaultOpen={store.memberIds.length > 0}>
+              {members.map((m) => (
+                <FilterChip
+                  key={m.id}
+                  selected={store.memberIds.includes(m.id)}
+                  onClick={() => store.setMemberIds(toggle(store.memberIds, m.id))}
+                  label={m.nickname}
+                />
+              ))}
+            </FilterSection>
+          )}
         </div>
 
-        <div className="flex gap-2 mt-6 pb-8">
+        <div className="flex gap-2 mt-4 pb-8">
           {hasFilters && (
             <Button variant="outline" onClick={store.reset} className="flex-1">
               リセット
@@ -382,5 +427,47 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function SpecificRegionExpander({ regions, selectedIds, onToggle, onClear }: {
+  regions: Region[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  onClear?: () => void;
+}) {
+  const [open, setOpen] = useState(selectedIds.some((id) => regions.some((r) => r.id === id)));
+  return (
+    <div className="w-full flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors font-medium"
+        >
+          {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          小地域タグ
+        </button>
+        {onClear && open && (
+          <button type="button" onClick={onClear} className="text-xs text-primary hover:text-primary/80 font-medium">
+            クリア
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="flex flex-wrap gap-2">
+          {regions.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onToggle(r.id)}
+              className={cn("px-3 py-2 rounded-xl text-sm font-medium transition-colors", specificRegionColorClasses(r.name, selectedIds.includes(r.id)))}
+            >
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
