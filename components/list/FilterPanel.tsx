@@ -265,13 +265,17 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             </IncludeExcludeSection>
           )}
 
-          {/* シチュエーション */}
+          {/* シチュエーション — 単一選択 */}
           <FilterSection title="シチュエーション" count={store.situations.length}>
             {SITUATIONS.map((s) => (
               <FilterChip
                 key={s}
                 selected={store.situations.includes(s)}
-                onClick={() => store.setSituations(toggle(store.situations, s))}
+                onClick={() =>
+                  store.setSituations(
+                    store.situations.includes(s) ? [] : [s]
+                  )
+                }
                 label={SITUATION_LABELS[s]}
               />
             ))}
