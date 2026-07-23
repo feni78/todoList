@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WishForm } from "./WishForm";
-import { Trash2, Pencil, Star, MapPin } from "lucide-react";
+import { Trash2, Pencil, ExternalLink, Star, MapPin } from "lucide-react";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { useGroupStore } from "@/lib/store/groupStore";
@@ -35,6 +35,7 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
   const hasMyVote = wish.votes.some((v) => v.memberId === currentMemberId);
   const memoUrls = wish.memo?.match(/https?:\/\/[^\s]+/g) ?? [];
   const googleUrl = memoUrls.find((u) => u.includes("google")) ?? null;
+  const otherUrl = memoUrls.find((u) => !u.includes("google")) ?? null;
 
   const handleDoneAtChange = async (dateStr: string) => {
     if (!dateStr) return;
@@ -94,9 +95,6 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
             >
               {wish.title}
             </span>
-            {wish.situation === "OUTSIDE" && (
-              <span className="text-xs shrink-0">{SITUATION_ICONS.OUTSIDE}</span>
-            )}
             {!hasMyVote && wish.status !== "DONE" && (
               <span className="text-xs shrink-0" title="やりたい度が未設定">⚠️</span>
             )}
@@ -156,6 +154,17 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
             >
               <Star size={15} fill={wish.isFavorite ? "currentColor" : "none"} />
             </button>
+          )}
+          {!selectionMode && otherUrl && (
+            <a
+              href={otherUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground hover:text-primary p-1.5 rounded-lg transition-colors"
+            >
+              <ExternalLink size={15} />
+            </a>
           )}
           {!selectionMode && googleUrl && (
             <a
