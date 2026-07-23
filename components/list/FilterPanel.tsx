@@ -317,18 +317,6 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             ))}
           </FilterSection>
 
-          {/* 季節 */}
-          <FilterSection title="季節タグ" collapsible defaultOpen={store.seasons.length > 0} count={store.seasons.length}>
-            {SEASONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={store.seasons.includes(s)}
-                onClick={() => store.setSeasons(toggle(store.seasons, s))}
-                label={SEASON_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
           {/* 予算 */}
           <FilterSection title="予算" count={store.budgets.length}>
             {BUDGETS.map((b) => (
@@ -412,7 +400,18 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             </IncludeExcludeSection>
           )}
 
-          {/* 登録者 — 使用頻度低めなので下部、折りたたみ */}
+          {/* 季節・登録者 — 折りたたみ項目をまとめて下部に */}
+          <FilterSection title="季節タグ" collapsible defaultOpen={store.seasons.length > 0} count={store.seasons.length}>
+            {SEASONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={store.seasons.includes(s)}
+                onClick={() => store.setSeasons(toggle(store.seasons, s))}
+                label={SEASON_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
           {members.length > 0 && (
             <FilterSection title="登録者" collapsible defaultOpen={store.memberIds.length > 0} count={store.memberIds.length}>
               {members.map((m) => (
