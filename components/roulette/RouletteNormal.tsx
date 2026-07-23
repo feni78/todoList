@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Wish, scoreToIcon } from "@/types";
 import { MapPin, ExternalLink } from "lucide-react";
@@ -47,6 +47,16 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
+  const [showResult, setShowResult] = useState(false);
+
+  useEffect(() => {
+    if (result && !isSpinning) {
+      const t = setTimeout(() => setShowResult(true), 600);
+      return () => clearTimeout(t);
+    } else {
+      setShowResult(false);
+    }
+  }, [result, isSpinning]);
   const count = wishes.length;
   const tooMany = count > MAX_WHEEL;
 
@@ -183,7 +193,7 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
         )}
       </div>
 
-      {result && !isSpinning && (
+      {showResult && result && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}

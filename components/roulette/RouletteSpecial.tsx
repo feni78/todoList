@@ -48,6 +48,16 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
   const count = wishes.length;
   const repeats = Math.max(4, Math.min(22, Math.ceil(MAX_DOM_ITEMS / count)));
   const [animDone, setAnimDone] = useState(true);
+  const [showResult, setShowResult] = useState(false);
+
+  useEffect(() => {
+    if (result && !isSpinning && animDone) {
+      const t = setTimeout(() => setShowResult(true), 600);
+      return () => clearTimeout(t);
+    } else {
+      setShowResult(false);
+    }
+  }, [result, isSpinning, animDone]);
 
   useEffect(() => {
     if (isSpinning && !prevSpinning.current && count > 0 && pendingResult) {
@@ -141,7 +151,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
         )}
       </div>
 
-      {result && !isSpinning && animDone && (
+      {showResult && result && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
