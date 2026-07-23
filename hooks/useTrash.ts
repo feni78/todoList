@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 export interface TrashItem {
   id: string;
   title: string;
+  memo: string | null;
   deletedAt: string;
 }
 
@@ -19,14 +20,14 @@ export function useTrash(groupId: string) {
     const threshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from("wishes")
-      .select("id, title, deleted_at")
+      .select("id, title, memo, deleted_at")
       .eq("group_id", groupId)
       .not("deleted_at", "is", null)
       .gte("deleted_at", threshold)
       .order("deleted_at", { ascending: false });
 
     setItems(
-      (data ?? []).map((r) => ({ id: r.id as string, title: r.title as string, deletedAt: r.deleted_at as string }))
+      (data ?? []).map((r) => ({ id: r.id as string, title: r.title as string, memo: r.memo as string | null, deletedAt: r.deleted_at as string }))
     );
     setLoading(false);
   }, [groupId]);

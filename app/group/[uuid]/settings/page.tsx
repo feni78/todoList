@@ -1503,6 +1503,9 @@ export default function SettingsPage() {
                     {trashItems.map((item) => {
                       const deletedAt = new Date(item.deletedAt);
                       const daysLeft = 30 - Math.floor((Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24));
+                      const memoLines = item.memo?.split("\n") ?? [];
+                      const memoLastLine = memoLines[memoLines.length - 1]?.trim() ?? "";
+                      const memoUrl = /^https?:\/\//.test(memoLastLine) ? memoLastLine : null;
                       return (
                         <div key={item.id} className="flex items-center gap-2 py-1.5 border-b border-border last:border-b-0">
                           <div className="flex-1 min-w-0">
@@ -1515,6 +1518,16 @@ export default function SettingsPage() {
                           >
                             復元
                           </button>
+                          {memoUrl && (
+                            <a
+                              href={memoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-muted-foreground hover:text-primary transition-colors shrink-0"
+                            >
+                              <MapPin size={14} />
+                            </a>
+                          )}
                           <button
                             onClick={async () => { if (!confirm("完全に削除しますか？")) return; try { await permanentDelete(item.id); toast.success("削除しました"); } catch { toast.error("削除に失敗しました"); } }}
                             className="p-1 text-muted-foreground hover:text-destructive transition-colors shrink-0"
