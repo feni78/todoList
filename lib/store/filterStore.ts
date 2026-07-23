@@ -4,6 +4,8 @@ import { FilterState, Situation, Status, Budget, Duration, Season } from "@/type
 interface FilterStore extends FilterState {
   defaultExcludeGenreIds: string[];
   setDefaultExcludeGenreIds: (ids: string[]) => void;
+  defaultExcludeRegionIds: string[];
+  setDefaultExcludeRegionIds: (ids: string[]) => void;
   setMemberIds: (ids: string[]) => void;
   setSituations: (s: Situation[]) => void;
   setStatuses: (s: Status[]) => void;
@@ -14,6 +16,7 @@ interface FilterStore extends FilterState {
   setGenreSearchMode: (mode: "OR" | "AND") => void;
   setExcludeGenreIds: (ids: string[]) => void;
   setRegionIds: (ids: string[]) => void;
+  setExcludeRegionIds: (ids: string[]) => void;
   setSearchQuery: (q: string) => void;
   setNearbyKm: (km: number | null) => void;
   reset: () => void;
@@ -30,6 +33,7 @@ const initialState: FilterState = {
   genreSearchMode: "OR",
   excludeGenreIds: [],
   regionIds: [],
+  excludeRegionIds: [],
   searchQuery: "",
   nearbyKm: null,
 };
@@ -38,6 +42,8 @@ export const useFilterStore = create<FilterStore>((set) => ({
   ...initialState,
   defaultExcludeGenreIds: [],
   setDefaultExcludeGenreIds: (defaultExcludeGenreIds) => set({ defaultExcludeGenreIds }),
+  defaultExcludeRegionIds: [],
+  setDefaultExcludeRegionIds: (defaultExcludeRegionIds) => set({ defaultExcludeRegionIds }),
   setMemberIds: (memberIds) => set({ memberIds }),
   setSituations: (situations) => set({ situations }),
   setStatuses: (statuses) => set({ statuses }),
@@ -48,8 +54,14 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setGenreSearchMode: (genreSearchMode) => set({ genreSearchMode }),
   setExcludeGenreIds: (excludeGenreIds) => set({ excludeGenreIds }),
   setRegionIds: (regionIds) => set({ regionIds }),
+  setExcludeRegionIds: (excludeRegionIds) => set({ excludeRegionIds }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setNearbyKm: (nearbyKm) => set({ nearbyKm }),
-  // リセット時はデフォルト除外ジャンルを維持する
-  reset: () => set((state) => ({ ...initialState, defaultExcludeGenreIds: state.defaultExcludeGenreIds, excludeGenreIds: [...state.defaultExcludeGenreIds] })),
+  reset: () => set((state) => ({
+    ...initialState,
+    defaultExcludeGenreIds: state.defaultExcludeGenreIds,
+    excludeGenreIds: [...state.defaultExcludeGenreIds],
+    defaultExcludeRegionIds: state.defaultExcludeRegionIds,
+    excludeRegionIds: [...state.defaultExcludeRegionIds],
+  })),
 }));

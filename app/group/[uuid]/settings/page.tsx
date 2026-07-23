@@ -19,7 +19,7 @@ import { useCsvImport } from "@/hooks/useCsvImport";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
-import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds } from "@/lib/utils/localStorage";
+import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish } from "@/types";
 import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin } from "lucide-react";
@@ -70,7 +70,10 @@ export default function SettingsPage() {
   const [addingRegion, setAddingRegion] = useState(false);
   const [newRegionName, setNewRegionName] = useState("");
   const [defaultExcludeIds, setDefaultExcludeIds] = useState<string[]>(() => getDefaultExcludeGenreIds(uuid ?? ""));
-  const { setDefaultExcludeGenreIds, setExcludeGenreIds } = useFilterStore();
+  const [defaultExcludeRegionIds, setDefaultExcludeRegionIdsState] = useState<string[]>(() => getDefaultExcludeRegionIds(uuid ?? ""));
+  const [defaultExcludeGenreSectionOpen, setDefaultExcludeGenreSectionOpen] = useState(false);
+  const [defaultExcludeRegionSectionOpen, setDefaultExcludeRegionSectionOpen] = useState(false);
+  const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
 
   const toggleDefaultExclude = (genreId: string) => {
     const next = defaultExcludeIds.includes(genreId)
@@ -80,6 +83,16 @@ export default function SettingsPage() {
     saveDefaultExcludeGenreIds(uuid, next);
     setDefaultExcludeGenreIds(next);
     setExcludeGenreIds(next);
+  };
+
+  const toggleDefaultExcludeRegion = (regionId: string) => {
+    const next = defaultExcludeRegionIds.includes(regionId)
+      ? defaultExcludeRegionIds.filter((id) => id !== regionId)
+      : [...defaultExcludeRegionIds, regionId];
+    setDefaultExcludeRegionIdsState(next);
+    saveDefaultExcludeRegionIds(uuid, next);
+    setDefaultExcludeRegionIds(next);
+    setExcludeRegionIds(next);
   };
 
   useEffect(() => {
@@ -670,32 +683,83 @@ export default function SettingsPage() {
 
         {genres.length > 0 && (
           <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-            <div>
-              <h2 className="font-semibold">デフォルト非表示ジャンル</h2>
-              <p className="text-xs text-muted-foreground mt-1">タップしたジャンルはリスト・ルーレットでデフォルトで除外されます</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {genres.map((g) => {
-                const excluded = defaultExcludeIds.includes(g.id);
-                return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => toggleDefaultExclude(g.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                      excluded
-                        ? "bg-destructive text-destructive-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted/70"
-                    )}
-                  >
-                    {excluded ? `✕ ${g.name}` : g.name}
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              type="button"
+              className="flex items-center gap-1 text-left"
+              onClick={() => setDefaultExcludeGenreSectionOpen((v) => !v)}
+            >
+              <div className="flex-1">
+                <h2 className="font-semibold">デフォルト非表示ジャンル</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">タップしたジャンルはデフォルトで除外されます</p>
+              </div>
+              {defaultExcludeGenreSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
+            </button>
+            {defaultExcludeGenreSectionOpen && (
+              <div className="flex flex-wrap gap-2">
+                {genres.map((g) => {
+                  const excluded = defaultExcludeIds.includes(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => toggleDefaultExclude(g.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                        excluded
+                          ? "bg-destructive text-destructive-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/70"
+                      )}
+                    >
+                      {excluded ? `✕ ${g.name}` : g.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
+
+        {(() => {
+          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+          if (broadRegions.length === 0) return null;
+          return (
+            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <button
+                type="button"
+                className="flex items-center gap-1 text-left"
+                onClick={() => setDefaultExcludeRegionSectionOpen((v) => !v)}
+              >
+                <div className="flex-1">
+                  <h2 className="font-semibold">デフォルト非表示中地域タグ</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">タップした中地域タグはデフォルトで除外されます</p>
+                </div>
+                {defaultExcludeRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
+              </button>
+              {defaultExcludeRegionSectionOpen && (
+                <div className="flex flex-wrap gap-2">
+                  {broadRegions.map((r) => {
+                    const excluded = defaultExcludeRegionIds.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => toggleDefaultExcludeRegion(r.id)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                          excluded
+                            ? "bg-destructive text-destructive-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/70"
+                        )}
+                      >
+                        {excluded ? `✕ ${r.name}` : r.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {/* 中地域タグ管理 */}
         {(() => {
@@ -738,9 +802,9 @@ export default function SettingsPage() {
                         </>
                       ) : (
                         <>
-                          <div className="flex flex-col">
-                            <button onClick={() => moveRegion(regions.indexOf(r), -1)} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={12} /></button>
-                            <button onClick={() => moveRegion(regions.indexOf(r), 1)} disabled={idx === broadRegions.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={12} /></button>
+                          <div className="flex flex-col -my-1">
+                            <button onClick={() => moveRegion(regions.indexOf(r), -1)} disabled={idx === 0} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={14} /></button>
+                            <button onClick={() => moveRegion(regions.indexOf(r), 1)} disabled={idx === broadRegions.length - 1} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={14} /></button>
                           </div>
                           <span className="flex-1 text-sm">{r.name}</span>
                           <button onClick={() => { setEditingRegionId(r.id); setEditingRegionName(r.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></button>

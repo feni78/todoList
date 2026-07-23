@@ -97,7 +97,9 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
   const excludeChanged =
     store.excludeGenreIds.some((id) => !store.defaultExcludeGenreIds.includes(id)) ||
-    store.defaultExcludeGenreIds.some((id) => !store.excludeGenreIds.includes(id));
+    store.defaultExcludeGenreIds.some((id) => !store.excludeGenreIds.includes(id)) ||
+    store.excludeRegionIds.some((id) => !store.defaultExcludeRegionIds.includes(id)) ||
+    store.defaultExcludeRegionIds.some((id) => !store.excludeRegionIds.includes(id));
 
   const hasFilters =
     store.memberIds.length > 0 ||
@@ -107,6 +109,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     store.seasons.length > 0 ||
     store.genreIds.length > 0 ||
     store.regionIds.length > 0 ||
+    store.excludeRegionIds.length > 0 ||
     store.nearbyKm !== null ||
     excludeChanged;
 
@@ -204,6 +207,20 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                   selected={store.regionIds.includes(r.id)}
                   onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
                   label={r.name}
+                />
+              ))}
+            </FilterSection>
+          )}
+
+          {broadRegions.length > 0 && (
+            <FilterSection title="中地域タグ（除外）">
+              {broadRegions.map((r) => (
+                <FilterChip
+                  key={r.id}
+                  selected={store.excludeRegionIds.includes(r.id)}
+                  onClick={() => store.setExcludeRegionIds(toggle(store.excludeRegionIds, r.id))}
+                  label={r.name}
+                  variant="exclude"
                 />
               ))}
             </FilterSection>

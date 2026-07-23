@@ -114,6 +114,7 @@ export interface FilterState {
   genreSearchMode: "OR" | "AND";
   excludeGenreIds: string[];
   regionIds: string[];
+  excludeRegionIds: string[];
   searchQuery: string;
   nearbyKm: number | null;
 }

@@ -139,6 +139,9 @@ export default function ListPage() {
     if (filterStore.regionIds.length > 0) {
       result = result.filter((w) => w.regions.some((r) => filterStore.regionIds.includes(r.id)));
     }
+    if (filterStore.excludeRegionIds.length > 0) {
+      result = result.filter((w) => !w.regions.some((r) => filterStore.excludeRegionIds.includes(r.id)));
+    }
     if (nearbyWishIds !== null) {
       result = result.filter((w) => nearbyWishIds.has(w.id));
     }
@@ -251,7 +254,9 @@ export default function ListPage() {
 
   const excludeChanged =
     filterStore.excludeGenreIds.some((id) => !filterStore.defaultExcludeGenreIds.includes(id)) ||
-    filterStore.defaultExcludeGenreIds.some((id) => !filterStore.excludeGenreIds.includes(id));
+    filterStore.defaultExcludeGenreIds.some((id) => !filterStore.excludeGenreIds.includes(id)) ||
+    filterStore.excludeRegionIds.some((id) => !filterStore.defaultExcludeRegionIds.includes(id)) ||
+    filterStore.defaultExcludeRegionIds.some((id) => !filterStore.excludeRegionIds.includes(id));
 
   const hasActiveFilters =
     filterStore.memberIds.length > 0 ||

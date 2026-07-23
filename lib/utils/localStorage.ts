@@ -90,3 +90,18 @@ export function saveDefaultExcludeGenreIds(groupId: string, ids: string[]): void
   if (typeof window === "undefined") return;
   localStorage.setItem(`futari_default_exclude_${groupId}`, JSON.stringify(ids));
 }
+
+export function getDefaultExcludeRegionIds(groupId: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`futari_default_exclude_region_${groupId}`);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDefaultExcludeRegionIds(groupId: string, ids: string[]): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`futari_default_exclude_region_${groupId}`, JSON.stringify(ids));
+}

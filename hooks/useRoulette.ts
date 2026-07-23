@@ -34,6 +34,7 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
       if (w.genres.some((g) => filter.excludeGenreIds.includes(g.id))) return false;
     }
     if (filter.regionIds.length > 0 && !w.regions.some((r) => filter.regionIds.includes(r.id))) return false;
+    if (filter.excludeRegionIds.length > 0 && w.regions.some((r) => filter.excludeRegionIds.includes(r.id))) return false;
     if (filter.nearbyKm !== null) {
       if (!userLocation || w.latitude == null || w.longitude == null) return false;
       if (haversineKm(userLocation.lat, userLocation.lng, w.latitude, w.longitude) > filter.nearbyKm) return false;

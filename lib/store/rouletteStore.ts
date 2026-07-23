@@ -44,6 +44,7 @@ const defaultFilter: RouletteFilter = {
   genreSearchMode: "OR",
   excludeGenreIds: [],
   regionIds: [],
+  excludeRegionIds: [],
   nearbyKm: null,
 };
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getGroupMember, saveGroupMember, getDefaultExcludeGenreIds } from "@/lib/utils/localStorage";
+import { getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, getDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { JoinGroupForm } from "@/components/group/JoinGroupForm";
 import { useGroupStore } from "@/lib/store/groupStore";
@@ -12,7 +12,7 @@ import { Group, GroupMember } from "@/types";
 export default function GroupLayout({ children }: { children: React.ReactNode }) {
   const { uuid } = useParams<{ uuid: string }>();
   const { setGroup, setCurrentMember, group } = useGroupStore();
-  const { setDefaultExcludeGenreIds, setExcludeGenreIds } = useFilterStore();
+  const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
   const [checking, setChecking] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
   const [groupName, setGroupName] = useState("");
@@ -66,7 +66,10 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
     const defaults = getDefaultExcludeGenreIds(uuid);
     setDefaultExcludeGenreIds(defaults);
     setExcludeGenreIds(defaults);
-  }, [uuid, setDefaultExcludeGenreIds, setExcludeGenreIds]);
+    const regionDefaults = getDefaultExcludeRegionIds(uuid);
+    setDefaultExcludeRegionIds(regionDefaults);
+    setExcludeRegionIds(regionDefaults);
+  }, [uuid, setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds]);
 
   const handleJoined = () => {
     const stored = getGroupMember(uuid);
