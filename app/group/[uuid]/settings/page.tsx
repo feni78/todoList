@@ -1366,14 +1366,29 @@ export default function SettingsPage() {
                       );
                     })}
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={async () => { if (!confirm("ごみ箱を空にしますか？元に戻せません。")) return; try { await emptyTrash(); toast.success("ごみ箱を空にしました"); } catch { toast.error("失敗しました"); } }}
-                    className="w-full"
-                  >
-                    ごみ箱を空にする
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await Promise.all(trashItems.map((item) => restoreWish(item.id)));
+                          toast.success(`${trashItems.length}件を復元しました`);
+                        } catch { toast.error("復元に失敗しました"); }
+                      }}
+                      className="flex-1"
+                    >
+                      全件復元
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => { if (!confirm("ごみ箱を空にしますか？元に戻せません。")) return; try { await emptyTrash(); toast.success("ごみ箱を空にしました"); } catch { toast.error("失敗しました"); } }}
+                      className="flex-1"
+                    >
+                      ごみ箱を空にする
+                    </Button>
+                  </div>
                 </>
               )}
             </>
