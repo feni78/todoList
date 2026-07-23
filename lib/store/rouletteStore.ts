@@ -46,6 +46,7 @@ const defaultFilter: RouletteFilter = {
   regionIds: [],
   excludeRegionIds: [],
   nearbyKm: null,
+  stationName: null,
 };
 
 export const useRouletteStore = create<RouletteState>((set) => ({

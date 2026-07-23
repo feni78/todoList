@@ -117,6 +117,7 @@ export interface FilterState {
   excludeRegionIds: string[];
   searchQuery: string;
   nearbyKm: number | null;
+  stationName: string | null;
 }
 
 export const SITUATION_LABELS: Record<Situation, string> = {

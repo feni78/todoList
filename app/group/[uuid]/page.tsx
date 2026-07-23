@@ -25,6 +25,7 @@ import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { findStation } from "@/lib/utils/station";
 
 type TabValue = "PENDING" | "HOLD";
 type SortOrder = "priority" | "createdAt";
@@ -64,8 +65,35 @@ export default function ListPage() {
 
   useEffect(() => {
     const km = filterStore.nearbyKm;
+    const stationName = filterStore.stationName;
     nearbyKmRef.current = km;
     if (km === null) { setNearbyWishIds(null); return; }
+
+    if (stationName !== null) {
+      const station = findStation(stationName);
+      if (!station) { setNearbyWishIds(null); return; }
+      (async () => {
+        if (nearbyKmRef.current !== km) return;
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase.rpc("get_wishes_by_distance", {
+            p_group_id: uuid,
+            p_lat: station.lat,
+            p_lng: station.lng,
+            p_max_km: km,
+            p_limit: 500,
+          });
+          if (nearbyKmRef.current !== km) return;
+          if (error) throw error;
+          setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
+        } catch {
+          if (nearbyKmRef.current !== km) return;
+          toast.error("距離フィルターの取得に失敗しました");
+          setNearbyWishIds(null);
+        }
+      })();
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
       if (nearbyKmRef.current !== km) return;
@@ -90,7 +118,7 @@ export default function ListPage() {
       toast.error("位置情報の取得を許可してください");
       setNearbyWishIds(null);
     });
-  }, [filterStore.nearbyKm, uuid]);
+  }, [filterStore.nearbyKm, filterStore.stationName, uuid]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

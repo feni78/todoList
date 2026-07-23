@@ -19,6 +19,7 @@ interface FilterStore extends FilterState {
   setExcludeRegionIds: (ids: string[]) => void;
   setSearchQuery: (q: string) => void;
   setNearbyKm: (km: number | null) => void;
+  setStationName: (name: string | null) => void;
   reset: () => void;
 }
 
@@ -36,6 +37,7 @@ const initialState: FilterState = {
   excludeRegionIds: [],
   searchQuery: "",
   nearbyKm: null,
+  stationName: null,
 };
 
 export const useFilterStore = create<FilterStore>((set) => ({
@@ -57,6 +59,7 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setExcludeRegionIds: (excludeRegionIds) => set({ excludeRegionIds }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setNearbyKm: (nearbyKm) => set({ nearbyKm }),
+  setStationName: (stationName) => set({ stationName }),
   reset: () => set((state) => ({
     ...initialState,
     defaultExcludeGenreIds: state.defaultExcludeGenreIds,

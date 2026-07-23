@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StationSearch } from "@/components/common/StationSearch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -282,8 +283,30 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
             </FilterSection>
           )}
 
-          <FilterSection title="現在地からの距離">
+          <FilterSection title="距離で絞り込み">
             <div className="w-full flex flex-col gap-3">
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => store.setStationName(null)}
+                  className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors", store.stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  現在地
+                </button>
+                <button
+                  type="button"
+                  onClick={() => store.setStationName(store.stationName ?? "")}
+                  className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors", store.stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  駅名
+                </button>
+              </div>
+              {store.stationName !== null && (
+                <StationSearch
+                  value={store.stationName || null}
+                  onChange={(name) => store.setStationName(name ?? "")}
+                />
+              )}
               <div className="flex items-center justify-between">
                 <span className={cn("text-sm font-medium", store.nearbyKm !== null && "text-primary")}>
                   {distanceLabel}

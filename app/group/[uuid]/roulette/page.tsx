@@ -18,6 +18,7 @@ import { SlidersHorizontal, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { computeProbabilities } from "@/lib/utils/roulette";
+import { findStation } from "@/lib/utils/station";
 
 type RouletteMode = "normal" | "special";
 
@@ -47,8 +48,20 @@ export default function RoulettePage() {
 
   useEffect(() => {
     const km = filter.nearbyKm;
+    const stationName = filter.stationName;
     nearbyKmRef.current = km;
     if (km === null) { setUserLocation(null); return; }
+
+    if (stationName !== null) {
+      const station = findStation(stationName);
+      if (station) {
+        setUserLocation({ lat: station.lat, lng: station.lng });
+      } else {
+        setUserLocation(null);
+      }
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (nearbyKmRef.current !== km) return;
@@ -56,7 +69,7 @@ export default function RoulettePage() {
       },
       () => { toast.error("位置情報の取得を許可してください"); setUserLocation(null); }
     );
-  }, [filter.nearbyKm]);
+  }, [filter.nearbyKm, filter.stationName]);
 
   const hasActiveFilters =
     filter.memberIds.length > 0 ||

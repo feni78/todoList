@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StationSearch } from "@/components/common/StationSearch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -232,8 +233,30 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
             </Section>
           )}
 
-          <Section title="現在地からの距離">
+          <Section title="距離で絞り込み">
             <div className="w-full flex flex-col gap-3">
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFilter({ stationName: null })}
+                  className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors", filter.stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  現在地
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter({ stationName: filter.stationName ?? "" })}
+                  className={cn("flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors", filter.stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  駅名
+                </button>
+              </div>
+              {filter.stationName !== null && (
+                <StationSearch
+                  value={filter.stationName || null}
+                  onChange={(name) => setFilter({ stationName: name ?? "" })}
+                />
+              )}
               <div className="flex items-center justify-between">
                 <span className={cn("text-sm font-medium", filter.nearbyKm !== null && "text-primary")}>
                   {distanceLabel}
