@@ -1149,6 +1149,13 @@ export default function SettingsPage() {
                               >
                                 {w.title}
                               </button>
+                              <button
+                                type="button"
+                                className="px-2 py-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                onClick={() => { navigator.clipboard.writeText(w.title); toast.success("コピーしました"); }}
+                              >
+                                <Copy size={14} />
+                              </button>
                               {mapsUrl && (
                                 <a
                                   href={mapsUrl}
@@ -1281,6 +1288,13 @@ export default function SettingsPage() {
                             onClick={() => setLocationlessExpandedId(expanded ? null : w.id)}
                           >
                             {w.title}
+                          </button>
+                          <button
+                            type="button"
+                            className="px-2 py-2.5 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            onClick={() => { navigator.clipboard.writeText(w.title); toast.success("コピーしました"); }}
+                          >
+                            <Copy size={14} />
                           </button>
                           {mapsUrl && (
                             <a
