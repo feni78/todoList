@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { drawWish } from "@/lib/utils/roulette";
+import { haversineKm } from "@/lib/utils/distance";
 import { Wish } from "@/types";
 
-export function useRoulette(wishes: Wish[]) {
+export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: number } | null) {
   const {
     settings, filter,
     result, setResult,
@@ -32,8 +33,13 @@ export function useRoulette(wishes: Wish[]) {
     if (filter.excludeGenreIds.length > 0) {
       if (w.genres.some((g) => filter.excludeGenreIds.includes(g.id))) return false;
     }
+    if (filter.regionIds.length > 0 && !w.regions.some((r) => filter.regionIds.includes(r.id))) return false;
+    if (filter.nearbyKm !== null) {
+      if (!userLocation || w.latitude == null || w.longitude == null) return false;
+      if (haversineKm(userLocation.lat, userLocation.lng, w.latitude, w.longitude) > filter.nearbyKm) return false;
+    }
     return true;
-  }), [wishes, filter]);
+  }), [wishes, filter, userLocation]);
 
   // スピンIDが一致する場合だけ完了する（古いタイマーの誤発火を防ぐ）
   const complete = useCallback((drawn: Wish | null, expectedId: number) => {

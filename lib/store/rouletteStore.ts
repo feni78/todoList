@@ -26,6 +26,7 @@ interface RouletteState {
   setSpinEndAt: (ts: number | null) => void;
   setSpinId: (id: number) => void;
   setDevMode: (v: boolean) => void;
+  resetFilter: () => void;
 }
 
 const defaultSettings: RouletteSettings = {
@@ -65,4 +66,5 @@ export const useRouletteStore = create<RouletteState>((set) => ({
   setSpinEndAt: (spinEndAt) => set({ spinEndAt }),
   setSpinId: (spinId) => set({ spinId }),
   setDevMode: (devMode) => set({ devMode }),
+  resetFilter: () => set({ filter: defaultFilter }),
 }));

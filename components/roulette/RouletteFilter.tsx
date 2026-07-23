@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import {
   GroupMember,
   Genre,
+  Region,
   Situation,
   Budget,
   Duration,
@@ -16,6 +18,7 @@ import {
   SEASON_LABELS,
 } from "@/types";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
+import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
@@ -24,6 +27,7 @@ interface RouletteFilterProps {
   onClose: () => void;
   members: GroupMember[];
   genres?: Genre[];
+  regions?: Region[];
 }
 
 function FilterChip({ selected, onClick, label, variant = "default" }: {
@@ -52,12 +56,13 @@ function FilterChip({ selected, onClick, label, variant = "default" }: {
   );
 }
 
-function Section({ title, children, collapsible = false }: {
+function Section({ title, children, collapsible = false, defaultOpen = true }: {
   title: string;
   children: React.ReactNode;
   collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(!collapsible);
+  const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   return (
     <div className="flex flex-col gap-2">
       <button
@@ -81,9 +86,33 @@ const SITUATIONS: Situation[] = ["HOME", "OUTSIDE", "EITHER"];
 const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
+const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100];
 
-export function RouletteFilter({ open, onClose, members, genres = [] }: RouletteFilterProps) {
-  const { filter, setFilter } = useRouletteStore();
+export function RouletteFilter({ open, onClose, members, genres = [], regions = [] }: RouletteFilterProps) {
+  const { filter, setFilter, resetFilter } = useRouletteStore();
+
+  const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+  const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+
+  const sliderPos = filter.nearbyKm === null ? 0 : DISTANCE_VALUES.indexOf(filter.nearbyKm) + 1;
+  const distanceLabel = filter.nearbyKm === null ? "指定なし" : `${filter.nearbyKm}km以内`;
+
+  const handleSlider = (vals: number | readonly number[]) => {
+    const pos = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
+    setFilter({ nearbyKm: pos === 0 ? null : DISTANCE_VALUES[pos - 1] });
+  };
+
+  const hasFilters =
+    filter.memberIds.length > 0 ||
+    filter.situations.length > 0 ||
+    filter.budgets.length > 0 ||
+    filter.durations.length > 0 ||
+    filter.seasons.length > 0 ||
+    filter.genreIds.length > 0 ||
+    filter.excludeGenreIds.length > 0 ||
+    filter.regionIds.length > 0 ||
+    filter.nearbyKm !== null;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -150,6 +179,32 @@ export function RouletteFilter({ open, onClose, members, genres = [] }: Roulette
             ))}
           </Section>
 
+          {broadRegions.length > 0 && (
+            <Section title="中地域タグ">
+              {broadRegions.map((r) => (
+                <FilterChip
+                  key={r.id}
+                  selected={filter.regionIds.includes(r.id)}
+                  onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
+                  label={r.name}
+                />
+              ))}
+            </Section>
+          )}
+
+          {specificRegions.length > 0 && (
+            <Section title="小地域タグ" collapsible defaultOpen={false}>
+              {specificRegions.map((r) => (
+                <FilterChip
+                  key={r.id}
+                  selected={filter.regionIds.includes(r.id)}
+                  onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
+                  label={r.name}
+                />
+              ))}
+            </Section>
+          )}
+
           {genres.length > 0 && (
             <Section title="ジャンル（含む）">
               {genres.map((g) => (
@@ -176,10 +231,45 @@ export function RouletteFilter({ open, onClose, members, genres = [] }: Roulette
               ))}
             </Section>
           )}
+
+          <Section title="現在地からの距離">
+            <div className="w-full flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className={cn("text-sm font-medium", filter.nearbyKm !== null && "text-primary")}>
+                  {distanceLabel}
+                </span>
+                {filter.nearbyKm !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setFilter({ nearbyKm: null })}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    クリア
+                  </button>
+                )}
+              </div>
+              <Slider
+                min={0}
+                max={DISTANCE_VALUES.length}
+                step={1}
+                value={[sliderPos]}
+                onValueChange={handleSlider}
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>指定なし</span>
+                <span>100km</span>
+              </div>
+            </div>
+          </Section>
         </div>
 
-        <div className="mt-6 pb-8">
-          <Button onClick={onClose} className="w-full">
+        <div className="flex gap-2 mt-6 pb-8">
+          {hasFilters && (
+            <Button variant="outline" onClick={resetFilter} className="flex-1">
+              リセット
+            </Button>
+          )}
+          <Button onClick={onClose} className="flex-1">
             適用
           </Button>
         </div>

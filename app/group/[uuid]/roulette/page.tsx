@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useWishes } from "@/hooks/useWishes";
 import { useRoulette } from "@/hooks/useRoulette";
 import { useGenres } from "@/hooks/useGenres";
+import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { SlidersHorizontal, RefreshCw } from "lucide-react";
@@ -25,11 +26,38 @@ export default function RoulettePage() {
   const group = useGroupStore((s) => s.group);
   const { wishes, changeStatus } = useWishes(uuid);
   const { genres } = useGenres(uuid);
-  const { mode, setMode, settings, devMode } = useRouletteStore();
-  const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes);
+  const { regions } = useRegions(uuid);
+  const { mode, setMode, settings, devMode, filter } = useRouletteStore();
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const nearbyKmRef = useRef<number | null>(null);
+  const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes, userLocation);
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
   const [filterOpen, setFilterOpen] = useState(false);
   const [specialAnimDone, setSpecialAnimDone] = useState(true);
+
+  useEffect(() => {
+    const km = filter.nearbyKm;
+    nearbyKmRef.current = km;
+    if (km === null) { setUserLocation(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (nearbyKmRef.current !== km) return;
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => { toast.error("位置情報の取得を許可してください"); setUserLocation(null); }
+    );
+  }, [filter.nearbyKm]);
+
+  const hasActiveFilters =
+    filter.memberIds.length > 0 ||
+    filter.situations.length > 0 ||
+    filter.budgets.length > 0 ||
+    filter.durations.length > 0 ||
+    filter.seasons.length > 0 ||
+    filter.genreIds.length > 0 ||
+    filter.excludeGenreIds.length > 0 ||
+    filter.regionIds.length > 0 ||
+    filter.nearbyKm !== null;
 
   const handleSetMode = (m: RouletteMode) => {
     if (isSpinning) completeNow();
@@ -63,7 +91,10 @@ export default function RoulettePage() {
         right={
           <button
             onClick={() => setFilterOpen(true)}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground"
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              hasActiveFilters ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+            )}
           >
             <SlidersHorizontal size={18} />
           </button>
@@ -140,6 +171,7 @@ export default function RoulettePage() {
         onClose={() => setFilterOpen(false)}
         members={group?.members ?? []}
         genres={genres}
+        regions={regions}
       />
 
       <BottomNav groupId={uuid} />
