@@ -253,7 +253,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
           </FilterSection>
 
           {/* 季節 */}
-          <FilterSection title="季節タグ">
+          <FilterSection title="季節タグ" collapsible defaultOpen={store.seasons.length > 0}>
             {SEASONS.map((s) => (
               <FilterChip
                 key={s}
