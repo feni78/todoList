@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ScoreValue } from "@/types";
 import { getGroupMember } from "@/lib/utils/localStorage";
-import { toBroadRegionTag, toSpecificRegionTag } from "@/lib/utils/regionTag";
+import { toBroadRegionTag, toSpecificRegionTag, isBroadRegionTag } from "@/lib/utils/regionTag";
 import type { PlaceLookupResult } from "@/app/api/places/lookup/route";
 
 export interface CsvRow {
@@ -427,29 +427,47 @@ async function retryLocationEnrichmentImpl(
     if (googleUrl) phase1Items.push({ wishId: row.id, url: googleUrl, title: row.title });
   }
 
-  // Phase 2: 緯度経度あり・地域タグなし → Geocoding API でリバースジオコーディング
-  let phase2Rows: { id: string; title: string; latitude: number; longitude: number }[] = [];
-  // wish_regions が空（left join で null）のもの = 地域タグ未設定
+  // Phase 2: 緯度経度あり・地域タグ未設定 → Geocoding API でリバースジオコーディング
+  // Step 1: 緯度経度が揃っているもの全件取得
+  let phase2Candidates: { id: string; title: string; latitude: number; longitude: number }[] = [];
   from = 0;
   while (true) {
     const { data, error } = await supabase
       .from("wishes")
-      .select("id, title, latitude, longitude, wish_regions!left(wish_id)")
+      .select("id, title, latitude, longitude")
       .eq("group_id", groupId)
       .is("deleted_at", null)
       .not("latitude", "is", null)
       .not("longitude", "is", null)
-      .is("wish_regions.wish_id", null)
       .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw error;
-    const rows = (data ?? []) as unknown as { id: string; title: string; latitude: number; longitude: number }[];
-    phase2Rows = phase2Rows.concat(rows);
+    const rows = (data ?? []) as typeof phase2Candidates;
+    phase2Candidates = phase2Candidates.concat(rows);
     if (rows.length < PAGE) break;
     from += PAGE;
   }
 
-  const phase2Items = phase2Rows.map((r) => ({ wishId: r.id, title: r.title, lat: r.latitude, lng: r.longitude }));
+  // Step 2: 中地域・小地域の両方が揃っているものを除外（どちらか欠けていれば対象）
+  let phase2Items: { wishId: string; title: string; lat: number; lng: number }[] = [];
+  if (phase2Candidates.length > 0) {
+    const candidateIds = phase2Candidates.map((r) => r.id);
+    const { data: taggedData } = await supabase
+      .from("wish_regions")
+      .select("wish_id, regions(name)")
+      .in("wish_id", candidateIds);
+    // wish_id ごとに 中地域あり・小地域あり をまとめる
+    const hasBroad = new Set<string>();
+    const hasSpecific = new Set<string>();
+    for (const row of (taggedData ?? []) as unknown as { wish_id: string; regions: { name: string } | null }[]) {
+      if (!row.regions) continue;
+      if (isBroadRegionTag(row.regions.name)) hasBroad.add(row.wish_id);
+      else hasSpecific.add(row.wish_id);
+    }
+    phase2Items = phase2Candidates
+      .filter((r) => !hasBroad.has(r.id) || !hasSpecific.has(r.id))
+      .map((r) => ({ wishId: r.id, title: r.title, lat: r.latitude, lng: r.longitude }));
+  }
 
   if (phase1Items.length === 0 && phase2Items.length === 0) return null;
 
