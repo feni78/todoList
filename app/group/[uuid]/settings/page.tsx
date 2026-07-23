@@ -353,7 +353,7 @@ export default function SettingsPage() {
       const mergedSeasons = [...new Set([primary, ...rest].flatMap((w) => w.seasons))];
       const mergedFavorite = [primary, ...rest].some((w) => w.isFavorite);
       try {
-        await updateWish(primary.id, { memo: mergedMemo, genreIds: allGenreIds, regionIds: allRegionIds, seasons: mergedSeasons, isFavorite: mergedFavorite });
+        await updateWish(primary.id, { memo: mergedMemo, genreIds: allGenreIds, regionIds: allRegionIds, seasons: mergedSeasons });
         for (const dup of rest) { await deleteWish(dup.id); }
         mergedWishes += rest.length;
       } catch {
