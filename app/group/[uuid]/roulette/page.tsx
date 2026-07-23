@@ -155,7 +155,7 @@ export default function RoulettePage() {
             size="lg"
             className="w-full rounded-full text-base font-bold h-14 shadow-lg"
           >
-            {isSpinning || !specialAnimDone ? "回転中..." : showResultUI ? (
+            {isSpinning || !specialAnimDone || (result !== null && !showResultUI) ? "回転中..." : showResultUI ? (
               <><RefreshCw size={18} className="mr-2" />もう一度</>
             ) : "スタート！"}
           </Button>
