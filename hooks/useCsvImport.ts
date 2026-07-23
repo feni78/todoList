@@ -465,19 +465,23 @@ async function retryLocationEnrichmentImpl(
     );
     const groupHasBroadTags = [...regionNameMap.values()].some((name) => isBroadRegionTag(name));
 
-    // candidateIds に付いている wish_regions をページネーションで全件取得
+    // candidateIds を小バッチに分割して wish_regions を取得（URL長さ制限回避）
+    const ID_BATCH = 50;
     let allWishRegions: { wish_id: string; region_id: string }[] = [];
-    let wrFrom = 0;
-    while (true) {
-      const { data: wrData, error: wrError } = await supabase
-        .from("wish_regions")
-        .select("wish_id, region_id")
-        .in("wish_id", candidateIds)
-        .range(wrFrom, wrFrom + PAGE - 1);
-      if (wrError) throw wrError;
-      allWishRegions = allWishRegions.concat((wrData ?? []) as typeof allWishRegions);
-      if ((wrData ?? []).length < PAGE) break;
-      wrFrom += PAGE;
+    for (let idFrom = 0; idFrom < candidateIds.length; idFrom += ID_BATCH) {
+      const idBatch = candidateIds.slice(idFrom, idFrom + ID_BATCH);
+      let wrFrom = 0;
+      while (true) {
+        const { data: wrData, error: wrError } = await supabase
+          .from("wish_regions")
+          .select("wish_id, region_id")
+          .in("wish_id", idBatch)
+          .range(wrFrom, wrFrom + PAGE - 1);
+        if (wrError) throw wrError;
+        allWishRegions = allWishRegions.concat((wrData ?? []) as typeof allWishRegions);
+        if ((wrData ?? []).length < PAGE) break;
+        wrFrom += PAGE;
+      }
     }
 
     const hasBroad = new Set<string>();
