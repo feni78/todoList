@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Wish, scoreToIcon } from "@/types";
 import { MapPin, ExternalLink } from "lucide-react";
@@ -45,6 +45,8 @@ const MAX_DOM_ITEMS = 2000; // DOM ノード上限
 export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, probabilities, onAnimDone }: RouletteSpecialProps) {
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
+  const wishesRef = useRef(wishes);
+  wishesRef.current = wishes;
   const count = wishes.length;
   const repeats = count > 0 ? Math.max(4, Math.min(22, Math.ceil(MAX_DOM_ITEMS / count))) : 0;
   const [animDone, setAnimDone] = useState(true);
@@ -64,7 +66,8 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
       prevSpinning.current = true;
       setAnimDone(false);
 
-      const resultIndex = wishes.findIndex((w) => w.id === pendingResult.id);
+      const currentWishes = wishesRef.current;
+      const resultIndex = currentWishes.findIndex((w) => w.id === pendingResult.id);
       if (resultIndex < 0) return;
 
       const centerOffset = Math.floor(VISIBLE / 2);
@@ -81,9 +84,29 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
     }
     if (!isSpinning) {
       prevSpinning.current = false;
-      // controls.stop() を呼ばずアニメーションを自然に完了させる
     }
-  }, [isSpinning, pendingResult, wishes, count, controls]);
+  }, [isSpinning, pendingResult, count, repeats, controls]);
+
+  const slotItems = useMemo(() => {
+    if (count === 0) return [];
+    const repeatedItems = Array.from({ length: repeats }, () => wishes).flat();
+    return repeatedItems.map((wish, i) => (
+      <div key={`${wish.id}-${i}`} className="flex items-center gap-3 px-4" style={{ height: ITEM_HEIGHT }}>
+        <span className="text-2xl">{scoreToIcon(wish.avgScore)}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{wish.title}</p>
+          <p className="text-xs text-muted-foreground">
+            {wish.member.nickname}
+            {probabilities && (
+              <span className="ml-1.5 text-primary font-mono">
+                {((probabilities.get(wish.id) ?? 0) * 100).toFixed(1)}%
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+    ));
+  }, [wishes, repeats, probabilities]);
 
   if (count === 0) {
     return (
@@ -93,26 +116,6 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
       </div>
     );
   }
-
-  const repeatedItems = Array.from({ length: repeats }, () => wishes).flat();
-
-
-  const slotItems = repeatedItems.map((wish, i) => (
-    <div key={`${wish.id}-${i}`} className="flex items-center gap-3 px-4" style={{ height: ITEM_HEIGHT }}>
-      <span className="text-2xl">{scoreToIcon(wish.avgScore)}</span>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{wish.title}</p>
-        <p className="text-xs text-muted-foreground">
-          {wish.member.nickname}
-          {probabilities && (
-            <span className="ml-1.5 text-primary font-mono">
-              {((probabilities.get(wish.id) ?? 0) * 100).toFixed(1)}%
-            </span>
-          )}
-        </p>
-      </div>
-    </div>
-  ));
 
   return (
     <div className="flex flex-col items-center gap-6">
