@@ -19,6 +19,7 @@ import {
   SEASON_LABELS,
 } from "@/types";
 import { useFilterStore } from "@/lib/store/filterStore";
+import { useShallow } from "zustand/react/shallow";
 import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -155,7 +156,32 @@ const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
 const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100];
 
 export function FilterPanel({ open, onClose, members, genres = [], regions = [] }: FilterPanelProps) {
-  const store = useFilterStore();
+  const {
+    memberIds, situations, budgets, durations, seasons,
+    genreIds, genreSearchMode, excludeGenreIds,
+    regionIds, excludeRegionIds, defaultExcludeRegionIds, defaultExcludeGenreIds,
+    nearbyKm, stationName,
+  } = useFilterStore(useShallow((s) => ({
+    memberIds: s.memberIds,
+    situations: s.situations,
+    budgets: s.budgets,
+    durations: s.durations,
+    seasons: s.seasons,
+    genreIds: s.genreIds,
+    genreSearchMode: s.genreSearchMode,
+    excludeGenreIds: s.excludeGenreIds,
+    regionIds: s.regionIds,
+    excludeRegionIds: s.excludeRegionIds,
+    defaultExcludeRegionIds: s.defaultExcludeRegionIds,
+    defaultExcludeGenreIds: s.defaultExcludeGenreIds,
+    nearbyKm: s.nearbyKm,
+    stationName: s.stationName,
+  })));
+  const {
+    setMemberIds, setSituations, setBudgets, setDurations, setSeasons,
+    setGenreIds, setGenreSearchMode, setExcludeGenreIds,
+    setRegionIds, setExcludeRegionIds, setNearbyKm, setStationName, reset,
+  } = useFilterStore.getState();
 
   const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
   const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
@@ -167,35 +193,35 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     });
 
   const excludeChanged =
-    store.excludeGenreIds.some((id) => !store.defaultExcludeGenreIds.includes(id)) ||
-    store.defaultExcludeGenreIds.some((id) => !store.excludeGenreIds.includes(id)) ||
-    store.excludeRegionIds.some((id) => !store.defaultExcludeRegionIds.includes(id)) ||
-    store.defaultExcludeRegionIds.some((id) => !store.excludeRegionIds.includes(id));
+    excludeGenreIds.some((id) => !defaultExcludeGenreIds.includes(id)) ||
+    defaultExcludeGenreIds.some((id) => !excludeGenreIds.includes(id)) ||
+    excludeRegionIds.some((id) => !defaultExcludeRegionIds.includes(id)) ||
+    defaultExcludeRegionIds.some((id) => !excludeRegionIds.includes(id));
 
-  const regionIncludeCount = store.regionIds.length;
-  const regionExcludeCount = store.excludeRegionIds.filter(
-    (id) => !store.defaultExcludeRegionIds.includes(id)
+  const regionIncludeCount = regionIds.length;
+  const regionExcludeCount = excludeRegionIds.filter(
+    (id) => !defaultExcludeRegionIds.includes(id)
   ).length;
   const regionCount = regionIncludeCount + regionExcludeCount;
 
   const hasFilters =
-    store.memberIds.length > 0 ||
-    store.situations.length > 0 ||
-    store.budgets.length > 0 ||
-    store.durations.length > 0 ||
-    store.seasons.length > 0 ||
-    store.genreIds.length > 0 ||
-    store.regionIds.length > 0 ||
-    store.excludeRegionIds.length > 0 ||
-    store.nearbyKm !== null ||
+    memberIds.length > 0 ||
+    situations.length > 0 ||
+    budgets.length > 0 ||
+    durations.length > 0 ||
+    seasons.length > 0 ||
+    genreIds.length > 0 ||
+    regionIds.length > 0 ||
+    excludeRegionIds.length > 0 ||
+    nearbyKm !== null ||
     excludeChanged;
 
-  const sliderPos = store.nearbyKm === null ? 0 : DISTANCE_VALUES.indexOf(store.nearbyKm) + 1;
-  const distanceLabel = store.nearbyKm === null ? "指定なし" : `${store.nearbyKm}km以内`;
+  const sliderPos = nearbyKm === null ? 0 : DISTANCE_VALUES.indexOf(nearbyKm) + 1;
+  const distanceLabel = nearbyKm === null ? "指定なし" : `${nearbyKm}km以内`;
 
   const handleSlider = (vals: number | readonly number[]) => {
     const pos = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
-    store.setNearbyKm(pos === 0 ? null : DISTANCE_VALUES[pos - 1]);
+    setNearbyKm(pos === 0 ? null : DISTANCE_VALUES[pos - 1]);
   };
 
   return (
@@ -208,7 +234,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
         <div className="flex flex-col">
           {/* ジャンル — 含む/除外タブ */}
           {genres.length > 0 && (
-            <IncludeExcludeSection title="ジャンル" count={store.genreIds.length + store.excludeGenreIds.length} noDivider>
+            <IncludeExcludeSection title="ジャンル" count={genreIds.length + excludeGenreIds.length} noDivider>
               {(mode) => {
                 if (mode === "include") {
                   return (
@@ -216,8 +242,8 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                       {genres.map((g) => (
                         <FilterChip
                           key={g.id}
-                          selected={store.genreIds.includes(g.id)}
-                          onClick={() => store.setGenreIds(toggle(store.genreIds, g.id))}
+                          selected={genreIds.includes(g.id)}
+                          onClick={() => setGenreIds(toggle(genreIds, g.id))}
                           label={g.name}
                         />
                       ))}
@@ -225,10 +251,10 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                         <span className="text-xs text-muted-foreground">複数選択時:</span>
                         <button
                           type="button"
-                          onClick={() => store.setGenreSearchMode("OR")}
+                          onClick={() => setGenreSearchMode("OR")}
                           className={cn(
                             "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                            store.genreSearchMode === "OR"
+                            genreSearchMode === "OR"
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-muted-foreground hover:bg-muted/70"
                           )}
@@ -237,10 +263,10 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                         </button>
                         <button
                           type="button"
-                          onClick={() => store.setGenreSearchMode("AND")}
+                          onClick={() => setGenreSearchMode("AND")}
                           className={cn(
                             "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                            store.genreSearchMode === "AND"
+                            genreSearchMode === "AND"
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-muted-foreground hover:bg-muted/70"
                           )}
@@ -254,8 +280,8 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                   return genres.map((g) => (
                     <FilterChip
                       key={g.id}
-                      selected={store.excludeGenreIds.includes(g.id)}
-                      onClick={() => store.setExcludeGenreIds(toggle(store.excludeGenreIds, g.id))}
+                      selected={excludeGenreIds.includes(g.id)}
+                      onClick={() => setExcludeGenreIds(toggle(excludeGenreIds, g.id))}
                       label={g.name}
                       variant="exclude"
                     />
@@ -266,14 +292,14 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
           )}
 
           {/* シチュエーション — 単一選択 */}
-          <FilterSection title="シチュエーション" count={store.situations.length}>
+          <FilterSection title="シチュエーション" count={situations.length}>
             {SITUATIONS.map((s) => (
               <FilterChip
                 key={s}
-                selected={store.situations.includes(s)}
+                selected={situations.includes(s)}
                 onClick={() =>
-                  store.setSituations(
-                    store.situations.includes(s) ? [] : [s]
+                  setSituations(
+                    situations.includes(s) ? [] : [s]
                   )
                 }
                 label={SITUATION_LABELS[s]}
@@ -282,38 +308,38 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
           </FilterSection>
 
           {/* 距離 */}
-          <FilterSection title="距離で絞り込み" count={store.nearbyKm !== null ? 1 : 0}>
+          <FilterSection title="距離で絞り込み" count={nearbyKm !== null ? 1 : 0}>
             <div className="w-full flex flex-col gap-3">
               <div className="flex gap-1.5">
                 <button
                   type="button"
-                  onClick={() => store.setStationName(null)}
-                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", store.stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                  onClick={() => setStationName(null)}
+                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
                 >
                   現在地
                 </button>
                 <button
                   type="button"
-                  onClick={() => store.setStationName(store.stationName ?? "")}
-                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", store.stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                  onClick={() => setStationName(stationName ?? "")}
+                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
                 >
                   駅名
                 </button>
               </div>
-              {store.stationName !== null && (
+              {stationName !== null && (
                 <StationSearch
-                  value={store.stationName || null}
-                  onChange={(name) => store.setStationName(name ?? "")}
+                  value={stationName || null}
+                  onChange={(name) => setStationName(name ?? "")}
                 />
               )}
               <div className="flex items-center justify-between">
-                <span className={cn("text-sm font-semibold", store.nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
+                <span className={cn("text-sm font-semibold", nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
                   {distanceLabel}
                 </span>
-                {store.nearbyKm !== null && (
+                {nearbyKm !== null && (
                   <button
                     type="button"
-                    onClick={() => store.setNearbyKm(null)}
+                    onClick={() => setNearbyKm(null)}
                     className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
                   >
                     クリア
@@ -340,31 +366,31 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
               {(mode) => {
                 if (mode === "include") {
                   const broadIds = broadRegions.map((r) => r.id);
-                  const hasBroad = store.regionIds.some((id) => broadIds.includes(id));
+                  const hasBroad = regionIds.some((id) => broadIds.includes(id));
                   const specificIds = specificRegions.map((r) => r.id);
-                  const hasSpecific = store.regionIds.some((id) => specificIds.includes(id));
+                  const hasSpecific = regionIds.some((id) => specificIds.includes(id));
                   return (
                     <>
                       {broadRegions.map((r) => (
                         <FilterChip
                           key={r.id}
-                          selected={store.regionIds.includes(r.id)}
-                          onClick={() => store.setRegionIds(toggle(store.regionIds, r.id))}
+                          selected={regionIds.includes(r.id)}
+                          onClick={() => setRegionIds(toggle(regionIds, r.id))}
                           label={r.name}
                         />
                       ))}
                       {specificRegions.length > 0 && (
                         <SpecificRegionExpander
                           regions={specificRegions}
-                          selectedIds={store.regionIds}
-                          onToggle={(id) => store.setRegionIds(toggle(store.regionIds, id))}
-                          onClear={hasSpecific ? () => store.setRegionIds(store.regionIds.filter((id) => !specificIds.includes(id))) : undefined}
+                          selectedIds={regionIds}
+                          onToggle={(id) => setRegionIds(toggle(regionIds, id))}
+                          onClear={hasSpecific ? () => setRegionIds(regionIds.filter((id) => !specificIds.includes(id))) : undefined}
                         />
                       )}
                       {(hasBroad) && (
                         <button
                           type="button"
-                          onClick={() => store.setRegionIds(store.regionIds.filter((id) => !broadIds.includes(id)))}
+                          onClick={() => setRegionIds(regionIds.filter((id) => !broadIds.includes(id)))}
                           className="text-xs text-primary hover:text-primary/80 font-medium ml-auto mt-1"
                         >
                           中地域クリア
@@ -376,8 +402,8 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                   return broadRegions.map((r) => (
                     <FilterChip
                       key={r.id}
-                      selected={store.excludeRegionIds.includes(r.id)}
-                      onClick={() => store.setExcludeRegionIds(toggle(store.excludeRegionIds, r.id))}
+                      selected={excludeRegionIds.includes(r.id)}
+                      onClick={() => setExcludeRegionIds(toggle(excludeRegionIds, r.id))}
                       label={r.name}
                       variant="exclude"
                     />
@@ -388,48 +414,48 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
           )}
 
           {/* 予算 */}
-          <FilterSection title="予算" count={store.budgets.length}>
+          <FilterSection title="予算" count={budgets.length}>
             {BUDGETS.map((b) => (
               <FilterChip
                 key={b}
-                selected={store.budgets.includes(b)}
-                onClick={() => store.setBudgets(toggle(store.budgets, b))}
+                selected={budgets.includes(b)}
+                onClick={() => setBudgets(toggle(budgets, b))}
                 label={BUDGET_LABELS[b]}
               />
             ))}
           </FilterSection>
 
           {/* 所要時間 */}
-          <FilterSection title="所要時間" count={store.durations.length}>
+          <FilterSection title="所要時間" count={durations.length}>
             {DURATIONS.map((d) => (
               <FilterChip
                 key={d}
-                selected={store.durations.includes(d)}
-                onClick={() => store.setDurations(toggle(store.durations, d))}
+                selected={durations.includes(d)}
+                onClick={() => setDurations(toggle(durations, d))}
                 label={DURATION_LABELS[d]}
               />
             ))}
           </FilterSection>
 
           {/* 季節・登録者 — 折りたたみ */}
-          <FilterSection title="季節タグ" collapsible defaultOpen={store.seasons.length > 0} count={store.seasons.length}>
+          <FilterSection title="季節タグ" collapsible defaultOpen={seasons.length > 0} count={seasons.length}>
             {SEASONS.map((s) => (
               <FilterChip
                 key={s}
-                selected={store.seasons.includes(s)}
-                onClick={() => store.setSeasons(toggle(store.seasons, s))}
+                selected={seasons.includes(s)}
+                onClick={() => setSeasons(toggle(seasons, s))}
                 label={SEASON_LABELS[s]}
               />
             ))}
           </FilterSection>
 
           {members.length > 0 && (
-            <FilterSection title="登録者" collapsible defaultOpen={store.memberIds.length > 0} count={store.memberIds.length}>
+            <FilterSection title="登録者" collapsible defaultOpen={memberIds.length > 0} count={memberIds.length}>
               {members.map((m) => (
                 <FilterChip
                   key={m.id}
-                  selected={store.memberIds.includes(m.id)}
-                  onClick={() => store.setMemberIds(toggle(store.memberIds, m.id))}
+                  selected={memberIds.includes(m.id)}
+                  onClick={() => setMemberIds(toggle(memberIds, m.id))}
                   label={m.nickname}
                 />
               ))}
@@ -439,7 +465,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
 
         <div className="flex gap-2 mt-4 pb-8">
           {hasFilters && (
-            <Button variant="outline" onClick={store.reset} className="flex-1">
+            <Button variant="outline" onClick={reset} className="flex-1">
               リセット
             </Button>
           )}

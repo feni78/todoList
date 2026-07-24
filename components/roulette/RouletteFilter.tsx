@@ -20,6 +20,7 @@ import {
   SEASON_LABELS,
 } from "@/types";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
+import { useShallow } from "zustand/react/shallow";
 import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -173,7 +174,8 @@ const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
 const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100];
 
 export function RouletteFilter({ open, onClose, members, genres = [], regions = [] }: RouletteFilterProps) {
-  const { filter, setFilter, resetFilter } = useRouletteStore();
+  const filter = useRouletteStore(useShallow((s) => s.filter));
+  const { setFilter, resetFilter } = useRouletteStore.getState();
 
   const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
   const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
