@@ -93,7 +93,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
       controls.start({
         y: targetY,
         transition: {
-          duration: 13,
+          duration: 12,
           ease: (t: number): number => {
             // T1: 高速フェーズ終了タイミング、D1: そこまでに進む割合
             // RAMP: 加速区間の長さ（T1内の割合）
