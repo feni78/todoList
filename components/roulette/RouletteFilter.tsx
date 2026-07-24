@@ -252,26 +252,24 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
                         label={g.name}
                       />
                     ))}
-                    {filter.genreIds.length >= 1 && (
-                      <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
-                        <span className="text-xs text-muted-foreground">複数選択時:</span>
-                        {(["OR", "AND"] as const).map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => setFilter({ genreSearchMode: m })}
-                            className={cn(
-                              "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                              filter.genreSearchMode === m
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:bg-muted/70"
-                            )}
-                          >
-                            {m === "OR" ? "いずれか (OR)" : "すべて (AND)"}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
+                      <span className="text-xs text-muted-foreground">複数選択時:</span>
+                      {(["OR", "AND"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setFilter({ genreSearchMode: m })}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                            filter.genreSearchMode === m
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-muted/70"
+                          )}
+                        >
+                          {m === "OR" ? "いずれか (OR)" : "すべて (AND)"}
+                        </button>
+                      ))}
+                    </div>
                   </>
                 ) : (
                   genres.map((g) => (
