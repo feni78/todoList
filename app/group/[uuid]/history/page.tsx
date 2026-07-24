@@ -99,7 +99,15 @@ export default function HistoryPage() {
     excludeRegionIds: fExcludeRegionIds,
     searchQuery: fSearchQuery,
     nearbyKm: fNearbyKm,
+    defaultExcludeGenreIds: fDefaultExcludeGenreIds,
+    defaultExcludeRegionIds: fDefaultExcludeRegionIds,
   } = filterStore;
+
+  const excludeChanged =
+    fExcludeGenreIds.some((id) => !fDefaultExcludeGenreIds.includes(id)) ||
+    fDefaultExcludeGenreIds.some((id) => !fExcludeGenreIds.includes(id)) ||
+    fExcludeRegionIds.some((id) => !fDefaultExcludeRegionIds.includes(id)) ||
+    fDefaultExcludeRegionIds.some((id) => !fExcludeRegionIds.includes(id));
 
   const hasFilter =
     fMemberIds.length > 0 ||
@@ -108,21 +116,17 @@ export default function HistoryPage() {
     fDurations.length > 0 ||
     fSeasons.length > 0 ||
     fGenreIds.length > 0 ||
-    fExcludeGenreIds.length > 0 ||
     fRegionIds.length > 0 ||
-    fExcludeRegionIds.length > 0 ||
     !!fSearchQuery ||
-    fNearbyKm !== null;
+    fNearbyKm !== null ||
+    excludeChanged;
 
   const filtered = useMemo(() => {
     let result = [...wishes];
     if (showFavoriteOnly) result = result.filter((w) => w.isFavorite);
     if (fMemberIds.length > 0) result = result.filter((w) => fMemberIds.includes(w.memberId));
     if (fSituations.length > 0) {
-      const effectiveSituations = fSituations.includes("EITHER")
-        ? (["HOME", "OUTSIDE", "EITHER"] as typeof fSituations)
-        : fSituations;
-      result = result.filter((w) => effectiveSituations.includes(w.situation));
+      result = result.filter((w) => fSituations.includes(w.situation) || w.situation === "EITHER");
     }
     if (fBudgets.length > 0) result = result.filter((w) => w.budget && fBudgets.includes(w.budget));
     if (fDurations.length > 0) result = result.filter((w) => w.duration && fDurations.includes(w.duration));

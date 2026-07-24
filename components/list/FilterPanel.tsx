@@ -234,7 +234,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
         <div className="flex flex-col">
           {/* ジャンル — 含む/除外タブ */}
           {genres.length > 0 && (
-            <IncludeExcludeSection title="ジャンル" count={genreIds.length + excludeGenreIds.length} noDivider>
+            <IncludeExcludeSection title="ジャンル" count={genreIds.length + excludeGenreIds.filter((id) => !defaultExcludeGenreIds.includes(id)).length} noDivider>
               {(mode) => {
                 if (mode === "include") {
                   return (

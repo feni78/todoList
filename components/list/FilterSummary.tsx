@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useFilterStore } from "@/lib/store/filterStore";
+import { useShallow } from "zustand/react/shallow";
 import { Genre, Region, GroupMember, SITUATION_LABELS, BUDGET_LABELS, DURATION_LABELS, SEASON_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -41,71 +42,94 @@ function SummaryChip({ label, onRemove, variant = "default" }: {
 }
 
 export function FilterSummary({ genres = [], regions = [], members = [], className }: FilterSummaryProps) {
-  const store = useFilterStore();
+  const {
+    nearbyKm, stationName, regionIds, excludeRegionIds, defaultExcludeRegionIds,
+    situations, seasons, budgets, durations, genreIds, excludeGenreIds,
+    defaultExcludeGenreIds, memberIds,
+  } = useFilterStore(useShallow((s) => ({
+    nearbyKm: s.nearbyKm,
+    stationName: s.stationName,
+    regionIds: s.regionIds,
+    excludeRegionIds: s.excludeRegionIds,
+    defaultExcludeRegionIds: s.defaultExcludeRegionIds,
+    situations: s.situations,
+    seasons: s.seasons,
+    budgets: s.budgets,
+    durations: s.durations,
+    genreIds: s.genreIds,
+    excludeGenreIds: s.excludeGenreIds,
+    defaultExcludeGenreIds: s.defaultExcludeGenreIds,
+    memberIds: s.memberIds,
+  })));
+  const { setNearbyKm, setRegionIds, setExcludeRegionIds, setSituations, setSeasons,
+    setBudgets, setDurations, setGenreIds, setExcludeGenreIds, setMemberIds, reset,
+  } = useFilterStore.getState();
 
   const chips: { key: string; label: string; variant?: "default" | "exclude" | "distance"; onRemove: () => void }[] = [];
 
   // 距離
-  if (store.nearbyKm !== null) {
-    const locationLabel = store.stationName ? `${store.stationName}駅` : "現在地";
+  if (nearbyKm !== null) {
+    const locationLabel = stationName ? `${stationName}駅` : "現在地";
     chips.push({
       key: "distance",
-      label: `📍 ${locationLabel} ${store.nearbyKm}km以内`,
+      label: `📍 ${locationLabel} ${nearbyKm}km以内`,
       variant: "distance",
-      onRemove: () => store.setNearbyKm(null),
+      onRemove: () => setNearbyKm(null),
     });
   }
 
   // 地域タグ（含む）
-  store.regionIds.forEach((id) => {
+  regionIds.forEach((id) => {
     const r = regions.find((r) => r.id === id);
-    if (r) chips.push({ key: `region-${id}`, label: r.name, onRemove: () => store.setRegionIds(store.regionIds.filter((x) => x !== id)) });
+    if (r) chips.push({ key: `region-${id}`, label: r.name, onRemove: () => setRegionIds(regionIds.filter((x) => x !== id)) });
   });
 
-  // 地域タグ（除外）
-  store.excludeRegionIds.forEach((id) => {
-    const r = regions.find((r) => r.id === id);
-    if (r) chips.push({ key: `ex-region-${id}`, label: `✕ ${r.name}`, variant: "exclude", onRemove: () => store.setExcludeRegionIds(store.excludeRegionIds.filter((x) => x !== id)) });
-  });
+  // 地域タグ（除外）— デフォルト除外分はチップに出さない
+  excludeRegionIds
+    .filter((id) => !defaultExcludeRegionIds.includes(id))
+    .forEach((id) => {
+      const r = regions.find((r) => r.id === id);
+      if (r) chips.push({ key: `ex-region-${id}`, label: `✕ ${r.name}`, variant: "exclude", onRemove: () => setExcludeRegionIds(excludeRegionIds.filter((x) => x !== id)) });
+    });
 
   // シチュエーション
-  store.situations.forEach((s) => {
-    chips.push({ key: `sit-${s}`, label: SITUATION_LABELS[s], onRemove: () => store.setSituations(store.situations.filter((x) => x !== s)) });
+  situations.forEach((s) => {
+    chips.push({ key: `sit-${s}`, label: SITUATION_LABELS[s], onRemove: () => setSituations(situations.filter((x) => x !== s)) });
   });
 
   // 季節
-  store.seasons.forEach((s) => {
-    chips.push({ key: `season-${s}`, label: SEASON_LABELS[s], onRemove: () => store.setSeasons(store.seasons.filter((x) => x !== s)) });
+  seasons.forEach((s) => {
+    chips.push({ key: `season-${s}`, label: SEASON_LABELS[s], onRemove: () => setSeasons(seasons.filter((x) => x !== s)) });
   });
 
   // 予算
-  store.budgets.forEach((b) => {
-    chips.push({ key: `budget-${b}`, label: BUDGET_LABELS[b], onRemove: () => store.setBudgets(store.budgets.filter((x) => x !== b)) });
+  budgets.forEach((b) => {
+    chips.push({ key: `budget-${b}`, label: BUDGET_LABELS[b], onRemove: () => setBudgets(budgets.filter((x) => x !== b)) });
   });
 
   // 所要時間
-  store.durations.forEach((d) => {
-    chips.push({ key: `dur-${d}`, label: DURATION_LABELS[d], onRemove: () => store.setDurations(store.durations.filter((x) => x !== d)) });
+  durations.forEach((d) => {
+    chips.push({ key: `dur-${d}`, label: DURATION_LABELS[d], onRemove: () => setDurations(durations.filter((x) => x !== d)) });
   });
 
   // ジャンル（含む）
-  store.genreIds.forEach((id) => {
+  genreIds.forEach((id) => {
     const g = genres.find((g) => g.id === id);
-    if (g) chips.push({ key: `genre-${id}`, label: g.name, onRemove: () => store.setGenreIds(store.genreIds.filter((x) => x !== id)) });
+    if (g) chips.push({ key: `genre-${id}`, label: g.name, onRemove: () => setGenreIds(genreIds.filter((x) => x !== id)) });
   });
 
-  // ジャンル（除外）
-  store.excludeGenreIds
-    .filter((id) => !store.defaultExcludeGenreIds.includes(id))
+  // ジャンル（除外）— デフォルト除外分はチップに出さない
+  excludeGenreIds
+    .filter((id) => !defaultExcludeGenreIds.includes(id))
     .forEach((id) => {
       const g = genres.find((g) => g.id === id);
-      if (g) chips.push({ key: `ex-genre-${id}`, label: `✕ ${g.name}`, variant: "exclude", onRemove: () => store.setExcludeGenreIds(store.excludeGenreIds.filter((x) => x !== id)) });
+      if (g) chips.push({ key: `ex-genre-${id}`, label: `✕ ${g.name}`, variant: "exclude", onRemove: () => setExcludeGenreIds(excludeGenreIds.filter((x) => x !== id)) });
     });
 
   // 登録者
-  store.memberIds.forEach((id) => {
+  memberIds.forEach((id) => {
     const m = members.find((m) => m.id === id);
-    if (m) chips.push({ key: `member-${id}`, label: m.nickname, onRemove: () => store.setMemberIds(store.memberIds.filter((x) => x !== id)) });
+    if (m) chips.push({ key: `member-${id}`, label: m.nickname, onRemove: () => setMemberIds(memberIds.filter((x) => x !== id)) });
   });
 
   if (chips.length === 0) return null;
@@ -117,7 +141,7 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
       ))}
       <button
         type="button"
-        onClick={store.reset}
+        onClick={reset}
         className="shrink-0 text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-1 whitespace-nowrap"
       >
         全解除
