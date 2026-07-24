@@ -105,7 +105,7 @@ export default function RoulettePage() {
       return;
     }
     if (mode === "special") setSpecialAnimDone(false);
-    spin(mode === "special" ? 10000 : 3500, filteredWishes);
+    spin(mode === "special" ? 8000 : 3500, filteredWishes);
   };
 
 
