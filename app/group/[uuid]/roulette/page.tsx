@@ -85,6 +85,7 @@ export default function RoulettePage() {
 
   const handleSetMode = (m: RouletteMode) => {
     if (isSpinning) completeNow();
+    setSpecialAnimDone(true);
     setMode(m);
   };
 
