@@ -14,6 +14,7 @@ import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
+import { useGroup } from "@/hooks/useGroup";
 import { SlidersHorizontal, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -28,8 +29,17 @@ export default function RoulettePage() {
   const { wishes, changeStatus } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
-  const { mode, setMode, settings, devMode, filter } = useRouletteStore();
+  const { mode, setMode, settings, devMode, filter, setSettings } = useRouletteStore();
+  const { fetchRouletteSettings } = useGroup();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    fetchRouletteSettings(uuid).then((data) => {
+      if (data) {
+        setSettings({ considerLevel: (data as { consider_level: number }).consider_level });
+      }
+    });
+  }, [uuid, fetchRouletteSettings, setSettings]);
   const nearbyKmRef = useRef<number | null>(null);
   const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes, userLocation, regions);
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
