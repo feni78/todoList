@@ -17,6 +17,7 @@ import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
+import { useShallow } from "zustand/react/shallow";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS, meetsScoreFilter } from "@/types";
@@ -47,6 +48,35 @@ export default function ListPage() {
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
   const filterStore = useFilterStore();
+  const {
+    memberIds: fMemberIds,
+    situations: fSituations,
+    statuses: fStatuses,
+    budgets: fBudgets,
+    durations: fDurations,
+    seasons: fSeasons,
+    scoreFilter: fScoreFilter,
+    genreIds: fGenreIds,
+    genreSearchMode: fGenreSearchMode,
+    excludeGenreIds: fExcludeGenreIds,
+    regionIds: fRegionIds,
+    excludeRegionIds: fExcludeRegionIds,
+    searchQuery: fSearchQuery,
+  } = useFilterStore(useShallow((s) => ({
+    memberIds: s.memberIds,
+    situations: s.situations,
+    statuses: s.statuses,
+    budgets: s.budgets,
+    durations: s.durations,
+    seasons: s.seasons,
+    scoreFilter: s.scoreFilter,
+    genreIds: s.genreIds,
+    genreSearchMode: s.genreSearchMode,
+    excludeGenreIds: s.excludeGenreIds,
+    regionIds: s.regionIds,
+    excludeRegionIds: s.excludeRegionIds,
+    searchQuery: s.searchQuery,
+  })));
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
 
@@ -130,22 +160,6 @@ export default function ListPage() {
       window.history.replaceState({}, "", `/group/${uuid}`);
     }
   }, [uuid]);
-
-  const {
-    memberIds: fMemberIds,
-    situations: fSituations,
-    statuses: fStatuses,
-    budgets: fBudgets,
-    durations: fDurations,
-    seasons: fSeasons,
-    scoreFilter: fScoreFilter,
-    genreIds: fGenreIds,
-    genreSearchMode: fGenreSearchMode,
-    excludeGenreIds: fExcludeGenreIds,
-    regionIds: fRegionIds,
-    excludeRegionIds: fExcludeRegionIds,
-    searchQuery: fSearchQuery,
-  } = filterStore;
 
   const filtered = useMemo(() => {
     let result = [...wishes];
