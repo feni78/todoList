@@ -62,14 +62,17 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
   }, [result, isSpinning, animDone]);
 
   // スピンなしで結果がある場合（モード切替時など）スロットを正しい位置に合わせる
+  const resultId = result?.id ?? null;
   useEffect(() => {
-    if (!result || isSpinning || count === 0) return;
-    const resultIndex = wishesRef.current.findIndex((w) => w.id === result.id);
-    if (resultIndex < 0) return;
+    if (!resultId || isSpinning) return;
+    const wishes = wishesRef.current;
+    const resultIndex = wishes.findIndex((w) => w.id === resultId);
+    if (resultIndex < 0 || wishes.length === 0) return;
+    const c = wishes.length;
     const centerOffset = Math.floor(VISIBLE / 2);
-    const targetY = -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
+    const targetY = -((resultIndex + 3 * c - centerOffset) * ITEM_HEIGHT);
     controls.set({ y: targetY });
-  }, [result, isSpinning, count, controls]);
+  }, [resultId, isSpinning, controls]);
 
   useEffect(() => {
     if (isSpinning && !prevSpinning.current && count > 0 && pendingResult) {

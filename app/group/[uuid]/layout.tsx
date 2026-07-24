@@ -19,6 +19,10 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
   const groupTitle = group?.name || groupName;
 
   useEffect(() => {
+    if (groupTitle) document.title = groupTitle;
+  }, [groupTitle]);
+
+  useEffect(() => {
     const init = async () => {
       const stored = getGroupMember(uuid);
       const supabase = createClient();
@@ -121,7 +125,6 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
 
   return (
     <>
-      {groupTitle && <title>{groupTitle}</title>}
       {children}
     </>
   );
