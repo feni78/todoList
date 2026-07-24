@@ -46,7 +46,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
   const count = wishes.length;
-  const repeats = Math.max(4, Math.min(22, Math.ceil(MAX_DOM_ITEMS / count)));
+  const repeats = count > 0 ? Math.max(4, Math.min(22, Math.ceil(MAX_DOM_ITEMS / count))) : 0;
   const [animDone, setAnimDone] = useState(true);
   const [showResult, setShowResult] = useState(false);
 
@@ -72,7 +72,8 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
       const spinItems = Math.min(14 * count, MAX_SPIN_ITEMS);
       const startY = targetY - spinItems * ITEM_HEIGHT;
 
-      controls.set({ y: startY });
+      const minY = -((repeats * count - VISIBLE) * ITEM_HEIGHT);
+      controls.set({ y: Math.max(startY, minY) });
       controls.start({
         y: targetY,
         transition: { duration: 10, ease: [0.03, 0.8, 0.97, 1] },
