@@ -166,7 +166,7 @@ function SpecificRegionExpander({ regions, selectedIds, onToggle }: {
   );
 }
 
-const SITUATIONS: Situation[] = ["HOME", "OUTSIDE", "EITHER"];
+const SITUATIONS: Situation[] = ["HOME", "OUTSIDE"];
 const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
