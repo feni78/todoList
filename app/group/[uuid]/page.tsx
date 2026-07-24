@@ -47,7 +47,6 @@ export default function ListPage() {
   const { wishes, loading, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
-  const filterStore = useFilterStore();
   const {
     memberIds: fMemberIds,
     situations: fSituations,
@@ -62,6 +61,10 @@ export default function ListPage() {
     regionIds: fRegionIds,
     excludeRegionIds: fExcludeRegionIds,
     searchQuery: fSearchQuery,
+    nearbyKm: fNearbyKm,
+    stationName: fStationName,
+    defaultExcludeGenreIds: fDefaultExcludeGenreIds,
+    defaultExcludeRegionIds: fDefaultExcludeRegionIds,
   } = useFilterStore(useShallow((s) => ({
     memberIds: s.memberIds,
     situations: s.situations,
@@ -76,7 +79,12 @@ export default function ListPage() {
     regionIds: s.regionIds,
     excludeRegionIds: s.excludeRegionIds,
     searchQuery: s.searchQuery,
+    nearbyKm: s.nearbyKm,
+    stationName: s.stationName,
+    defaultExcludeGenreIds: s.defaultExcludeGenreIds,
+    defaultExcludeRegionIds: s.defaultExcludeRegionIds,
   })));
+  const { setSearchQuery } = useFilterStore.getState();
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
 
@@ -96,8 +104,8 @@ export default function ListPage() {
   const nearbyKmRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const km = filterStore.nearbyKm;
-    const stationName = filterStore.stationName;
+    const km = fNearbyKm;
+    const stationName = fStationName;
     nearbyKmRef.current = km;
     if (km === null) { setNearbyWishIds(null); return; }
 
@@ -150,7 +158,7 @@ export default function ListPage() {
       toast.error("位置情報の取得を許可してください");
       setNearbyWishIds(null);
     });
-  }, [filterStore.nearbyKm, filterStore.stationName, uuid]);
+  }, [fNearbyKm, fStationName, uuid]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -301,21 +309,22 @@ export default function ListPage() {
   };
 
   const excludeChanged =
-    filterStore.excludeGenreIds.some((id) => !filterStore.defaultExcludeGenreIds.includes(id)) ||
-    filterStore.defaultExcludeGenreIds.some((id) => !filterStore.excludeGenreIds.includes(id)) ||
-    filterStore.excludeRegionIds.some((id) => !filterStore.defaultExcludeRegionIds.includes(id)) ||
-    filterStore.defaultExcludeRegionIds.some((id) => !filterStore.excludeRegionIds.includes(id));
+    fExcludeGenreIds.some((id) => !fDefaultExcludeGenreIds.includes(id)) ||
+    fDefaultExcludeGenreIds.some((id) => !fExcludeGenreIds.includes(id)) ||
+    fExcludeRegionIds.some((id) => !fDefaultExcludeRegionIds.includes(id)) ||
+    fDefaultExcludeRegionIds.some((id) => !fExcludeRegionIds.includes(id));
 
   const hasActiveFilters =
-    filterStore.memberIds.length > 0 ||
-    filterStore.situations.length > 0 ||
-    filterStore.statuses.length > 0 ||
-    filterStore.budgets.length > 0 ||
-    filterStore.durations.length > 0 ||
-    filterStore.seasons.length > 0 ||
-    filterStore.genreIds.length > 0 ||
-    filterStore.regionIds.length > 0 ||
-    filterStore.nearbyKm !== null ||
+    fMemberIds.length > 0 ||
+    fSituations.length > 0 ||
+    fStatuses.length > 0 ||
+    fBudgets.length > 0 ||
+    fDurations.length > 0 ||
+    fSeasons.length > 0 ||
+    fScoreFilter !== null ||
+    fGenreIds.length > 0 ||
+    fRegionIds.length > 0 ||
+    fNearbyKm !== null ||
     excludeChanged;
 
   return (
@@ -326,7 +335,7 @@ export default function ListPage() {
             onClick={() => setSearchOpen((v) => !v)}
             className={cn(
               "p-2 rounded-lg transition-colors",
-              searchOpen || filterStore.searchQuery
+              searchOpen || fSearchQuery
                 ? "bg-primary/15 text-primary"
                 : "text-muted-foreground hover:text-foreground"
             )}
@@ -340,15 +349,15 @@ export default function ListPage() {
         <div className="px-4 py-2 border-b border-border relative">
           <Input
             placeholder="タイトルを検索..."
-            value={filterStore.searchQuery}
-            onChange={(e) => filterStore.setSearchQuery(e.target.value)}
+            value={fSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             autoFocus
             className="pr-8"
           />
-          {filterStore.searchQuery && (
+          {fSearchQuery && (
             <button
               type="button"
-              onClick={() => filterStore.setSearchQuery("")}
+              onClick={() => setSearchQuery("")}
               className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X size={15} />
