@@ -29,7 +29,11 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
       if (!w.seasons.some((s) => filter.seasons.includes(s))) return false;
     }
     if (filter.genreIds.length > 0) {
-      if (!w.genres.some((g) => filter.genreIds.includes(g.id))) return false;
+      if (filter.genreSearchMode === "AND") {
+        if (!filter.genreIds.every((id) => w.genres.some((g) => g.id === id))) return false;
+      } else {
+        if (!w.genres.some((g) => filter.genreIds.includes(g.id))) return false;
+      }
     }
     if (filter.excludeGenreIds.length > 0) {
       if (w.genres.some((g) => filter.excludeGenreIds.includes(g.id))) return false;

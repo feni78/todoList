@@ -204,6 +204,7 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
     filter.genreIds.length > 0 ||
     filter.excludeGenreIds.length > 0 ||
     filter.regionIds.length > 0 ||
+    filter.excludeRegionIds.length > 0 ||
     filter.nearbyKm !== null;
 
   return (
@@ -238,24 +239,48 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
           {genres.length > 0 && (
             <IncludeExcludeSection title="ジャンル" count={filter.genreIds.length + filter.excludeGenreIds.length}>
               {(mode) =>
-                mode === "include"
-                  ? genres.map((g) => (
+                mode === "include" ? (
+                  <>
+                    {genres.map((g) => (
                       <FilterChip
                         key={g.id}
                         selected={filter.genreIds.includes(g.id)}
                         onClick={() => setFilter({ genreIds: toggle(filter.genreIds, g.id) })}
                         label={g.name}
                       />
-                    ))
-                  : genres.map((g) => (
-                      <FilterChip
-                        key={g.id}
-                        selected={filter.excludeGenreIds.includes(g.id)}
-                        onClick={() => setFilter({ excludeGenreIds: toggle(filter.excludeGenreIds, g.id) })}
-                        label={g.name}
-                        variant="exclude"
-                      />
-                    ))
+                    ))}
+                    {filter.genreIds.length >= 2 && (
+                      <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
+                        <span className="text-xs text-muted-foreground">複数選択時:</span>
+                        {(["OR", "AND"] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setFilter({ genreSearchMode: m })}
+                            className={cn(
+                              "px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                              filter.genreSearchMode === m
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-muted/70"
+                            )}
+                          >
+                            {m === "OR" ? "いずれか (OR)" : "すべて (AND)"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  genres.map((g) => (
+                    <FilterChip
+                      key={g.id}
+                      selected={filter.excludeGenreIds.includes(g.id)}
+                      onClick={() => setFilter({ excludeGenreIds: toggle(filter.excludeGenreIds, g.id) })}
+                      label={g.name}
+                      variant="exclude"
+                    />
+                  ))
+                )
               }
             </IncludeExcludeSection>
           )}
@@ -327,23 +352,51 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
 
           {/* 地域タグ */}
           {(broadRegions.length > 0 || specificRegions.length > 0) && (
-            <FilterSection title="地域タグ" count={filter.regionIds.length}>
-              {broadRegions.map((r) => (
-                <FilterChip
-                  key={r.id}
-                  selected={filter.regionIds.includes(r.id)}
-                  onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
-                  label={r.name}
-                />
-              ))}
-              {specificRegions.length > 0 && (
-                <SpecificRegionExpander
-                  regions={specificRegions}
-                  selectedIds={filter.regionIds}
-                  onToggle={(id) => setFilter({ regionIds: toggle(filter.regionIds, id) })}
-                />
-              )}
-            </FilterSection>
+            <IncludeExcludeSection
+              title="地域タグ"
+              count={filter.regionIds.length + filter.excludeRegionIds.length}
+            >
+              {(mode) =>
+                mode === "include" ? (
+                  <>
+                    {broadRegions.map((r) => (
+                      <FilterChip
+                        key={r.id}
+                        selected={filter.regionIds.includes(r.id)}
+                        onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
+                        label={r.name}
+                      />
+                    ))}
+                    {specificRegions.length > 0 && (
+                      <SpecificRegionExpander
+                        regions={specificRegions}
+                        selectedIds={filter.regionIds}
+                        onToggle={(id) => setFilter({ regionIds: toggle(filter.regionIds, id) })}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {broadRegions.map((r) => (
+                      <FilterChip
+                        key={r.id}
+                        selected={filter.excludeRegionIds.includes(r.id)}
+                        onClick={() => setFilter({ excludeRegionIds: toggle(filter.excludeRegionIds, r.id) })}
+                        label={r.name}
+                        variant="exclude"
+                      />
+                    ))}
+                    {specificRegions.length > 0 && (
+                      <SpecificRegionExpander
+                        regions={specificRegions}
+                        selectedIds={filter.excludeRegionIds}
+                        onToggle={(id) => setFilter({ excludeRegionIds: toggle(filter.excludeRegionIds, id) })}
+                      />
+                    )}
+                  </>
+                )
+              }
+            </IncludeExcludeSection>
           )}
 
           {/* 予算 */}
