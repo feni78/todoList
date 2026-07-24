@@ -76,7 +76,7 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
       controls.set({ y: Math.max(startY, minY) });
       controls.start({
         y: targetY,
-        transition: { duration: 10, ease: [0.03, 0.8, 0.97, 1] },
+        transition: { duration: 10, ease: [0.03, 0.8, 0.99, 1] },
       });
     }
     if (!isSpinning) {

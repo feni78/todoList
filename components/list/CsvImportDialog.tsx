@@ -123,6 +123,7 @@ function LocationResultSection({ result }: { result: LocationEnrichResult }) {
 
 export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genres }: Props) {
   const [importMode, setImportMode] = useState<ImportMode>("normal");
+  const [skipLocation, setSkipLocation] = useState(false);
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [globalGenreIds, setGlobalGenreIds] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("idle");
@@ -161,7 +162,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
     }));
 
   const buildConfigs = (): FileImportConfig[] =>
-    entries.map((e) => ({ file: e.file, genreIds: [...new Set([...globalGenreIds, ...e.genreIds])], importMode }));
+    entries.map((e) => ({ file: e.file, genreIds: [...new Set([...globalGenreIds, ...e.genreIds])], importMode, skipLocation }));
 
   const handleAnalyze = async () => {
     setMode("analyzing");
@@ -210,6 +211,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
     setAnalysis(null);
     setResult(null);
     setError(null);
+    setSkipLocation(false);
   };
 
   const totalRows = entries.reduce((sum, e) => sum + (e.rowCount ?? 0), 0);
@@ -433,6 +435,22 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
                 <p className="text-xs text-muted-foreground text-center">合計 {totalRows}件</p>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setSkipLocation((v) => !v)}
+              className={cn(
+                "flex items-center gap-2 self-start px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
+                skipLocation
+                  ? "border-amber-400 text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400"
+                  : "border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span className={cn("w-7 h-4 rounded-full transition-colors relative shrink-0", skipLocation ? "bg-amber-400" : "bg-muted-foreground/30")}>
+                <span className={cn("absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform", skipLocation ? "translate-x-3.5" : "translate-x-0.5")} />
+              </span>
+              開発者モード（位置情報取得をスキップ）
+            </button>
 
             {totalRows > 2000 && (
               <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2">

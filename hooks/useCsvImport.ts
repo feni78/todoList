@@ -19,6 +19,7 @@ export interface FileImportConfig {
   file: File;
   genreIds: string[];
   importMode?: ImportMode;
+  skipLocation?: boolean;
 }
 
 export interface SkippedItem {
@@ -750,17 +751,20 @@ export function useCsvImport(groupId: string) {
         }
 
         // Places API: URLのある行にplace_id・緯度経度・地域タグを付与
-        const urlItems = [
-          ...toInsertWithIds.filter((i) => i.row.url && isGoogleMapsUrl(i.row.url)),
-          ...toUpdate.filter((i) => i.row.url && isGoogleMapsUrl(i.row.url)),
-        ];
+        const skipLocation = configs[0]?.skipLocation ?? false;
         let locationResult: LocationEnrichResult | undefined;
-        if (urlItems.length > 0) {
-          locationResult = await enrichWithPlaces(supabase, groupId, urlItems.map((i) => ({
-            wishId: "id" in i ? (i as typeof toInsertWithIds[0]).id : (i as typeof toUpdate[0]).wishId,
-            url: i.row.url,
-            title: i.row.title,
-          })));
+        if (!skipLocation) {
+          const urlItems = [
+            ...toInsertWithIds.filter((i) => i.row.url && isGoogleMapsUrl(i.row.url)),
+            ...toUpdate.filter((i) => i.row.url && isGoogleMapsUrl(i.row.url)),
+          ];
+          if (urlItems.length > 0) {
+            locationResult = await enrichWithPlaces(supabase, groupId, urlItems.map((i) => ({
+              wishId: "id" in i ? (i as typeof toInsertWithIds[0]).id : (i as typeof toUpdate[0]).wishId,
+              url: i.row.url,
+              title: i.row.title,
+            })));
+          }
         }
 
         const result: ImportResult = {
