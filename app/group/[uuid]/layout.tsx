@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, getDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { JoinGroupForm } from "@/components/group/JoinGroupForm";
@@ -11,6 +11,7 @@ import { Group, GroupMember } from "@/types";
 
 export default function GroupLayout({ children }: { children: React.ReactNode }) {
   const { uuid } = useParams<{ uuid: string }>();
+  const pathname = usePathname();
   const { setGroup, setCurrentMember, group } = useGroupStore();
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
   const [checking, setChecking] = useState(true);
@@ -20,7 +21,7 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (groupTitle) document.title = groupTitle;
-  }, [groupTitle]);
+  }, [groupTitle, pathname]);
 
   useEffect(() => {
     const init = async () => {
