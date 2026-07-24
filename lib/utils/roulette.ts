@@ -1,7 +1,7 @@
 import { Wish, RouletteSettings } from "@/types";
 
 function getPool(wishes: Wish[], considerLevel: number): Wish[] {
-  if (considerLevel === 100 && wishes.length > 0) {
+  if (considerLevel >= 100 && wishes.length > 0) {
     const maxScore = Math.max(...wishes.map((w) => w.avgScore));
     return wishes.filter((w) => w.avgScore === maxScore);
   }

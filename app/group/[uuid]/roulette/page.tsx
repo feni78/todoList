@@ -187,7 +187,7 @@ export default function RoulettePage() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          対象: {filteredWishes.length}件
+          対象: {filteredWishes.length}件 · 忖度レベル: {settings.considerLevel}%
         </p>
       </div>
 
