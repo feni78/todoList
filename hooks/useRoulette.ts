@@ -88,9 +88,9 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
   }, [complete]);
 
   const spin = useCallback(
-    (duration = 3500) => {
+    (duration = 3500, currentWishes?: Wish[]) => {
       if (isSpinning) return;
-      const drawn = drawWish(filteredWishesRef.current, useRouletteStore.getState().settings);
+      const drawn = drawWish(currentWishes ?? filteredWishesRef.current, useRouletteStore.getState().settings);
       const endAt = Date.now() + duration;
       const newId = Date.now();
       setSpinId(newId);
