@@ -14,10 +14,12 @@ import {
   Duration,
   Season,
   Status,
+  ScoreFilter,
   SITUATION_LABELS,
   BUDGET_LABELS,
   DURATION_LABELS,
   SEASON_LABELS,
+  SCORE_FILTER_LABELS,
 } from "@/types";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useShallow } from "zustand/react/shallow";
@@ -205,7 +207,8 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
     filter.excludeGenreIds.length > 0 ||
     filter.regionIds.length > 0 ||
     filter.excludeRegionIds.length > 0 ||
-    filter.nearbyKm !== null;
+    filter.nearbyKm !== null ||
+    filter.scoreFilter !== null;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -249,7 +252,7 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
                         label={g.name}
                       />
                     ))}
-                    {filter.genreIds.length >= 2 && (
+                    {filter.genreIds.length >= 1 && (
                       <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
                         <span className="text-xs text-muted-foreground">複数選択時:</span>
                         {(["OR", "AND"] as const).map((m) => (
@@ -419,6 +422,18 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
                 selected={filter.durations.includes(d)}
                 onClick={() => setFilter({ durations: toggle(filter.durations, d) })}
                 label={DURATION_LABELS[d]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* やりたい度 */}
+          <FilterSection title="やりたい度" collapsible defaultOpen={filter.scoreFilter !== null} count={filter.scoreFilter !== null ? 1 : 0}>
+            {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
+              <FilterChip
+                key={f}
+                selected={filter.scoreFilter === f}
+                onClick={() => setFilter({ scoreFilter: filter.scoreFilter === f ? null : f })}
+                label={SCORE_FILTER_LABELS[f]}
               />
             ))}
           </FilterSection>

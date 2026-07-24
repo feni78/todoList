@@ -40,6 +40,7 @@ const defaultFilter: RouletteFilter = {
   budgets: [],
   durations: [],
   seasons: [],
+  scoreFilter: null,
   genreIds: [],
   genreSearchMode: "OR",
   excludeGenreIds: [],

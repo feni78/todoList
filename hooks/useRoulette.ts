@@ -5,7 +5,7 @@ import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { drawWish } from "@/lib/utils/roulette";
 import { haversineKm } from "@/lib/utils/distance";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
-import { Wish, Region } from "@/types";
+import { Wish, Region, meetsScoreFilter } from "@/types";
 
 export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: number } | null, regions: Region[] = []) {
   const {
@@ -29,6 +29,7 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
     if (filter.seasons.length > 0) {
       if (!w.seasons.some((s) => filter.seasons.includes(s))) return false;
     }
+    if (filter.scoreFilter !== null && !meetsScoreFilter(w.avgScore, filter.scoreFilter)) return false;
     if (filter.genreIds.length > 0) {
       if (filter.genreSearchMode === "AND") {
         if (!filter.genreIds.every((id) => w.genres.some((g) => g.id === id))) return false;

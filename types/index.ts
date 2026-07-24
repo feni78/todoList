@@ -13,6 +13,22 @@ export const SCORE_OPTIONS = [
 
 export type ScoreValue = 100 | 30 | 10 | 5;
 
+export type ScoreFilter = "BRONZE" | "SILVER" | "GOLD" | "TROPHY";
+
+export const SCORE_FILTER_LABELS: Record<ScoreFilter, string> = {
+  BRONZE: "🥉 銅以上",
+  SILVER: "🥈 銀以上",
+  GOLD: "🥇 金以上",
+  TROPHY: "🏆 MAXのみ",
+};
+
+export function meetsScoreFilter(avgScore: number, f: ScoreFilter): boolean {
+  if (f === "TROPHY") return avgScore >= 65;
+  if (f === "GOLD") return avgScore >= 20;
+  if (f === "SILVER") return avgScore >= 7.5;
+  return avgScore > 0; // BRONZE
+}
+
 export function scoreToIcon(score: number): string {
   if (score >= 65) return "🏆";
   if (score >= 20) return "🥇";
@@ -110,6 +126,7 @@ export interface FilterState {
   budgets: Budget[];
   durations: Duration[];
   seasons: Season[];
+  scoreFilter: ScoreFilter | null;
   genreIds: string[];
   genreSearchMode: "OR" | "AND";
   excludeGenreIds: string[];

@@ -13,10 +13,12 @@ import {
   Budget,
   Duration,
   Season,
+  ScoreFilter,
   SITUATION_LABELS,
   BUDGET_LABELS,
   DURATION_LABELS,
   SEASON_LABELS,
+  SCORE_FILTER_LABELS,
 } from "@/types";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useShallow } from "zustand/react/shallow";
@@ -157,7 +159,7 @@ const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100]
 
 export function FilterPanel({ open, onClose, members, genres = [], regions = [] }: FilterPanelProps) {
   const {
-    memberIds, situations, budgets, durations, seasons,
+    memberIds, situations, budgets, durations, seasons, scoreFilter,
     genreIds, genreSearchMode, excludeGenreIds,
     regionIds, excludeRegionIds, defaultExcludeRegionIds, defaultExcludeGenreIds,
     nearbyKm, stationName,
@@ -167,6 +169,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     budgets: s.budgets,
     durations: s.durations,
     seasons: s.seasons,
+    scoreFilter: s.scoreFilter,
     genreIds: s.genreIds,
     genreSearchMode: s.genreSearchMode,
     excludeGenreIds: s.excludeGenreIds,
@@ -178,7 +181,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     stationName: s.stationName,
   })));
   const {
-    setMemberIds, setSituations, setBudgets, setDurations, setSeasons,
+    setMemberIds, setSituations, setBudgets, setDurations, setSeasons, setScoreFilter,
     setGenreIds, setGenreSearchMode, setExcludeGenreIds,
     setRegionIds, setExcludeRegionIds, setNearbyKm, setStationName, reset,
   } = useFilterStore.getState();
@@ -214,6 +217,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     regionIds.length > 0 ||
     excludeRegionIds.length > 0 ||
     nearbyKm !== null ||
+    scoreFilter !== null ||
     excludeChanged;
 
   const sliderPos = nearbyKm === null ? 0 : DISTANCE_VALUES.indexOf(nearbyKm) + 1;
@@ -433,6 +437,18 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                 selected={durations.includes(d)}
                 onClick={() => setDurations(toggle(durations, d))}
                 label={DURATION_LABELS[d]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* やりたい度 */}
+          <FilterSection title="やりたい度" collapsible defaultOpen={scoreFilter !== null} count={scoreFilter !== null ? 1 : 0}>
+            {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
+              <FilterChip
+                key={f}
+                selected={scoreFilter === f}
+                onClick={() => setScoreFilter(scoreFilter === f ? null : f)}
+                label={SCORE_FILTER_LABELS[f]}
               />
             ))}
           </FilterSection>

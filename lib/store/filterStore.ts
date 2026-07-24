@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { FilterState, Situation, Status, Budget, Duration, Season } from "@/types";
+import { FilterState, Situation, Status, Budget, Duration, Season, ScoreFilter } from "@/types";
 
 interface FilterStore extends FilterState {
   defaultExcludeGenreIds: string[];
@@ -12,6 +12,7 @@ interface FilterStore extends FilterState {
   setBudgets: (b: Budget[]) => void;
   setDurations: (d: Duration[]) => void;
   setSeasons: (s: Season[]) => void;
+  setScoreFilter: (f: ScoreFilter | null) => void;
   setGenreIds: (ids: string[]) => void;
   setGenreSearchMode: (mode: "OR" | "AND") => void;
   setExcludeGenreIds: (ids: string[]) => void;
@@ -30,6 +31,7 @@ const initialState: FilterState = {
   budgets: [],
   durations: [],
   seasons: [],
+  scoreFilter: null,
   genreIds: [],
   genreSearchMode: "OR",
   excludeGenreIds: [],
@@ -52,6 +54,7 @@ export const useFilterStore = create<FilterStore>((set) => ({
   setBudgets: (budgets) => set({ budgets }),
   setDurations: (durations) => set({ durations }),
   setSeasons: (seasons) => set({ seasons }),
+  setScoreFilter: (scoreFilter) => set({ scoreFilter }),
   setGenreIds: (genreIds) => set({ genreIds }),
   setGenreSearchMode: (genreSearchMode) => set({ genreSearchMode }),
   setExcludeGenreIds: (excludeGenreIds) => set({ excludeGenreIds }),

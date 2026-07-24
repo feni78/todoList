@@ -19,7 +19,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
-import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS } from "@/types";
+import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS, meetsScoreFilter } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
 import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
@@ -138,6 +138,7 @@ export default function ListPage() {
     budgets: fBudgets,
     durations: fDurations,
     seasons: fSeasons,
+    scoreFilter: fScoreFilter,
     genreIds: fGenreIds,
     genreSearchMode: fGenreSearchMode,
     excludeGenreIds: fExcludeGenreIds,
@@ -163,6 +164,7 @@ export default function ListPage() {
     if (fBudgets.length > 0) result = result.filter((w) => w.budget && fBudgets.includes(w.budget));
     if (fDurations.length > 0) result = result.filter((w) => w.duration && fDurations.includes(w.duration));
     if (fSeasons.length > 0) result = result.filter((w) => w.seasons.some((s) => fSeasons.includes(s)));
+    if (fScoreFilter !== null) result = result.filter((w) => meetsScoreFilter(w.avgScore, fScoreFilter));
     if (fGenreIds.length > 0) {
       if (fGenreSearchMode === "AND") {
         result = result.filter((w) => fGenreIds.every((id) => w.genres.some((g) => g.id === id)));

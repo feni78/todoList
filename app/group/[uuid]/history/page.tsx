@@ -12,6 +12,7 @@ import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
+import { meetsScoreFilter } from "@/types";
 import { findStation } from "@/lib/utils/station";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -92,6 +93,7 @@ export default function HistoryPage() {
     budgets: fBudgets,
     durations: fDurations,
     seasons: fSeasons,
+    scoreFilter: fScoreFilter,
     genreIds: fGenreIds,
     genreSearchMode: fGenreSearchMode,
     excludeGenreIds: fExcludeGenreIds,
@@ -119,6 +121,7 @@ export default function HistoryPage() {
     fRegionIds.length > 0 ||
     !!fSearchQuery ||
     fNearbyKm !== null ||
+    fScoreFilter !== null ||
     excludeChanged;
 
   const filtered = useMemo(() => {
@@ -131,6 +134,7 @@ export default function HistoryPage() {
     if (fBudgets.length > 0) result = result.filter((w) => w.budget && fBudgets.includes(w.budget));
     if (fDurations.length > 0) result = result.filter((w) => w.duration && fDurations.includes(w.duration));
     if (fSeasons.length > 0) result = result.filter((w) => w.seasons.some((s) => fSeasons.includes(s)));
+    if (fScoreFilter !== null) result = result.filter((w) => meetsScoreFilter(w.avgScore, fScoreFilter));
     if (fGenreIds.length > 0) {
       if (fGenreSearchMode === "AND") {
         result = result.filter((w) => fGenreIds.every((id) => w.genres.some((g) => g.id === id)));
@@ -157,7 +161,7 @@ export default function HistoryPage() {
       result.sort((a, b) => new Date(b.doneAt ?? 0).getTime() - new Date(a.doneAt ?? 0).getTime());
     }
     return result;
-  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery, regions]);
+  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery, regions]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });

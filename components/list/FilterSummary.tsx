@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useShallow } from "zustand/react/shallow";
-import { Genre, Region, GroupMember, SITUATION_LABELS, BUDGET_LABELS, DURATION_LABELS, SEASON_LABELS } from "@/types";
+import { Genre, Region, GroupMember, SITUATION_LABELS, BUDGET_LABELS, DURATION_LABELS, SEASON_LABELS, SCORE_FILTER_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface FilterSummaryProps {
@@ -44,7 +44,7 @@ function SummaryChip({ label, onRemove, variant = "default" }: {
 export function FilterSummary({ genres = [], regions = [], members = [], className }: FilterSummaryProps) {
   const {
     nearbyKm, stationName, regionIds, excludeRegionIds, defaultExcludeRegionIds,
-    situations, seasons, budgets, durations, genreIds, excludeGenreIds,
+    situations, seasons, scoreFilter, budgets, durations, genreIds, excludeGenreIds,
     defaultExcludeGenreIds, memberIds,
   } = useFilterStore(useShallow((s) => ({
     nearbyKm: s.nearbyKm,
@@ -54,6 +54,7 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
     defaultExcludeRegionIds: s.defaultExcludeRegionIds,
     situations: s.situations,
     seasons: s.seasons,
+    scoreFilter: s.scoreFilter,
     budgets: s.budgets,
     durations: s.durations,
     genreIds: s.genreIds,
@@ -61,7 +62,7 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
     defaultExcludeGenreIds: s.defaultExcludeGenreIds,
     memberIds: s.memberIds,
   })));
-  const { setNearbyKm, setRegionIds, setExcludeRegionIds, setSituations, setSeasons,
+  const { setNearbyKm, setRegionIds, setExcludeRegionIds, setSituations, setSeasons, setScoreFilter,
     setBudgets, setDurations, setGenreIds, setExcludeGenreIds, setMemberIds, reset,
   } = useFilterStore.getState();
 
@@ -91,6 +92,11 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
       const r = regions.find((r) => r.id === id);
       if (r) chips.push({ key: `ex-region-${id}`, label: `✕ ${r.name}`, variant: "exclude", onRemove: () => setExcludeRegionIds(excludeRegionIds.filter((x) => x !== id)) });
     });
+
+  // やりたい度
+  if (scoreFilter !== null) {
+    chips.push({ key: "score", label: SCORE_FILTER_LABELS[scoreFilter], onRemove: () => setScoreFilter(null) });
+  }
 
   // シチュエーション
   situations.forEach((s) => {
