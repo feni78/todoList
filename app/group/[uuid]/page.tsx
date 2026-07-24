@@ -189,7 +189,7 @@ export default function ListPage() {
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, sortOrder, nearbyWishIds, fMemberIds, fSituations, fStatuses, fBudgets, fDurations, fSeasons, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
+  }, [wishes, statusTab, situationTab, sortOrder, nearbyWishIds, fMemberIds, fSituations, fStatuses, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);
