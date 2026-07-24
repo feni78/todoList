@@ -18,6 +18,7 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
   } = useRouletteStore();
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filteredWishesRef = useRef<Wish[]>([]);
 
   const filteredWishes = useMemo(() => wishes.filter((w) => {
     if (filter.memberIds.length > 0 && !filter.memberIds.includes(w.memberId)) return false;
@@ -49,6 +50,8 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
     }
     return true;
   }), [wishes, filter, userLocation, regions]);
+
+  filteredWishesRef.current = filteredWishes;
 
   // スピンIDが一致する場合だけ完了する（古いタイマーの誤発火を防ぐ）
   const complete = useCallback((drawn: Wish | null, expectedId: number) => {
@@ -86,7 +89,7 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
   const spin = useCallback(
     (duration = 3500) => {
       if (isSpinning) return;
-      const drawn = drawWish(filteredWishes, settings);
+      const drawn = drawWish(filteredWishesRef.current, settings);
       const endAt = Date.now() + duration;
       const newId = Date.now();
       setSpinId(newId);
@@ -98,7 +101,7 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => complete(drawn, newId), duration);
     },
-    [filteredWishes, settings, isSpinning, setIsSpinning, setResult, setPendingResult, setSpinEndAt, setSpinId, complete]
+    [settings, isSpinning, setIsSpinning, setResult, setPendingResult, setSpinEndAt, setSpinId, complete]
   );
 
   const completeNow = useCallback(() => {
