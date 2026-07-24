@@ -61,6 +61,16 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
     }
   }, [result, isSpinning, animDone]);
 
+  // スピンなしで結果がある場合（モード切替時など）スロットを正しい位置に合わせる
+  useEffect(() => {
+    if (!result || isSpinning || count === 0) return;
+    const resultIndex = wishesRef.current.findIndex((w) => w.id === result.id);
+    if (resultIndex < 0) return;
+    const centerOffset = Math.floor(VISIBLE / 2);
+    const targetY = -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
+    controls.set({ y: targetY });
+  }, [result, isSpinning, count, controls]);
+
   useEffect(() => {
     if (isSpinning && !prevSpinning.current && count > 0 && pendingResult) {
       prevSpinning.current = true;
@@ -79,7 +89,27 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
       controls.set({ y: Math.max(startY, minY) });
       controls.start({
         y: targetY,
-        transition: { duration: 10, ease: [0.03, 0.8, 0.99, 1] },
+        transition: {
+          duration: 13,
+          ease: (t: number): number => {
+            // T1: 高速フェーズ終了タイミング、D1: そこまでに進む割合
+            // RAMP: 加速区間の長さ（T1内の割合）
+            const T1 = 0.65, D1 = 0.85, RAMP = 0.15;
+            // クルーズ速度（境界で速度連続になるよう計算）
+            const v = D1 / (1 - RAMP / 2);
+            if (t <= T1) {
+              const s = t / T1;
+              // 加速区間: 放物線（0→クルーズ速度）
+              if (s < RAMP) return (v / (2 * RAMP)) * s * s;
+              // クルーズ区間: 等速
+              return (v * RAMP) / 2 + v * (s - RAMP);
+            }
+            // じわじわ減速フェーズ: 境界速度から0まで滑らかに
+            const s = (t - T1) / (1 - T1);
+            const n = (v * (1 - T1)) / (T1 * (1 - D1)); // 速度連続条件から導出
+            return D1 + (1 - D1) * (1 - Math.pow(1 - s, n));
+          },
+        },
       });
     }
     if (!isSpinning) {
