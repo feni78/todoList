@@ -316,8 +316,9 @@ async function fetchExisting(supabase: ReturnType<typeof createClient>, groupId:
     const genreIds = (w.wish_genres ?? []).map((g) => g.genre_id).sort();
     let existingUrl: string | null = null;
     if (w.memo) {
-      const urlLine = w.memo.split("\n").map((l) => l.trim()).find((l) => /^https?:\/\//.test(l)) ?? null;
-      if (urlLine) existingUrl = normalizeUrl(urlLine);
+      const lines = w.memo.split("\n");
+      const lastLine = lines[lines.length - 1].trim();
+      if (/^https?:\/\//.test(lastLine)) existingUrl = normalizeUrl(lastLine);
     }
     const existing: ExistingWish = { id: w.id, title: w.title, memo: w.memo, genreIds, url: existingUrl };
     if (existingUrl) urlToExisting.set(existingUrl, existing);
