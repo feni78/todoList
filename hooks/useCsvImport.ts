@@ -550,6 +550,22 @@ export function useCsvImport(groupId: string) {
 
     const { urlToExisting, titleToExisting, titleToExistingCI } = await fetchExisting(supabase, groupId);
 
+    // 既存スコアを一括取得（スキップ判定に使用）
+    const analyzeEntry = getGroupMember(groupId);
+    const analyzeVoteScores = new Map<string, ScoreValue>();
+    if (analyzeEntry) {
+      const allExistingIds = [...new Set([...urlToExisting.values(), ...titleToExisting.values()].map((w) => w.id))];
+      const CHUNK = 500;
+      for (let i = 0; i < allExistingIds.length; i += CHUNK) {
+        const { data: votes } = await supabase
+          .from("wish_votes").select("wish_id, score")
+          .in("wish_id", allExistingIds.slice(i, i + CHUNK))
+          .eq("member_id", analyzeEntry.memberId);
+        (votes ?? []).forEach((v: { wish_id: string; score: number }) =>
+          analyzeVoteScores.set(v.wish_id, v.score as ScoreValue));
+      }
+    }
+
     let insertCount = 0, updateCount = 0, skipCount = 0;
     const suspicious: SuspiciousItem[] = [];
     const insertItems: { title: string; url: string }[] = [];
@@ -577,7 +593,12 @@ export function useCsvImport(groupId: string) {
         const sortedNew = [...genreIds].sort();
         // genreIds が空のときはジャンル未指定扱い（既存を変更しない）
         const genreChanged = genreIds.length > 0 && JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
-        if (!titleChanged && !memoWillChange && !genreChanged) {
+        const csvScore = importMode === "done" ? scoreFromStars(row.memo) : scoreFromMemo(row.memo);
+        const existingVoteScore = analyzeVoteScores.get(existingMatch.id);
+        const scoreWouldChange = existingVoteScore === undefined
+          ? true
+          : importMode === "done" ? csvScore !== existingVoteScore : csvScore > existingVoteScore;
+        if (!titleChanged && !memoWillChange && !genreChanged && !scoreWouldChange) {
           skipItems.push({ title: row.title, reason: "no_change" });
           skipCount++;
         } else {
@@ -585,6 +606,7 @@ export function useCsvImport(groupId: string) {
           if (titleChanged) changes.push("タイトル変更");
           if (memoWillChange) changes.push("メモ追記");
           if (genreChanged) changes.push("ジャンル変更");
+          if (scoreWouldChange) changes.push("やりたい度更新");
           // 追記される内容の先頭行
           const merged = mergeMemos(existingMatch.memo, newMemo);
           const addition = merged && existingMatch.memo
@@ -633,6 +655,21 @@ export function useCsvImport(groupId: string) {
 
       const { urlToExisting, titleToExisting, titleToExistingCI } = await fetchExisting(supabase, groupId);
 
+      // 既存スコアを一括取得（スキップ判定・スコア更新に使用）
+      const allExistingIds = [...new Set([...urlToExisting.values(), ...titleToExisting.values()].map((w) => w.id))];
+      const existingVoteScores = new Map<string, ScoreValue>();
+      if (allExistingIds.length > 0) {
+        const CHUNK = 500;
+        for (let i = 0; i < allExistingIds.length; i += CHUNK) {
+          const { data: votes } = await supabase
+            .from("wish_votes").select("wish_id, score")
+            .in("wish_id", allExistingIds.slice(i, i + CHUNK))
+            .eq("member_id", entry.memberId);
+          (votes ?? []).forEach((v: { wish_id: string; score: number }) =>
+            existingVoteScores.set(v.wish_id, v.score as ScoreValue));
+        }
+      }
+
       interface NewItem extends ParsedItem { score: ScoreValue; memoText: string | null; }
       interface UpdateItem extends ParsedItem { wishId: string; score: ScoreValue; memoText: string | null; existingMemo: string | null; }
 
@@ -667,7 +704,11 @@ export function useCsvImport(groupId: string) {
           const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
           const sortedNew = [...item.genreIds].sort();
           const genreChanged = item.genreIds.length > 0 && JSON.stringify(sortedNew) !== JSON.stringify(existingMatch.genreIds);
-          if (!titleChanged && !memoWillChange && !genreChanged) {
+          const existingVoteScore = existingVoteScores.get(existingMatch.id);
+          const scoreWouldChange = existingVoteScore === undefined
+            ? true
+            : importMode === "done" ? score !== existingVoteScore : score > existingVoteScore;
+          if (!titleChanged && !memoWillChange && !genreChanged && !scoreWouldChange) {
             skippedItems.push({ title: row.title, reason: "no_change" });
             continue;
           }
@@ -707,23 +748,12 @@ export function useCsvImport(groupId: string) {
         }
 
         if (toUpdate.length > 0) {
-          const updateWishIds = toUpdate.map((item) => item.wishId);
-          const CHUNK = 500;
-          // wish_id → 既存スコアのマップ（スコア優先のため score も取得）
-          const existingVoteScores = new Map<string, ScoreValue>();
-          for (let i = 0; i < updateWishIds.length; i += CHUNK) {
-            const { data: votes } = await supabase
-              .from("wish_votes").select("wish_id, score")
-              .in("wish_id", updateWishIds.slice(i, i + CHUNK))
-              .eq("member_id", entry.memberId);
-            (votes ?? []).forEach((v: { wish_id: string; score: number }) =>
-              existingVoteScores.set(v.wish_id, v.score as ScoreValue));
-          }
-
           for (const item of toUpdate) {
             const mergedMemo = mergeMemos(item.existingMemo, item.memoText);
+            const wishUpdateFields: Record<string, unknown> = { title: item.row.title, memo: mergedMemo };
+            if (importMode === "done") { wishUpdateFields.status = "DONE"; wishUpdateFields.done_at = doneAt; }
             const { error } = await supabase.from("wishes")
-              .update({ title: item.row.title, memo: mergedMemo }).eq("id", item.wishId);
+              .update(wishUpdateFields).eq("id", item.wishId);
             if (error) throw error;
 
             const existingScore = existingVoteScores.get(item.wishId);
@@ -732,12 +762,15 @@ export function useCsvImport(groupId: string) {
               const { error: voteErr } = await supabase.from("wish_votes")
                 .insert({ wish_id: item.wishId, member_id: entry.memberId, score: item.score });
               if (voteErr) throw voteErr;
-            } else if (item.score > existingScore) {
-              // CSV側のスコアが高ければ更新
-              const { error: voteErr } = await supabase.from("wish_votes")
-                .update({ score: item.score })
-                .eq("wish_id", item.wishId).eq("member_id", entry.memberId);
-              if (voteErr) throw voteErr;
+            } else {
+              // done モード: ★優先でスコアを上書き、normal モード: より高いスコアのみ更新
+              const shouldUpdate = importMode === "done" ? item.score !== existingScore : item.score > existingScore;
+              if (shouldUpdate) {
+                const { error: voteErr } = await supabase.from("wish_votes")
+                  .update({ score: item.score })
+                  .eq("wish_id", item.wishId).eq("member_id", entry.memberId);
+                if (voteErr) throw voteErr;
+              }
             }
 
             // genreIds が指定されている場合のみ置き換え
