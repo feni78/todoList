@@ -15,6 +15,7 @@ import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useGroup } from "@/hooks/useGroup";
+import { getDefaultExcludeGenreIds, getDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
 import { SlidersHorizontal, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -29,7 +30,7 @@ export default function RoulettePage() {
   const { wishes, changeStatus } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
-  const { mode, setMode, settings, devMode, filter, setSettings } = useRouletteStore();
+  const { mode, setMode, settings, devMode, filter, setSettings, setFilter, setDefaultExcludeGenreIds, setDefaultExcludeRegionIds } = useRouletteStore();
   const { fetchRouletteSettings } = useGroup();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -40,6 +41,17 @@ export default function RoulettePage() {
       }
     });
   }, [uuid, fetchRouletteSettings, setSettings]);
+
+  useEffect(() => {
+    const genreDefaults = getDefaultExcludeGenreIds(uuid);
+    const regionDefaults = getDefaultExcludeRegionIds(uuid);
+    setDefaultExcludeGenreIds(genreDefaults);
+    setDefaultExcludeRegionIds(regionDefaults);
+    setFilter({
+      excludeGenreIds: [...new Set([...genreDefaults, ...useRouletteStore.getState().filter.excludeGenreIds])],
+      excludeRegionIds: [...new Set([...regionDefaults, ...useRouletteStore.getState().filter.excludeRegionIds])],
+    });
+  }, [uuid, setDefaultExcludeGenreIds, setDefaultExcludeRegionIds, setFilter]);
   const nearbyKmRef = useRef<number | null>(null);
   const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes, userLocation, regions);
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;

@@ -11,6 +11,8 @@ interface RouletteState {
   mode: RouletteMode;
   settings: RouletteSettings;
   filter: RouletteFilter;
+  defaultExcludeGenreIds: string[];
+  defaultExcludeRegionIds: string[];
   result: Wish | null;
   isSpinning: boolean;
   pendingResult: Wish | null;
@@ -20,6 +22,8 @@ interface RouletteState {
   setMode: (mode: RouletteMode) => void;
   setSettings: (settings: RouletteSettings) => void;
   setFilter: (filter: Partial<RouletteFilter>) => void;
+  setDefaultExcludeGenreIds: (ids: string[]) => void;
+  setDefaultExcludeRegionIds: (ids: string[]) => void;
   setResult: (wish: Wish | null) => void;
   setIsSpinning: (spinning: boolean) => void;
   setPendingResult: (wish: Wish | null) => void;
@@ -54,6 +58,8 @@ export const useRouletteStore = create<RouletteState>((set) => ({
   mode: "normal",
   settings: defaultSettings,
   filter: defaultFilter,
+  defaultExcludeGenreIds: [],
+  defaultExcludeRegionIds: [],
   result: null,
   isSpinning: false,
   pendingResult: null,
@@ -63,11 +69,19 @@ export const useRouletteStore = create<RouletteState>((set) => ({
   setMode: (mode) => set({ mode }),
   setSettings: (settings) => set({ settings }),
   setFilter: (filter) => set((s) => ({ filter: { ...s.filter, ...filter } })),
+  setDefaultExcludeGenreIds: (ids) => set({ defaultExcludeGenreIds: ids }),
+  setDefaultExcludeRegionIds: (ids) => set({ defaultExcludeRegionIds: ids }),
   setResult: (result) => set({ result }),
   setIsSpinning: (isSpinning) => set({ isSpinning }),
   setPendingResult: (pendingResult) => set({ pendingResult }),
   setSpinEndAt: (spinEndAt) => set({ spinEndAt }),
   setSpinId: (spinId) => set({ spinId }),
   setDevMode: (devMode) => set({ devMode }),
-  resetFilter: () => set({ filter: defaultFilter }),
+  resetFilter: () => set((s) => ({
+    filter: {
+      ...defaultFilter,
+      excludeGenreIds: [...s.defaultExcludeGenreIds],
+      excludeRegionIds: [...s.defaultExcludeRegionIds],
+    },
+  })),
 }));
