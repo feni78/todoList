@@ -97,16 +97,19 @@ function FilterSection({ title, children, collapsible = false, defaultOpen = tru
   );
 }
 
-function IncludeExcludeSection({ title, children, collapsible = false, defaultOpen = true, count = 0, noDivider = false }: {
+function IncludeExcludeSection({ title, children, collapsible = false, defaultOpen = true, count = 0, noDivider = false, onClearInclude, onClearExclude }: {
   title: string;
   children: (mode: "include" | "exclude") => React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
   count?: number;
   noDivider?: boolean;
+  onClearInclude?: () => void;
+  onClearExclude?: () => void;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   const [mode, setMode] = useState<"include" | "exclude">("include");
+  const onClear = mode === "include" ? onClearInclude : onClearExclude;
   return (
     <div className={cn("flex flex-col gap-3 py-4", !noDivider && "border-t border-border/60")}>
       <div className="flex items-center gap-1.5">
@@ -124,22 +127,29 @@ function IncludeExcludeSection({ title, children, collapsible = false, defaultOp
           {collapsible && (open ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />)}
         </button>
         {open && (
-          <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium shrink-0">
-            <button
-              type="button"
-              onClick={() => setMode("include")}
-              className={cn("px-3 py-1.5 transition-colors", mode === "include" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60")}
-            >
-              含む
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("exclude")}
-              className={cn("px-3 py-1.5 transition-colors border-l border-border", mode === "exclude" ? "bg-destructive text-destructive-foreground" : "text-muted-foreground hover:bg-muted/60")}
-            >
-              除外
-            </button>
-          </div>
+          <>
+            <div className="flex rounded-lg border border-border overflow-hidden text-xs font-medium shrink-0">
+              <button
+                type="button"
+                onClick={() => setMode("include")}
+                className={cn("px-3 py-1.5 transition-colors", mode === "include" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60")}
+              >
+                含む
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("exclude")}
+                className={cn("px-3 py-1.5 transition-colors border-l border-border", mode === "exclude" ? "bg-destructive text-destructive-foreground" : "text-muted-foreground hover:bg-muted/60")}
+              >
+                除外
+              </button>
+            </div>
+            {onClear && (
+              <button type="button" onClick={onClear} className="text-xs text-primary hover:text-primary/80 transition-colors shrink-0 font-medium">
+                クリア
+              </button>
+            )}
+          </>
         )}
       </div>
       {open && <div className="flex flex-wrap gap-2">{children(mode)}</div>}
@@ -238,7 +248,13 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
         <div className="flex flex-col">
           {/* ジャンル — 含む/除外タブ */}
           {genres.length > 0 && (
-            <IncludeExcludeSection title="ジャンル" count={genreIds.length + excludeGenreIds.filter((id) => !defaultExcludeGenreIds.includes(id)).length} noDivider>
+            <IncludeExcludeSection
+              title="ジャンル"
+              count={genreIds.length + excludeGenreIds.filter((id) => !defaultExcludeGenreIds.includes(id)).length}
+              noDivider
+              onClearInclude={genreIds.length > 0 ? () => setGenreIds([]) : undefined}
+              onClearExclude={excludeGenreIds.some((id) => !defaultExcludeGenreIds.includes(id)) ? () => setExcludeGenreIds([...defaultExcludeGenreIds]) : undefined}
+            >
               {(mode) => {
                 if (mode === "include") {
                   return (

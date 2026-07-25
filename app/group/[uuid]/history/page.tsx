@@ -6,6 +6,9 @@ import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { WishList } from "@/components/list/WishList";
 import { FilterPanel } from "@/components/list/FilterPanel";
+import { BulkGenreBar } from "@/components/list/BulkGenreBar";
+import { FilterSummary } from "@/components/list/FilterSummary";
+import { Input } from "@/components/ui/input";
 import { useWishes } from "@/hooks/useWishes";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
@@ -16,17 +19,54 @@ import { meetsScoreFilter } from "@/types";
 import { findStation } from "@/lib/utils/station";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { Star, SlidersHorizontal, ArrowUpDown } from "lucide-react";
-import { FilterSummary } from "@/components/list/FilterSummary";
+import { Star, SlidersHorizontal, ArrowUpDown, Search, X, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useShallow } from "zustand/react/shallow";
 
 export default function HistoryPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
-  const { wishes, loading, updateWish, deleteWish, changeStatus, toggleFavorite: toggleFavoriteWish } = useWishes(uuid, { statuses: ["DONE"] });
+  const { wishes, loading, updateWish, deleteWish, changeStatus, toggleFavorite: toggleFavoriteWish, bulkUpdateGenres } = useWishes(uuid, { statuses: ["DONE"] });
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
-  const filterStore = useFilterStore();
+
+  const {
+    memberIds: fMemberIds,
+    situations: fSituations,
+    budgets: fBudgets,
+    durations: fDurations,
+    seasons: fSeasons,
+    scoreFilter: fScoreFilter,
+    genreIds: fGenreIds,
+    genreSearchMode: fGenreSearchMode,
+    excludeGenreIds: fExcludeGenreIds,
+    regionIds: fRegionIds,
+    excludeRegionIds: fExcludeRegionIds,
+    nearbyKm: fNearbyKm,
+    stationName: fStationName,
+    defaultExcludeGenreIds: fDefaultExcludeGenreIds,
+    defaultExcludeRegionIds: fDefaultExcludeRegionIds,
+    historySearchQuery,
+    setHistorySearchQuery,
+  } = useFilterStore(useShallow((s) => ({
+    memberIds: s.memberIds,
+    situations: s.situations,
+    budgets: s.budgets,
+    durations: s.durations,
+    seasons: s.seasons,
+    scoreFilter: s.scoreFilter,
+    genreIds: s.genreIds,
+    genreSearchMode: s.genreSearchMode,
+    excludeGenreIds: s.excludeGenreIds,
+    regionIds: s.regionIds,
+    excludeRegionIds: s.excludeRegionIds,
+    nearbyKm: s.nearbyKm,
+    stationName: s.stationName,
+    defaultExcludeGenreIds: s.defaultExcludeGenreIds,
+    defaultExcludeRegionIds: s.defaultExcludeRegionIds,
+    historySearchQuery: s.historySearchQuery,
+    setHistorySearchQuery: s.setHistorySearchQuery,
+  })));
 
   type SortOrder = "priority" | "createdAt" | "doneAt";
   const SORT_LABELS: Record<SortOrder, string> = { priority: "やりたい度順", createdAt: "登録日順", doneAt: "実施日順" };
@@ -37,10 +77,13 @@ export default function HistoryPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
   const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
   const nearbyKmRef = useRef<number | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<"genre" | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const km = filterStore.nearbyKm;
-    const stationName = filterStore.stationName;
+    const km = fNearbyKm;
+    const stationName = fStationName;
     nearbyKmRef.current = km;
     if (km === null) { setNearbyWishIds(null); return; }
 
@@ -85,25 +128,7 @@ export default function HistoryPage() {
       toast.error("位置情報の取得を許可してください");
       setNearbyWishIds(null);
     });
-  }, [filterStore.nearbyKm, filterStore.stationName, uuid]);
-
-  const {
-    memberIds: fMemberIds,
-    situations: fSituations,
-    budgets: fBudgets,
-    durations: fDurations,
-    seasons: fSeasons,
-    scoreFilter: fScoreFilter,
-    genreIds: fGenreIds,
-    genreSearchMode: fGenreSearchMode,
-    excludeGenreIds: fExcludeGenreIds,
-    regionIds: fRegionIds,
-    excludeRegionIds: fExcludeRegionIds,
-    searchQuery: fSearchQuery,
-    nearbyKm: fNearbyKm,
-    defaultExcludeGenreIds: fDefaultExcludeGenreIds,
-    defaultExcludeRegionIds: fDefaultExcludeRegionIds,
-  } = filterStore;
+  }, [fNearbyKm, fStationName, uuid]);
 
   const excludeChanged =
     fExcludeGenreIds.some((id) => !fDefaultExcludeGenreIds.includes(id)) ||
@@ -119,7 +144,6 @@ export default function HistoryPage() {
     fSeasons.length > 0 ||
     fGenreIds.length > 0 ||
     fRegionIds.length > 0 ||
-    !!fSearchQuery ||
     fNearbyKm !== null ||
     fScoreFilter !== null ||
     excludeChanged;
@@ -149,8 +173,8 @@ export default function HistoryPage() {
     if (fSpecificIds.length > 0) result = result.filter((w) => w.regions.some((r) => fSpecificIds.includes(r.id)));
     if (fExcludeRegionIds.length > 0) result = result.filter((w) => !w.regions.some((r) => fExcludeRegionIds.includes(r.id)));
     if (nearbyWishIds !== null) result = result.filter((w) => nearbyWishIds.has(w.id));
-    if (fSearchQuery) {
-      const q = fSearchQuery.toLowerCase();
+    if (historySearchQuery) {
+      const q = historySearchQuery.toLowerCase();
       result = result.filter((w) => w.title.toLowerCase().includes(q));
     }
     if (sortOrder === "priority") {
@@ -161,7 +185,7 @@ export default function HistoryPage() {
       result.sort((a, b) => new Date(b.doneAt ?? 0).getTime() - new Date(a.doneAt ?? 0).getTime());
     }
     return result;
-  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery, regions]);
+  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, historySearchQuery, regions]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -201,9 +225,62 @@ export default function HistoryPage() {
     }
   };
 
+  const handleToggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const handleSelectAll = () => setSelectedIds(new Set(filtered.map((w) => w.id)));
+  const handleClearAll = () => setSelectedIds(new Set());
+  const handleExitSelection = () => { setSelectionMode(null); setSelectedIds(new Set()); };
+
+  const handleBulkApply = async (genreIds: string[], mode: "add" | "remove") => {
+    await bulkUpdateGenres([...selectedIds], genreIds, mode);
+    toast.success(mode === "add" ? "ジャンルを追加しました" : "ジャンルを削除しました");
+    handleExitSelection();
+  };
+
   return (
     <div className="flex flex-col min-h-screen pb-16">
-      <TopBar title="実施済み" />
+      <TopBar
+        title="実施済み"
+        right={
+          <button
+            onClick={() => setSearchOpen((v) => !v)}
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              searchOpen || historySearchQuery
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {searchOpen ? <X size={18} /> : <Search size={18} />}
+          </button>
+        }
+      />
+
+      {searchOpen && (
+        <div className="px-4 py-2 border-b border-border relative">
+          <Input
+            placeholder="タイトルを検索..."
+            value={historySearchQuery}
+            onChange={(e) => setHistorySearchQuery(e.target.value)}
+            autoFocus
+            className="pr-8"
+          />
+          {historySearchQuery && (
+            <button
+              type="button"
+              onClick={() => setHistorySearchQuery("")}
+              className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <button
@@ -226,6 +303,18 @@ export default function HistoryPage() {
           >
             <ArrowUpDown size={11} />
             {SORT_LABELS[sortOrder]}
+          </button>
+          <button
+            onClick={() => { setSelectionMode("genre"); setSelectedIds(new Set()); }}
+            className={cn(
+              "p-1.5 rounded-lg transition-colors",
+              selectionMode === "genre"
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            title="ジャンル一括設定"
+          >
+            <Tag size={16} />
           </button>
           <button
             onClick={() => setFilterOpen(true)}
@@ -258,10 +347,25 @@ export default function HistoryPage() {
             onDelete={handleDelete}
             onStatusChange={handleStatusChange}
             onToggleFavorite={handleToggleFavorite}
+            selectionMode={selectionMode !== null}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
             emptyMessage={showFavoriteOnly ? "お気に入りのアイテムはありません" : "実施済みのアイテムはありません"}
           />
         )}
       </div>
+
+      {selectionMode === "genre" && (
+        <BulkGenreBar
+          selectedCount={selectedIds.size}
+          totalCount={filtered.length}
+          genres={genres}
+          onSelectAll={handleSelectAll}
+          onClearAll={handleClearAll}
+          onApply={handleBulkApply}
+          onCancel={handleExitSelection}
+        />
+      )}
 
       <FilterPanel
         open={filterOpen}

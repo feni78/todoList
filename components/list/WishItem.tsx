@@ -115,11 +115,17 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
                 {SEASON_LABELS[s]}
               </Badge>
             ))}
-            {wish.genres.map((g) => (
-              <Badge key={g.id} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                {g.name}
-              </Badge>
-            ))}
+            {[...wish.genres]
+              .sort((a, b) => {
+                const ia = genres.findIndex((g) => g.id === a.id);
+                const ib = genres.findIndex((g) => g.id === b.id);
+                return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
+              })
+              .map((g) => (
+                <Badge key={g.id} variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                  {g.name}
+                </Badge>
+              ))}
             {[...wish.regions]
               .sort((a, b) => (isBroadRegionTag(a.name) ? 0 : 1) - (isBroadRegionTag(b.name) ? 0 : 1))
               .map((r) => (
