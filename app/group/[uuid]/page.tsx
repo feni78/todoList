@@ -308,6 +308,8 @@ export default function ListPage() {
     }
   };
 
+  const totalInTab = useMemo(() => wishes.filter((w) => w.status === statusTab).length, [wishes, statusTab]);
+
   const excludeChanged =
     fExcludeGenreIds.some((id) => !fDefaultExcludeGenreIds.includes(id)) ||
     fDefaultExcludeGenreIds.some((id) => !fExcludeGenreIds.includes(id)) ||
@@ -408,6 +410,14 @@ export default function ListPage() {
       </div>
 
       <FilterSummary genres={genres} regions={regions} members={group?.members ?? []} />
+
+      {!loading && (
+        <p className="px-4 pb-1 text-xs text-muted-foreground">
+          {filtered.length !== totalInTab
+            ? `${totalInTab}件中 ${filtered.length}件を表示`
+            : `${totalInTab}件`}
+        </p>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-20">
