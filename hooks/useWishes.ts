@@ -7,6 +7,10 @@ import { getGroupMember } from "@/lib/utils/localStorage";
 
 type SupabaseClient = ReturnType<typeof createClient>;
 
+// タブ切替時の再ロードを避けるためのモジュールスコープキャッシュ
+// キー: "${groupId}:${statuses昇順結合}" 例 "uuid:PENDING,HOLD"
+const wishCache = new Map<string, Wish[]>();
+
 async function saveVote(supabase: SupabaseClient, wishId: string, memberId: string, score: ScoreValue) {
   const { data: existing, error: selErr } = await supabase
     .from("wish_votes")
@@ -84,8 +88,14 @@ function mapRow(row: Record<string, unknown>): Wish {
 
 export function useWishes(groupId: string, options?: { statuses?: Status[]; includeVotes?: boolean; skip?: boolean; realtimeVotes?: boolean }) {
   const skip = options?.skip ?? false;
-  const [wishes, setWishes] = useState<Wish[]>([]);
-  const [loading, setLoading] = useState(!skip);
+
+  // キャッシュキーはマウント時に一度だけ確定する
+  const cacheKey = `${groupId}:${[...(options?.statuses ?? ["PENDING", "HOLD"])].sort().join(",")}`;
+  const cacheKeyRef = useRef(cacheKey);
+
+  const initCached = !skip ? wishCache.get(cacheKey) : undefined;
+  const [wishes, setWishes] = useState<Wish[]>(initCached ?? []);
+  const [loading, setLoading] = useState(!skip && !initCached);
   const [error, setError] = useState<string | null>(null);
 
   // statuses・includeVotes はページごとに固定なので ref で安定参照する
@@ -137,6 +147,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
     });
     const mapped = uniqueData.map((row) => mapRow(row as Record<string, unknown>));
     wishesRef.current = mapped;
+    wishCache.set(cacheKeyRef.current, mapped);
     setWishes(mapped);
     setLoading(false);
   }, [groupId]);
@@ -261,27 +272,31 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
       const { seasons, genreIds, regionIds, myScore, latitude, longitude, ...rest } = data;
 
       // 楽観的更新：DB完了を待たずにローカル状態を即時反映
-      setWishes((prev) => prev.map((w) => {
-        if (w.id !== wishId) return w;
-        const next = { ...w };
-        if (rest.title !== undefined) next.title = rest.title;
-        if (rest.situation !== undefined) next.situation = rest.situation;
-        if (rest.status !== undefined) next.status = rest.status;
-        if (rest.doneAt !== undefined) next.doneAt = rest.doneAt ?? null;
-        if (rest.memo !== undefined) next.memo = rest.memo;
-        if (rest.budget !== undefined) next.budget = rest.budget;
-        if (rest.duration !== undefined) next.duration = rest.duration;
-        if (latitude !== undefined) next.latitude = latitude ?? null;
-        if (longitude !== undefined) next.longitude = longitude ?? null;
-        if (seasons !== undefined) next.seasons = seasons;
-        if (myScore !== undefined && entry) {
-          const filteredVotes = next.votes.filter((v) => v.memberId !== entry.memberId);
-          next.votes = myScore === null ? filteredVotes : [...filteredVotes, { id: "optimistic", wishId, memberId: entry.memberId, score: myScore }];
-          next.avgScore = next.votes.length > 0 ? next.votes.reduce((s, v) => s + v.score, 0) / next.votes.length : 0;
-          next.hasMaxVote = next.votes.some((v) => v.score === 100);
-        }
+      setWishes((prev) => {
+        const next = prev.map((w) => {
+          if (w.id !== wishId) return w;
+          const n = { ...w };
+          if (rest.title !== undefined) n.title = rest.title;
+          if (rest.situation !== undefined) n.situation = rest.situation;
+          if (rest.status !== undefined) n.status = rest.status;
+          if (rest.doneAt !== undefined) n.doneAt = rest.doneAt ?? null;
+          if (rest.memo !== undefined) n.memo = rest.memo;
+          if (rest.budget !== undefined) n.budget = rest.budget;
+          if (rest.duration !== undefined) n.duration = rest.duration;
+          if (latitude !== undefined) n.latitude = latitude ?? null;
+          if (longitude !== undefined) n.longitude = longitude ?? null;
+          if (seasons !== undefined) n.seasons = seasons;
+          if (myScore !== undefined && entry) {
+            const filteredVotes = n.votes.filter((v) => v.memberId !== entry.memberId);
+            n.votes = myScore === null ? filteredVotes : [...filteredVotes, { id: "optimistic", wishId, memberId: entry.memberId, score: myScore }];
+            n.avgScore = n.votes.length > 0 ? n.votes.reduce((s, v) => s + v.score, 0) / n.votes.length : 0;
+            n.hasMaxVote = n.votes.some((v) => v.score === 100);
+          }
+          return n;
+        });
+        wishCache.set(cacheKeyRef.current, next);
         return next;
-      }));
+      });
 
       const updatePayload: Record<string, unknown> = {};
       if (rest.memberId !== undefined) updatePayload.member_id = rest.memberId;
@@ -343,7 +358,11 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
 
   const deleteWish = useCallback(
     async (wishId: string) => {
-      setWishes((prev) => prev.filter((w) => w.id !== wishId));
+      setWishes((prev) => {
+        const next = prev.filter((w) => w.id !== wishId);
+        wishCache.set(cacheKeyRef.current, next);
+        return next;
+      });
       const supabase = createClient();
       const { error } = await supabase.from("wishes").update({ deleted_at: new Date().toISOString() }).eq("id", wishId);
       if (error) { fetchWishes(); throw error; }
@@ -390,7 +409,11 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
   const bulkDeleteWishes = useCallback(
     async (wishIds: string[]) => {
       const idSet = new Set(wishIds);
-      setWishes((prev) => prev.filter((w) => !idSet.has(w.id)));
+      setWishes((prev) => {
+        const next = prev.filter((w) => !idSet.has(w.id));
+        wishCache.set(cacheKeyRef.current, next);
+        return next;
+      });
       const supabase = createClient();
       const CHUNK = 200;
       for (let i = 0; i < wishIds.length; i += CHUNK) {
@@ -406,12 +429,20 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
   const toggleFavorite = useCallback(
     async (wishId: string, value: boolean) => {
       // ローカル状態を即時更新（楽観的更新）
-      setWishes((prev) => prev.map((w) => w.id === wishId ? { ...w, isFavorite: value } : w));
+      setWishes((prev) => {
+        const next = prev.map((w) => w.id === wishId ? { ...w, isFavorite: value } : w);
+        wishCache.set(cacheKeyRef.current, next);
+        return next;
+      });
       const supabase = createClient();
       const { error } = await supabase.from("wishes").update({ is_favorite: value }).eq("id", wishId);
       if (error) {
         // 失敗時はロールバック
-        setWishes((prev) => prev.map((w) => w.id === wishId ? { ...w, isFavorite: !value } : w));
+        setWishes((prev) => {
+          const next = prev.map((w) => w.id === wishId ? { ...w, isFavorite: !value } : w);
+          wishCache.set(cacheKeyRef.current, next);
+          return next;
+        });
         throw error;
       }
     },
