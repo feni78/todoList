@@ -97,7 +97,7 @@ function GenreSelect({
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
-        className="flex-1 min-w-0 text-xs rounded-lg border border-border bg-background px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+        className="flex-1 min-w-0 w-0 text-xs rounded-lg border border-border bg-background px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
       >
         <option value="">未設定</option>
         {options.map((g) => (
