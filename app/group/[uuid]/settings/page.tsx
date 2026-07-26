@@ -24,6 +24,7 @@ import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultEx
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish, GenreType, GENRE_TYPE_LABELS } from "@/types";
 import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin, GitMerge } from "lucide-react";
+import { CsvGenreAssignDialog } from "@/components/settings/CsvGenreAssignDialog";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -97,6 +98,7 @@ export default function SettingsPage() {
   const [mergeRegionTags, setMergeRegionTags] = useState(true);
   const [merging, setMerging] = useState(false);
   const [retryLocationDialogOpen, setRetryLocationDialogOpen] = useState(false);
+  const [csvGenreAssignOpen, setCsvGenreAssignOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
 
@@ -1499,6 +1501,15 @@ export default function SettingsPage() {
         })()}
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <h2 className="font-semibold">CSVジャンル付与</h2>
+          <p className="text-xs text-muted-foreground">CSVファイルを元に、既存タスクへ大・中・小ジャンルを一括付与します。新規登録は行いません。</p>
+          <Button variant="outline" className="w-full" onClick={() => setCsvGenreAssignOpen(true)}>
+            <Upload size={15} className="mr-2" />
+            CSVからジャンルを付与する
+          </Button>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">CSV取り込み履歴</h2>
             <button
@@ -1744,6 +1755,13 @@ export default function SettingsPage() {
       </div>}
 
       <BottomNav groupId={uuid} />
+
+      <CsvGenreAssignDialog
+        open={csvGenreAssignOpen}
+        onClose={() => setCsvGenreAssignOpen(false)}
+        groupId={uuid}
+        genres={genres}
+      />
 
       <Dialog open={retryLocationDialogOpen} onOpenChange={setRetryLocationDialogOpen}>
         <DialogContent className="max-w-sm">
