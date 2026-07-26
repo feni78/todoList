@@ -33,12 +33,19 @@ export interface GenreAssignItem {
   existingGenreIds?: string[];
 }
 
+export interface FileConflictWarn {
+  fileName: string;
+  conflictCount: number;
+  totalMatched: number;
+}
+
 export interface GenreAssignAnalysis {
   fileConflicts: FileConflict[];
   newItems: GenreAssignItem[];
   updateItems: GenreAssignItem[];
   conflictItems: GenreAssignItem[];
   skipItems: { title: string }[];
+  fileConflictWarns: FileConflictWarn[];
 }
 
 export interface GenreAssignResult {
@@ -126,13 +133,18 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
         }
 
         // 複数ファイルに存在し、大/中ジャンルの設定が異なる場合はファイル競合
+        // 未設定/未設定のエントリは選択肢に含めない
         if (entries.length > 1) {
-          const uniqueKeys = new Set(entries.map((e) => `${e.config.largeGenreId}:${e.config.mediumGenreId}`));
+          const validEntries = entries.filter(
+            (e) => e.config.largeGenreId !== null || e.config.mediumGenreId !== null
+          );
+          const entriesToCheck = validEntries.length > 0 ? validEntries : entries;
+          const uniqueKeys = new Set(entriesToCheck.map((e) => `${e.config.largeGenreId}:${e.config.mediumGenreId}`));
           if (uniqueKeys.size > 1) {
             fileConflicts.push({
               wishId: wish.id,
               wishTitle: title,
-              options: entries.map((e) => ({
+              options: entriesToCheck.map((e) => ({
                 fileName: e.config.file.name,
                 smallGenreName: e.smallGenreName,
                 largeGenreId: e.config.largeGenreId,
@@ -143,7 +155,8 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
           }
         }
 
-        const { config, smallGenreName } = entries[0];
+        const validEntry = entries.find((e) => e.config.largeGenreId !== null || e.config.mediumGenreId !== null) ?? entries[0];
+        const { config, smallGenreName } = validEntry;
         const item: GenreAssignItem = {
           wishId: wish.id,
           wishTitle: title,
@@ -168,7 +181,20 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
         }
       }
 
-      return { fileConflicts, newItems, updateItems, conflictItems, skipItems };
+      // ファイルごとの衝突割合を算出（50%以上で警告）
+      const fileConflictWarns: FileConflictWarn[] = [];
+      for (const config of configs) {
+        const smallName = fileNameWithoutExt(config.file.name);
+        const matched = [...newItems, ...updateItems, ...conflictItems].filter(
+          (item) => item.smallGenreName === smallName
+        ).length;
+        const conflicts = conflictItems.filter((item) => item.smallGenreName === smallName).length;
+        if (matched > 0 && conflicts / matched >= 0.5) {
+          fileConflictWarns.push({ fileName: config.file.name, conflictCount: conflicts, totalMatched: matched });
+        }
+      }
+
+      return { fileConflicts, newItems, updateItems, conflictItems, skipItems, fileConflictWarns };
     },
     [groupId, genreTypeMap]
   );

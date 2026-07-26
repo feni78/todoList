@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Genre, GENRE_TYPE_LABELS } from "@/types";
+import type { FileConflictWarn } from "@/hooks/useCsvGenreAssign";
 import {
   useCsvGenreAssign,
   GenreFileConfig,
@@ -33,7 +34,7 @@ interface Props {
 }
 
 type Mode = "idle" | "analyzing" | "preview" | "applying" | "done";
-type ConflictResolution = number | "skip";
+type ConflictResolution = "both" | number | "skip";
 
 type FilePreset = { largeGenreId: string | null; mediumGenreId: string | null };
 
@@ -277,7 +278,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
       const res = await analyzeGenreAssign(buildConfigs());
       setAnalysis(res);
       const initResolutions = new Map<string, ConflictResolution>();
-      for (const fc of res.fileConflicts) initResolutions.set(fc.wishId, 0);
+      for (const fc of res.fileConflicts) initResolutions.set(fc.wishId, "both");
       setResolutions(initResolutions);
       setMode("preview");
     } catch (err) {
@@ -303,14 +304,26 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
     for (const fc of analysis.fileConflicts) {
       const res = resolutions.get(fc.wishId);
       if (res === "skip" || res === undefined) continue;
-      const opt: FileConflictOption = fc.options[res as number];
-      items.push({
-        wishId: fc.wishId,
-        wishTitle: fc.wishTitle,
-        largeGenreId: opt.largeGenreId,
-        mediumGenreId: opt.mediumGenreId,
-        smallGenreName: opt.smallGenreName,
-      });
+      if (res === "both") {
+        for (const opt of fc.options) {
+          items.push({
+            wishId: fc.wishId,
+            wishTitle: fc.wishTitle,
+            largeGenreId: opt.largeGenreId,
+            mediumGenreId: opt.mediumGenreId,
+            smallGenreName: opt.smallGenreName,
+          });
+        }
+      } else {
+        const opt: FileConflictOption = fc.options[res as number];
+        items.push({
+          wishId: fc.wishId,
+          wishTitle: fc.wishTitle,
+          largeGenreId: opt.largeGenreId,
+          mediumGenreId: opt.mediumGenreId,
+          smallGenreName: opt.smallGenreName,
+        });
+      }
     }
     return items;
   };
@@ -357,6 +370,12 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
   const skippedFileConflictCount = analysis
     ? analysis.fileConflicts.filter((fc) => resolutions.get(fc.wishId) === "skip").length
     : 0;
+
+  const optionLabel = (opt: FileConflictOption) => {
+    const large = genreLabel(opt.largeGenreId, largeGenres);
+    const medium = genreLabel(opt.mediumGenreId, mediumGenres);
+    return `${fileNameWithoutExt(opt.fileName)}（大: ${large} / 中: ${medium} / 小: ${opt.smallGenreName}）`;
+  };
 
   const genreLabel = (id: string | null, list: Genre[]) =>
     id ? (list.find((g) => g.id === id)?.name ?? "?") : "未設定";
@@ -421,11 +440,32 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
                 </div>
                 <div className="border-t border-amber-200 dark:border-amber-800 flex flex-col">
                   {analysis.fileConflicts.map((fc) => {
-                    const res = resolutions.get(fc.wishId) ?? 0;
+                    const res = resolutions.get(fc.wishId) ?? "both";
                     return (
                       <div key={fc.wishId} className="px-4 py-3 border-b border-amber-100 dark:border-amber-900/50 last:border-0">
                         <p className="text-xs font-medium break-all mb-2">{fc.wishTitle}</p>
                         <div className="flex flex-col gap-1.5">
+                          {/* 両方を登録（デフォルト） */}
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`conflict-${fc.wishId}`}
+                              checked={res === "both"}
+                              onChange={() => setResolutions((prev) => new Map(prev).set(fc.wishId, "both"))}
+                              className="shrink-0 mt-0.5"
+                            />
+                            <div className="min-w-0">
+                              <span className="text-xs font-medium text-amber-700 dark:text-amber-300">両方を登録（推奨）</span>
+                              <div className="flex flex-col gap-0.5 mt-0.5">
+                                {fc.options.map((opt, i) => (
+                                  <span key={i} className="text-[10px] text-amber-600 dark:text-amber-400 break-all">
+                                    · {optionLabel(opt)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </label>
+                          {/* 個別選択 */}
                           {fc.options.map((opt, i) => (
                             <label key={i} className="flex items-center gap-2 cursor-pointer">
                               <input
@@ -436,8 +476,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
                                 className="shrink-0"
                               />
                               <span className="text-xs text-amber-700 dark:text-amber-300 break-all">
-                                {fileNameWithoutExt(opt.fileName)}（
-                                {genreLabel(opt.largeGenreId, largeGenres)} / {genreLabel(opt.mediumGenreId, mediumGenres)}）
+                                {optionLabel(opt)}のみ
                               </span>
                             </label>
                           ))}
@@ -456,6 +495,22 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ファイル衝突警告 */}
+            {analysis.fileConflictWarns.length > 0 && (
+              <div className="rounded-xl border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 px-4 py-3 flex flex-col gap-1">
+                <p className="text-sm font-medium text-orange-700 dark:text-orange-300 flex items-center gap-1.5">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  ジャンル設定が大幅に変わるファイルがあります
+                </p>
+                {analysis.fileConflictWarns.map((w) => (
+                  <p key={w.fileName} className="text-xs text-orange-600 dark:text-orange-400">
+                    · {fileNameWithoutExt(w.fileName)}：マッチ {w.totalMatched}件中 {w.conflictCount}件が衝突（
+                    {Math.round((w.conflictCount / w.totalMatched) * 100)}%）
+                  </p>
+                ))}
               </div>
             )}
 
