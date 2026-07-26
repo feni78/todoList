@@ -45,6 +45,7 @@ export interface GenreAssignAnalysis {
   updateItems: GenreAssignItem[];
   conflictItems: GenreAssignItem[];
   skipItems: { title: string }[];
+  alreadyItems: GenreAssignItem[];
   fileConflictWarns: FileConflictWarn[];
 }
 
@@ -124,6 +125,7 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
       const updateItems: GenreAssignItem[] = [];
       const conflictItems: GenreAssignItem[] = [];
       const skipItems: { title: string }[] = [];
+      const alreadyItems: GenreAssignItem[] = [];
 
       for (const [title, entries] of titleToEntries) {
         const wish = titleToWish.get(title);
@@ -174,7 +176,18 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
           const largeOk = !config.largeGenreId || existingLarge.includes(config.largeGenreId);
           const mediumOk = !config.mediumGenreId || existingMedium.includes(config.mediumGenreId);
           if (largeOk && mediumOk) {
-            updateItems.push(item);
+            // 小ジャンルも付与済みか確認
+            const existingSmallGenre = genres.find(
+              (g) => g.name === smallGenreName && g.genreType === "SMALL"
+            );
+            const smallOk = existingSmallGenre
+              ? wish.genreIds.includes(existingSmallGenre.id)
+              : false;
+            if (smallOk) {
+              alreadyItems.push(item);
+            } else {
+              updateItems.push(item);
+            }
           } else {
             conflictItems.push(item);
           }
@@ -194,7 +207,7 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
         }
       }
 
-      return { fileConflicts, newItems, updateItems, conflictItems, skipItems, fileConflictWarns };
+      return { fileConflicts, newItems, updateItems, conflictItems, skipItems, alreadyItems, fileConflictWarns };
     },
     [groupId, genreTypeMap]
   );

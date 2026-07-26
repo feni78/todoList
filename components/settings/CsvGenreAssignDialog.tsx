@@ -545,6 +545,10 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
                 </>
               )}
               <div className="flex justify-between">
+                <span className="text-muted-foreground">付与済み（変更なし）</span>
+                <span className="font-semibold">{analysis.alreadyItems.length}件</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">スキップ（タスク未登録）</span>
                 <span className="font-semibold">{analysis.skipItems.length}件</span>
               </div>
@@ -570,6 +574,13 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
               genres={genres}
               badge="衝突"
               badgeClass="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
+            />
+            <DetailSection
+              items={analysis.alreadyItems}
+              label={`付与済みの詳細（${analysis.alreadyItems.length}件）`}
+              genres={genres}
+              badge="済"
+              badgeClass="bg-muted text-muted-foreground"
             />
             <SkipDetailSection items={analysis.skipItems} />
 
