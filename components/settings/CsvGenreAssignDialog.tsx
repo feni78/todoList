@@ -382,7 +382,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]">
+      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-y-auto [scrollbar-gutter:stable]">
         <DialogHeader>
           <DialogTitle>CSVジャンル付与</DialogTitle>
         </DialogHeader>
@@ -618,19 +618,23 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
               <div className="flex flex-col gap-3">
                 {entries.map((entry, i) => (
                   <div key={entry.file.name} className="rounded-xl border border-border p-3 flex flex-col gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText size={15} className="text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium flex-1 truncate min-w-0">{entry.file.name}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {entry.rowCount != null ? `${entry.rowCount}件` : ""}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeEntry(i)}
-                        className="p-0.5 text-muted-foreground hover:text-foreground shrink-0"
-                      >
-                        <X size={14} />
-                      </button>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <FileText size={15} className="text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium truncate">{entry.file.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                          {entry.rowCount != null ? `${entry.rowCount}件` : ""}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeEntry(i)}
+                          className="p-0.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       小ジャンル: <span className="font-medium text-foreground">{fileNameWithoutExt(entry.file.name)}</span>
