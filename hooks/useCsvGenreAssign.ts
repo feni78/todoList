@@ -249,14 +249,26 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
           const entries = titleToEntries.get(skip.title);
           if (entries && entries.length > 0) {
             const { config, smallGenreName } = entries[0];
-            fuzzySkipItems.push({
-              csvTitle: skip.title,
-              largeGenreId: config.largeGenreId,
-              mediumGenreId: config.mediumGenreId,
-              smallGenreName,
-              candidates,
+            // 既に全ジャンル付与済みの候補を除外
+            const unassignedCandidates = candidates.filter((cand) => {
+              const wish = titleToWish.get(cand.wishTitle);
+              if (!wish) return true;
+              const largeOk = !config.largeGenreId || wish.genreIds.includes(config.largeGenreId);
+              const mediumOk = !config.mediumGenreId || wish.genreIds.includes(config.mediumGenreId);
+              const existingSmall = genres.find((g) => g.name === smallGenreName && g.genreType === "SMALL");
+              const smallOk = existingSmall ? wish.genreIds.includes(existingSmall.id) : false;
+              return !(largeOk && mediumOk && smallOk);
             });
-            continue;
+            if (unassignedCandidates.length > 0) {
+              fuzzySkipItems.push({
+                csvTitle: skip.title,
+                largeGenreId: config.largeGenreId,
+                mediumGenreId: config.mediumGenreId,
+                smallGenreName,
+                candidates: unassignedCandidates,
+              });
+              continue;
+            }
           }
         }
         skipItems.push(skip);

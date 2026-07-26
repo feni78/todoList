@@ -714,7 +714,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
             {entries.length > 0 && (
               <div className="flex flex-col gap-3">
                 {entries.map((entry, i) => (
-                  <div key={entry.file.name} className="rounded-xl border border-border p-3 flex flex-col gap-2">
+                  <div key={entry.file.name} className={cn("rounded-xl border p-3 flex flex-col gap-2", entry.largeGenreId === null && entry.mediumGenreId === null ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30" : "border-border")}>
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <FileText size={15} className="text-muted-foreground shrink-0" />
