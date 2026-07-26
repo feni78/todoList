@@ -253,6 +253,26 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
         </SheetHeader>
 
         <div className="flex flex-col">
+          {/* 実施済み */}
+          <FilterSection title="実施済み" noDivider count={statuses.includes("DONE") ? 1 : 0}>
+            <FilterChip
+              selected={statuses.includes("DONE") && statuses.some((s) => s !== "DONE")}
+              onClick={() => {
+                const both = statuses.includes("DONE") && statuses.some((s) => s !== "DONE");
+                setStatuses(both ? [] : ["PENDING", "HOLD", "DONE"] as Status[]);
+              }}
+              label="実施済みを含む"
+            />
+            <FilterChip
+              selected={statuses.length === 1 && statuses[0] === "DONE"}
+              onClick={() => {
+                const doneOnly = statuses.length === 1 && statuses[0] === "DONE";
+                setStatuses(doneOnly ? [] : ["DONE"] as Status[]);
+              }}
+              label="実施済みのみ"
+            />
+          </FilterSection>
+
           {/* ジャンル — 含む/除外タブ */}
           {genres.length > 0 && (
             <IncludeExcludeSection
@@ -395,26 +415,6 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
               }}
             </IncludeExcludeSection>
           )}
-
-          {/* 実施済み */}
-          <FilterSection title="実施済み" count={statuses.includes("DONE") ? 1 : 0}>
-            <FilterChip
-              selected={statuses.includes("DONE") && statuses.some((s) => s !== "DONE")}
-              onClick={() => {
-                const both = statuses.includes("DONE") && statuses.some((s) => s !== "DONE");
-                setStatuses(both ? [] : ["PENDING", "HOLD", "DONE"] as Status[]);
-              }}
-              label="実施済みを含む"
-            />
-            <FilterChip
-              selected={statuses.length === 1 && statuses[0] === "DONE"}
-              onClick={() => {
-                const doneOnly = statuses.length === 1 && statuses[0] === "DONE";
-                setStatuses(doneOnly ? [] : ["DONE"] as Status[]);
-              }}
-              label="実施済みのみ"
-            />
-          </FilterSection>
 
           {/* シチュエーション — 単一選択 */}
           <FilterSection title="シチュエーション" count={situations.length}>

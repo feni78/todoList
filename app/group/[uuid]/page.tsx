@@ -333,7 +333,11 @@ export default function ListPage() {
     }
   };
 
-  const totalInTab = useMemo(() => wishes.filter((w) => w.status === statusTab).length, [wishes, statusTab]);
+  const totalInTab = useMemo(() => {
+    if (doneOnly) return wishes.filter((w) => w.status === "DONE").length;
+    if (includeDone) return wishes.filter((w) => w.status === statusTab || w.status === "DONE").length;
+    return wishes.filter((w) => w.status === statusTab).length;
+  }, [wishes, statusTab, includeDone, doneOnly]);
 
   const excludeChanged =
     fExcludeGenreIds.some((id) => !fDefaultExcludeGenreIds.includes(id)) ||
