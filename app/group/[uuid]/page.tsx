@@ -306,6 +306,7 @@ export default function ListPage() {
     setStatusTab(tab);
     setSelectionMode(null);
     setSelectedIds(new Set());
+    useFilterStore.getState().reset();
   };
 
   const handleBulkDelete = async () => {
