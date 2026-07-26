@@ -222,9 +222,12 @@ export default function SettingsPage() {
       budget: w.budget ?? null,
       duration: w.duration ?? null,
       seasons: w.seasons,
-      genres: w.genres.map((g) => g.name),
+      genres: w.genres.map((g) => ({ name: g.name, genreType: g.genreType })),
       regions: w.regions.map((r) => r.name),
       isFavorite: w.isFavorite,
+      doneAt: w.doneAt,
+      latitude: w.latitude ?? null,
+      longitude: w.longitude ?? null,
     }));
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -236,6 +239,23 @@ export default function SettingsPage() {
     toast.success("エクスポートしました");
   };
 
+  type ExportGenre = { name: string; genreType: string } | string;
+  type ImportItem = {
+    title?: string;
+    situation?: Wish["situation"];
+    status?: Wish["status"];
+    memo?: string;
+    budget?: Wish["budget"];
+    duration?: Wish["duration"];
+    seasons?: Wish["seasons"];
+    genres?: ExportGenre[];
+    regions?: string[];
+    isFavorite?: boolean;
+    doneAt?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  };
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -243,22 +263,41 @@ export default function SettingsPage() {
     await ensureWishesLoaded();
     try {
       const text = await file.text();
-      const data = JSON.parse(text) as (Partial<Wish> & { genres?: string[]; regions?: string[] })[];
+      const data = JSON.parse(text) as ImportItem[];
       if (!Array.isArray(data)) throw new Error("不正なフォーマットです");
 
       const supabase = createClient();
-      // ジャンル・地域名→IDキャッシュ（インポート中に作成したものも追記）
+      // ジャンル名→IDキャッシュ（インポート中に作成したものも追記）
       const genreCache = new Map(genres.map((g) => [g.name, g.id]));
       const regionCache = new Map(regions.map((r) => [r.name, r.id]));
 
-      const resolveIds = async (names: string[], cache: Map<string, string>, table: "genres" | "regions") => {
+      const resolveGenreIds = async (items: ExportGenre[]) => {
+        const ids: string[] = [];
+        for (const item of items) {
+          const name = typeof item === "string" ? item : item.name;
+          const genreType = typeof item === "string" ? "MEDIUM" : (item.genreType ?? "MEDIUM");
+          if (genreCache.has(name)) {
+            ids.push(genreCache.get(name)!);
+          } else {
+            const { data: created } = await supabase
+              .from("genres")
+              .insert({ group_id: uuid, name, genre_type: genreType })
+              .select("id")
+              .single();
+            if (created) { genreCache.set(name, created.id as string); ids.push(created.id as string); }
+          }
+        }
+        return ids;
+      };
+
+      const resolveRegionIds = async (names: string[]) => {
         const ids: string[] = [];
         for (const name of names) {
-          if (cache.has(name)) {
-            ids.push(cache.get(name)!);
+          if (regionCache.has(name)) {
+            ids.push(regionCache.get(name)!);
           } else {
-            const { data: created } = await supabase.from(table).insert({ group_id: uuid, name }).select("id").single();
-            if (created) { cache.set(name, created.id as string); ids.push(created.id as string); }
+            const { data: created } = await supabase.from("regions").insert({ group_id: uuid, name }).select("id").single();
+            if (created) { regionCache.set(name, created.id as string); ids.push(created.id as string); }
           }
         }
         return ids;
@@ -280,10 +319,10 @@ export default function SettingsPage() {
         );
         if (isDuplicate) { skipped++; continue; }
 
-        const genreIds = await resolveIds(item.genres ?? [], genreCache, "genres");
-        const regionIds = await resolveIds(item.regions ?? [], regionCache, "regions");
+        const genreIds = await resolveGenreIds(item.genres ?? []);
+        const regionIds = await resolveRegionIds(item.regions ?? []);
 
-        await createWish({
+        const created = await createWish({
           title: item.title,
           situation: item.situation ?? "HOME",
           status: item.status ?? "PENDING",
@@ -294,6 +333,17 @@ export default function SettingsPage() {
           genreIds,
           regionIds,
         });
+
+        // createWish でカバーされない項目を補完
+        const extra: Record<string, unknown> = {};
+        if (item.doneAt) extra.done_at = item.doneAt;
+        if (item.latitude != null) extra.latitude = item.latitude;
+        if (item.longitude != null) extra.longitude = item.longitude;
+        if (item.isFavorite) extra.is_favorite = item.isFavorite;
+        if (Object.keys(extra).length > 0) {
+          await supabase.from("wishes").update(extra).eq("id", (created as { id: string }).id);
+        }
+
         imported++;
       }
       toast.success(`${imported}件インポート${skipped > 0 ? `（重複${skipped}件スキップ）` : ""}`);
