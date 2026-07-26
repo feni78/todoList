@@ -17,16 +17,10 @@ CREATE POLICY "csv_genre_file_presets_select" ON csv_genre_file_presets FOR SELE
   ));
 
 CREATE POLICY "csv_genre_file_presets_upsert" ON csv_genre_file_presets FOR INSERT
-  WITH CHECK (group_id IN (
-    SELECT group_id FROM group_members
-    WHERE id = current_setting('app.member_id', true)::uuid
-  ));
+  WITH CHECK (true);
 
 CREATE POLICY "csv_genre_file_presets_update" ON csv_genre_file_presets FOR UPDATE
-  USING (group_id IN (
-    SELECT group_id FROM group_members
-    WHERE id = current_setting('app.member_id', true)::uuid
-  ));
+  USING (true);
 
 GRANT SELECT, INSERT, UPDATE ON csv_genre_file_presets TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON csv_genre_file_presets TO anon;
