@@ -27,3 +27,6 @@ CREATE POLICY "csv_genre_file_presets_update" ON csv_genre_file_presets FOR UPDA
     SELECT group_id FROM group_members
     WHERE id = current_setting('app.member_id', true)::uuid
   ));
+
+GRANT SELECT, INSERT, UPDATE ON csv_genre_file_presets TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON csv_genre_file_presets TO anon;
