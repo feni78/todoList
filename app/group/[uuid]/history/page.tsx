@@ -305,18 +305,6 @@ export default function HistoryPage() {
             {SORT_LABELS[sortOrder]}
           </button>
           <button
-            onClick={() => { setSelectionMode("genre"); setSelectedIds(new Set()); }}
-            className={cn(
-              "p-1.5 rounded-lg transition-colors",
-              selectionMode === "genre"
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            title="ジャンル一括設定"
-          >
-            <Tag size={16} />
-          </button>
-          <button
             onClick={() => setFilterOpen(true)}
             className={cn(
               "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
@@ -354,6 +342,19 @@ export default function HistoryPage() {
           />
         )}
       </div>
+
+      {selectionMode === null && (
+        <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+          <button
+            onClick={() => { setSelectionMode("genre"); setSelectedIds(new Set()); }}
+            className="w-10 h-10 bg-muted text-muted-foreground rounded-full shadow flex items-center justify-center hover:bg-muted/70 active:scale-95 transition-all"
+            aria-label="ジャンル一括設定"
+            title="ジャンル一括設定"
+          >
+            <Tag size={16} />
+          </button>
+        </div>
+      )}
 
       {selectionMode === "genre" && (
         <BulkGenreBar
