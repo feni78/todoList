@@ -393,22 +393,24 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
             </button>
             <input ref={fileInputRef} type="file" accept=".csv,text/csv" multiple className="hidden" onChange={handleFileChange} />
 
-            <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-medium text-muted-foreground">全ファイル共通ジャンル</p>
-              {genres.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {genres.map((g) => (
-                    <button key={g.id} type="button" onClick={() => toggleGlobalGenre(g.id)}
-                      className={cn("px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-                        globalGenreIds.includes(g.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70")}>
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">設定からジャンルを追加すると選択できます</p>
-              )}
-            </div>
+            {importMode !== "done" && (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-xs font-medium text-muted-foreground">全ファイル共通ジャンル</p>
+                {genres.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {genres.map((g) => (
+                      <button key={g.id} type="button" onClick={() => toggleGlobalGenre(g.id)}
+                        className={cn("px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+                          globalGenreIds.includes(g.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70")}>
+                        {g.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">設定からジャンルを追加すると選択できます</p>
+                )}
+              </div>
+            )}
 
             {entries.length > 0 && (
               <div className="flex flex-col gap-3">
@@ -424,7 +426,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
                         <X size={14} />
                       </button>
                     </div>
-                    {genres.length > 0 && (
+                    {importMode !== "done" && genres.length > 0 && (
                       <div className="flex flex-col gap-1.5">
                         <p className="text-xs text-muted-foreground">ジャンル（このファイル個別）</p>
                         <div className="flex flex-wrap gap-1.5">
