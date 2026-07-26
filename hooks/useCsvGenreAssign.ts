@@ -30,6 +30,7 @@ export interface GenreAssignItem {
   largeGenreId: string | null;
   mediumGenreId: string | null;
   smallGenreName: string;
+  existingGenreIds?: string[];
 }
 
 export interface GenreAssignAnalysis {
@@ -149,6 +150,7 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
           largeGenreId: config.largeGenreId,
           mediumGenreId: config.mediumGenreId,
           smallGenreName,
+          existingGenreIds: wish.genreIds,
         };
 
         if (wish.genreIds.length === 0) {

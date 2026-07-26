@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Genre, GenreType, GENRE_TYPE_LABELS } from "@/types";
+import { Genre, GENRE_TYPE_LABELS } from "@/types";
 import {
   useCsvGenreAssign,
   GenreFileConfig,
@@ -32,9 +32,27 @@ interface Props {
 }
 
 type Mode = "idle" | "analyzing" | "preview" | "applying" | "done";
-
-// 衝突解決: wishId → 選択中のオプションインデックス or "skip"
 type ConflictResolution = number | "skip";
+
+// localStorage: グループ別・ファイル名別のジャンル履歴
+function historyKey(groupId: string) {
+  return `csvGenreHistory:${groupId}`;
+}
+function loadHistory(groupId: string): Record<string, { largeGenreId: string | null; mediumGenreId: string | null }> {
+  try {
+    return JSON.parse(localStorage.getItem(historyKey(groupId)) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+function saveHistory(
+  groupId: string,
+  updates: Record<string, { largeGenreId: string | null; mediumGenreId: string | null }>
+) {
+  const history = loadHistory(groupId);
+  Object.assign(history, updates);
+  localStorage.setItem(historyKey(groupId), JSON.stringify(history));
+}
 
 async function countRows(file: File): Promise<number> {
   return new Promise((resolve) => {
@@ -42,32 +60,6 @@ async function countRows(file: File): Promise<number> {
     reader.onload = (e) => resolve(parseCsvText((e.target?.result as string) ?? "").length);
     reader.readAsText(file, "UTF-8");
   });
-}
-
-function DetailList({ items, label }: { items: { title: string }[]; label: string }) {
-  const [open, setOpen] = useState(false);
-  if (items.length === 0) return null;
-  return (
-    <div className="rounded-xl border border-border text-sm">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors rounded-xl"
-      >
-        <span>{label}</span>
-        {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-      </button>
-      {open && (
-        <div className="border-t border-border">
-          {items.map((item, i) => (
-            <div key={i} className="px-4 py-1.5 border-b border-border/30 last:border-0 text-xs">
-              <p className="break-all">{item.title}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function GenreSelect({
@@ -83,7 +75,7 @@ function GenreSelect({
 }) {
   return (
     <div className="flex items-center gap-2 min-w-0">
-      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+      <span className="text-xs text-muted-foreground shrink-0 w-16">{label}</span>
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
@@ -98,10 +90,121 @@ function GenreSelect({
   );
 }
 
+// プレビュー詳細行
+function AssignDetailRow({
+  item,
+  genres,
+  badge,
+  badgeClass,
+}: {
+  item: GenreAssignItem;
+  genres: Genre[];
+  badge: string;
+  badgeClass: string;
+}) {
+  const genreName = (id: string | null) => id ? (genres.find((g) => g.id === id)?.name ?? "?") : null;
+  const largeName = genreName(item.largeGenreId);
+  const mediumName = genreName(item.mediumGenreId);
+
+  const existingLargeNames = (item.existingGenreIds ?? [])
+    .filter((id) => genres.find((g) => g.id === id)?.genreType === "LARGE")
+    .map((id) => genres.find((g) => g.id === id)?.name ?? "?");
+  const existingMediumNames = (item.existingGenreIds ?? [])
+    .filter((id) => genres.find((g) => g.id === id)?.genreType === "MEDIUM")
+    .map((id) => genres.find((g) => g.id === id)?.name ?? "?");
+
+  const parts: string[] = [];
+  if (largeName) parts.push(`大: ${largeName}`);
+  if (mediumName) parts.push(`中: ${mediumName}`);
+  if (item.smallGenreName) parts.push(`小: ${item.smallGenreName}`);
+
+  const existingParts: string[] = [];
+  if (existingLargeNames.length) existingParts.push(`大: ${existingLargeNames.join("・")}`);
+  if (existingMediumNames.length) existingParts.push(`中: ${existingMediumNames.join("・")}`);
+
+  return (
+    <div className="px-3 py-2 border-b border-border/30 last:border-0 flex gap-2 items-start min-w-0">
+      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 mt-0.5", badgeClass)}>{badge}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium break-all">{item.wishTitle}</p>
+        {existingParts.length > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            既存: {existingParts.join(" / ")}
+            {parts.length > 0 && " →"}
+          </p>
+        )}
+        {parts.length > 0 && (
+          <p className="text-[10px] text-primary mt-0.5">付与: {parts.join(" / ")}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({
+  items,
+  label,
+  genres,
+  badge,
+  badgeClass,
+}: {
+  items: GenreAssignItem[];
+  label: string;
+  genres: Genre[];
+  badge: string;
+  badgeClass: string;
+}) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border text-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors text-left"
+      >
+        <span className="text-sm">{label}</span>
+        {open ? <ChevronUp size={15} className="shrink-0" /> : <ChevronDown size={15} className="shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-border">
+          {items.map((item) => (
+            <AssignDetailRow key={item.wishId} item={item} genres={genres} badge={badge} badgeClass={badgeClass} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SkipDetailSection({ items }: { items: { title: string }[] }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border text-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-muted-foreground hover:bg-muted/50 transition-colors text-left"
+      >
+        <span className="text-sm">スキップの詳細（{items.length}件）</span>
+        {open ? <ChevronUp size={15} className="shrink-0" /> : <ChevronDown size={15} className="shrink-0" />}
+      </button>
+      {open && (
+        <div className="border-t border-border">
+          {items.map((item, i) => (
+            <div key={i} className="px-3 py-2 border-b border-border/30 last:border-0">
+              <p className="text-xs break-all">{item.title}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyComplete }: Props) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
-  const [globalLargeGenreId, setGlobalLargeGenreId] = useState<string | null>(null);
-  const [globalMediumGenreId, setGlobalMediumGenreId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("idle");
   const [analysis, setAnalysis] = useState<GenreAssignAnalysis | null>(null);
   const [resolutions, setResolutions] = useState<Map<string, ConflictResolution>>(new Map());
@@ -117,13 +220,17 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
+    const history = loadHistory(groupId);
     const newEntries = await Promise.all(
-      files.map(async (file) => ({
-        file,
-        largeGenreId: globalLargeGenreId,
-        mediumGenreId: globalMediumGenreId,
-        rowCount: await countRows(file),
-      }))
+      files.map(async (file) => {
+        const saved = history[file.name];
+        return {
+          file,
+          largeGenreId: saved?.largeGenreId ?? null,
+          mediumGenreId: saved?.mediumGenreId ?? null,
+          rowCount: await countRows(file),
+        };
+      })
     );
     setEntries((prev) => {
       const existing = new Set(prev.map((e) => e.file.name));
@@ -133,12 +240,6 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
   };
 
   const removeEntry = (index: number) => setEntries((prev) => prev.filter((_, i) => i !== index));
-
-  const applyGlobalToAll = () => {
-    setEntries((prev) =>
-      prev.map((e) => ({ ...e, largeGenreId: globalLargeGenreId, mediumGenreId: globalMediumGenreId }))
-    );
-  };
 
   const buildConfigs = (): GenreFileConfig[] =>
     entries.map((e) => ({
@@ -153,11 +254,8 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
     try {
       const res = await analyzeGenreAssign(buildConfigs());
       setAnalysis(res);
-      // 初期解決策: 各ファイル競合の最初のオプションを選択
       const initResolutions = new Map<string, ConflictResolution>();
-      for (const fc of res.fileConflicts) {
-        initResolutions.set(fc.wishId, 0);
-      }
+      for (const fc of res.fileConflicts) initResolutions.set(fc.wishId, 0);
       setResolutions(initResolutions);
       setMode("preview");
     } catch (err) {
@@ -173,7 +271,6 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
     setResolutions(next);
   };
 
-  // 適用対象アイテムを構築
   const buildAssignments = (): GenreAssignItem[] => {
     if (!analysis) return [];
     const items: GenreAssignItem[] = [
@@ -202,6 +299,15 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
     try {
       const assignments = buildAssignments();
       const res = await applyGenreAssign(assignments);
+      // 使用したジャンル設定をファイル名ごとに保存
+      const historyUpdates: Record<string, { largeGenreId: string | null; mediumGenreId: string | null }> = {};
+      for (const entry of entries) {
+        historyUpdates[entry.file.name] = {
+          largeGenreId: entry.largeGenreId,
+          mediumGenreId: entry.mediumGenreId,
+        };
+      }
+      saveHistory(groupId, historyUpdates);
       setResult(res);
       setMode("done");
       onApplyComplete?.();
@@ -213,8 +319,6 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
 
   const handleClose = () => {
     setEntries([]);
-    setGlobalLargeGenreId(null);
-    setGlobalMediumGenreId(null);
     setMode("idle");
     setAnalysis(null);
     setResolutions(new Map());
@@ -236,7 +340,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-x-hidden overflow-y-auto">
+      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>CSVジャンル付与</DialogTitle>
         </DialogHeader>
@@ -266,16 +370,16 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
 
         {/* プレビュー画面 */}
         {mode === "preview" && analysis && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <p className="text-sm font-medium">付与プレビュー</p>
 
             {/* ファイル競合の解決 */}
             {analysis.fileConflicts.length > 0 && (
-              <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 flex flex-col">
+              <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 flex flex-col overflow-hidden">
                 <div className="flex items-start justify-between gap-2 px-4 py-3">
-                  <div className="flex items-start gap-2">
+                  <div className="flex items-start gap-2 min-w-0">
                     <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
                         ファイル間の競合 {analysis.fileConflicts.length}件
                       </p>
@@ -308,7 +412,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
                                 onChange={() => setResolutions((prev) => new Map(prev).set(fc.wishId, i))}
                                 className="shrink-0"
                               />
-                              <span className="text-xs text-amber-700 dark:text-amber-300">
+                              <span className="text-xs text-amber-700 dark:text-amber-300 break-all">
                                 {fileNameWithoutExt(opt.fileName)}（
                                 {genreLabel(opt.largeGenreId, largeGenres)} / {genreLabel(opt.mediumGenreId, mediumGenres)}）
                               </span>
@@ -368,22 +472,28 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
               </div>
             </div>
 
-            <DetailList
-              items={analysis.newItems.map((i) => ({ title: i.wishTitle }))}
-              label={`新規付与予定の詳細（${analysis.newItems.length}件）`}
+            <DetailSection
+              items={analysis.newItems}
+              label={`新規付与の詳細（${analysis.newItems.length}件）`}
+              genres={genres}
+              badge="新規"
+              badgeClass="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
             />
-            <DetailList
-              items={analysis.updateItems.map((i) => ({ title: i.wishTitle }))}
-              label={`更新予定の詳細（${analysis.updateItems.length}件）`}
+            <DetailSection
+              items={analysis.updateItems}
+              label={`更新の詳細（${analysis.updateItems.length}件）`}
+              genres={genres}
+              badge="更新"
+              badgeClass="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
             />
-            <DetailList
-              items={analysis.conflictItems.map((i) => ({ title: i.wishTitle }))}
+            <DetailSection
+              items={analysis.conflictItems}
               label={`衝突の詳細（${analysis.conflictItems.length}件）`}
+              genres={genres}
+              badge="衝突"
+              badgeClass="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"
             />
-            <DetailList
-              items={analysis.skipItems}
-              label={`スキップ予定の詳細（${analysis.skipItems.length}件）`}
-            />
+            <SkipDetailSection items={analysis.skipItems} />
 
             {error && (
               <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
@@ -425,49 +535,21 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
               onChange={handleFileChange}
             />
 
-            {/* 全ファイル共通設定 */}
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-muted-foreground">全ファイル共通設定</p>
-              <div className="flex flex-col gap-1.5">
-                <GenreSelect
-                  label={GENRE_TYPE_LABELS.LARGE}
-                  value={globalLargeGenreId}
-                  options={largeGenres}
-                  onChange={setGlobalLargeGenreId}
-                />
-                <GenreSelect
-                  label={GENRE_TYPE_LABELS.MEDIUM}
-                  value={globalMediumGenreId}
-                  options={mediumGenres}
-                  onChange={setGlobalMediumGenreId}
-                />
-              </div>
-              {entries.length > 0 && (
-                <button
-                  type="button"
-                  onClick={applyGlobalToAll}
-                  className="self-start text-xs text-primary hover:underline"
-                >
-                  全ファイルに適用
-                </button>
-              )}
-            </div>
-
             {/* ファイルごとの設定 */}
             {entries.length > 0 && (
               <div className="flex flex-col gap-3">
                 {entries.map((entry, i) => (
                   <div key={entry.file.name} className="rounded-xl border border-border p-3 flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <FileText size={15} className="text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium flex-1 truncate">{entry.file.name}</span>
+                      <span className="text-sm font-medium flex-1 truncate min-w-0">{entry.file.name}</span>
                       <span className="text-xs text-muted-foreground shrink-0">
                         {entry.rowCount != null ? `${entry.rowCount}件` : ""}
                       </span>
                       <button
                         type="button"
                         onClick={() => removeEntry(i)}
-                        className="p-0.5 text-muted-foreground hover:text-foreground"
+                        className="p-0.5 text-muted-foreground hover:text-foreground shrink-0"
                       >
                         <X size={14} />
                       </button>
