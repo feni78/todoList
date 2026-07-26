@@ -281,7 +281,7 @@ async function readFileAsText(file: File): Promise<string> {
   });
 }
 
-interface ExistingWish { id: string; title: string; memo: string | null; genreIds: string[]; url: string | null; }
+interface ExistingWish { id: string; title: string; memo: string | null; genreIds: string[]; url: string | null; status: string; }
 
 interface ExistingMaps {
   urlToExisting: Map<string, ExistingWish>;
@@ -292,12 +292,12 @@ interface ExistingMaps {
 async function fetchExisting(supabase: ReturnType<typeof createClient>, groupId: string): Promise<ExistingMaps> {
   // サーバー側 max_rows 制限を回避するためページネーション取得
   const PAGE = 1000;
-  let allRows: { id: string; title: string; memo: string | null; wish_genres: { genre_id: string }[] }[] = [];
+  let allRows: { id: string; title: string; memo: string | null; status: string; wish_genres: { genre_id: string }[] }[] = [];
   let from = 0;
   while (true) {
     const { data, error } = await supabase
       .from("wishes")
-      .select("id, title, memo, wish_genres(genre_id)")
+      .select("id, title, memo, status, wish_genres(genre_id)")
       .eq("group_id", groupId)
       .is("deleted_at", null)
       .order("id")
@@ -320,7 +320,7 @@ async function fetchExisting(supabase: ReturnType<typeof createClient>, groupId:
       const lastLine = lines[lines.length - 1].trim();
       if (/^https?:\/\//.test(lastLine)) existingUrl = normalizeUrl(lastLine);
     }
-    const existing: ExistingWish = { id: w.id, title: w.title, memo: w.memo, genreIds, url: existingUrl };
+    const existing: ExistingWish = { id: w.id, title: w.title, memo: w.memo, genreIds, url: existingUrl, status: w.status };
     if (existingUrl) urlToExisting.set(existingUrl, existing);
     if (w.title) {
       titleToExisting.set(w.title, existing);
@@ -599,7 +599,8 @@ export function useCsvImport(groupId: string) {
         const scoreWouldChange = existingVoteScore === undefined
           ? true
           : importMode === "done" ? csvScore !== existingVoteScore : csvScore > existingVoteScore;
-        if (!titleChanged && !memoWillChange && !genreChanged && !scoreWouldChange) {
+        const statusWouldChange = importMode === "done" && existingMatch.status !== "DONE";
+        if (!titleChanged && !memoWillChange && !genreChanged && !scoreWouldChange && !statusWouldChange) {
           skipItems.push({ title: row.title, reason: "no_change" });
           skipCount++;
         } else {
@@ -608,6 +609,7 @@ export function useCsvImport(groupId: string) {
           if (memoWillChange) changes.push("メモ追記");
           if (genreChanged) changes.push("ジャンル変更");
           if (scoreWouldChange) changes.push("やりたい度更新");
+          if (statusWouldChange) changes.push("実施済みに更新");
           // 追記される内容の先頭行
           const merged = mergeMemos(existingMatch.memo, newMemo);
           const addition = merged && existingMatch.memo
@@ -709,7 +711,8 @@ export function useCsvImport(groupId: string) {
           const scoreWouldChange = existingVoteScore === undefined
             ? true
             : importMode === "done" ? score !== existingVoteScore : score > existingVoteScore;
-          if (!titleChanged && !memoWillChange && !genreChanged && !scoreWouldChange) {
+          const statusWouldChange = importMode === "done" && existingMatch.status !== "DONE";
+          if (!titleChanged && !memoWillChange && !genreChanged && !scoreWouldChange && !statusWouldChange) {
             skippedItems.push({ title: row.title, reason: "no_change" });
             continue;
           }
