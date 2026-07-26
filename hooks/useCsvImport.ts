@@ -24,7 +24,7 @@ export interface FileImportConfig {
 
 export interface SkippedItem {
   title: string;
-  reason: "duplicate_url" | "duplicate_title" | "no_change";
+  reason: "duplicate_url" | "duplicate_title" | "no_change" | "hold";
 }
 
 export interface SuspiciousItem {
@@ -597,6 +597,11 @@ export function useCsvImport(groupId: string) {
       const existingMatch = matchByUrl ?? matchByTitle;
 
       if (existingMatch) {
+        if (importMode === "done" && existingMatch.status === "HOLD") {
+          skipItems.push({ title: row.title, reason: "hold" });
+          skipCount++;
+          continue;
+        }
         const newMemo = memoText ?? null;
         const titleChanged = existingMatch.title !== row.title;
         const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);
@@ -718,6 +723,10 @@ export function useCsvImport(groupId: string) {
         const existingMatch = matchByUrl ?? matchByTitle;
 
         if (existingMatch) {
+          if (importMode === "done" && existingMatch.status === "HOLD") {
+            skippedItems.push({ title: row.title, reason: "hold" });
+            continue;
+          }
           const newMemo = memoText ?? null;
           const titleChanged = existingMatch.title !== row.title;
           const memoWillChange = memoWouldChange(existingMatch.memo, newMemo);

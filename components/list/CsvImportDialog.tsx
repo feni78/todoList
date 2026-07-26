@@ -274,7 +274,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
             <DetailList items={result.insertedItems} label="新規登録の詳細を見る" />
             <DetailList items={result.updatedItems} label="更新の詳細を見る" />
             <DetailList
-              items={result.skippedItems.map((s) => ({ title: `${s.title}（${s.reason === "no_change" ? "変更なし" : "重複"}）` }))}
+              items={result.skippedItems.map((s) => ({ title: `${s.title}（${s.reason === "no_change" ? "変更なし" : s.reason === "hold" ? "保留中" : "重複"}）` }))}
               label="スキップの詳細を見る"
             />
             {result.locationResult && <LocationResultSection result={result.locationResult} />}
@@ -321,7 +321,7 @@ export function CsvImportDialog({ open, onClose, onImportComplete, groupId, genr
               {analysis.skipCount > 0 && (
                 <DetailList
                   items={analysis.skipItems.map((s) => ({
-                    title: `${s.title}（${s.reason === "no_change" ? "変更なし" : "重複"}）`,
+                    title: `${s.title}（${s.reason === "no_change" ? "変更なし" : s.reason === "hold" ? "保留中" : "重複"}）`,
                   }))}
                   label={`スキップ予定の詳細（${analysis.skipCount}件）`}
                 />
