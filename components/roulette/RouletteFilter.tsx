@@ -92,12 +92,15 @@ function FilterSection({ title, children, collapsible = false, defaultOpen = tru
   );
 }
 
-function IncludeExcludeSection({ title, children, count = 0 }: {
+function IncludeExcludeSection({ title, children, count = 0, onClearInclude, onClearExclude }: {
   title: string;
   children: (mode: "include" | "exclude") => React.ReactNode;
   count?: number;
+  onClearInclude?: () => void;
+  onClearExclude?: () => void;
 }) {
   const [mode, setMode] = useState<"include" | "exclude">("include");
+  const onClear = mode === "include" ? onClearInclude : onClearExclude;
   return (
     <div className="flex flex-col gap-3 py-4 border-t border-border/60">
       <div className="flex items-center gap-1.5">
@@ -125,6 +128,11 @@ function IncludeExcludeSection({ title, children, count = 0 }: {
             除外
           </button>
         </div>
+        {onClear && (
+          <button type="button" onClick={onClear} className="text-xs text-primary hover:text-primary/80 transition-colors shrink-0 font-medium">
+            クリア
+          </button>
+        )}
       </div>
       <div className="flex flex-wrap gap-2">{children(mode)}</div>
     </div>
@@ -240,7 +248,12 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
 
           {/* ジャンル */}
           {genres.length > 0 && (
-            <IncludeExcludeSection title="ジャンル" count={filter.genreIds.length + filter.excludeGenreIds.length}>
+            <IncludeExcludeSection
+              title="ジャンル"
+              count={filter.genreIds.length + filter.excludeGenreIds.length}
+              onClearInclude={filter.genreIds.length > 0 ? () => setFilter({ genreIds: [] }) : undefined}
+              onClearExclude={filter.excludeGenreIds.length > 0 ? () => setFilter({ excludeGenreIds: [] }) : undefined}
+            >
               {(mode) =>
                 mode === "include" ? (
                   <>
@@ -356,6 +369,8 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
             <IncludeExcludeSection
               title="地域タグ"
               count={filter.regionIds.length + filter.excludeRegionIds.length}
+              onClearInclude={filter.regionIds.length > 0 ? () => setFilter({ regionIds: [] }) : undefined}
+              onClearExclude={filter.excludeRegionIds.length > 0 ? () => setFilter({ excludeRegionIds: [] }) : undefined}
             >
               {(mode) =>
                 mode === "include" ? (
