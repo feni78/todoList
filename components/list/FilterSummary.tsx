@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useShallow } from "zustand/react/shallow";
-import { Genre, Region, GroupMember, SITUATION_LABELS, BUDGET_LABELS, DURATION_LABELS, SEASON_LABELS, SCORE_FILTER_LABELS } from "@/types";
+import { Genre, Region, GroupMember, Status, SITUATION_LABELS, BUDGET_LABELS, DURATION_LABELS, SEASON_LABELS, SCORE_FILTER_LABELS } from "@/types";
 import { cn } from "@/lib/utils";
 
 interface FilterSummaryProps {
@@ -43,12 +43,13 @@ function SummaryChip({ label, onRemove, variant = "default" }: {
 
 export function FilterSummary({ genres = [], regions = [], members = [], className }: FilterSummaryProps) {
   const {
-    nearbyKm, stationName, regionIds, excludeRegionIds, defaultExcludeRegionIds,
+    nearbyKm, stationName, statuses, regionIds, excludeRegionIds, defaultExcludeRegionIds,
     situations, seasons, scoreFilter, budgets, durations, genreIds, excludeGenreIds,
     defaultExcludeGenreIds, memberIds,
   } = useFilterStore(useShallow((s) => ({
     nearbyKm: s.nearbyKm,
     stationName: s.stationName,
+    statuses: s.statuses,
     regionIds: s.regionIds,
     excludeRegionIds: s.excludeRegionIds,
     defaultExcludeRegionIds: s.defaultExcludeRegionIds,
@@ -62,11 +63,21 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
     defaultExcludeGenreIds: s.defaultExcludeGenreIds,
     memberIds: s.memberIds,
   })));
-  const { setNearbyKm, setRegionIds, setExcludeRegionIds, setSituations, setSeasons, setScoreFilter,
+  const { setNearbyKm, setStatuses, setRegionIds, setExcludeRegionIds, setSituations, setSeasons, setScoreFilter,
     setBudgets, setDurations, setGenreIds, setExcludeGenreIds, setMemberIds, reset,
   } = useFilterStore.getState();
 
   const chips: { key: string; label: string; variant?: "default" | "exclude" | "distance"; onRemove: () => void }[] = [];
+
+  // 実施済み
+  if (statuses.includes("DONE")) {
+    const doneOnly = statuses.length === 1 && statuses[0] === "DONE";
+    chips.push({
+      key: "done-status",
+      label: doneOnly ? "実施済みのみ" : "実施済みを含む",
+      onRemove: () => setStatuses([] as Status[]),
+    });
+  }
 
   // 距離
   if (nearbyKm !== null) {

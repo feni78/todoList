@@ -14,6 +14,7 @@ import {
   Budget,
   Duration,
   Season,
+  Status,
   ScoreFilter,
   SITUATION_LABELS,
   BUDGET_LABELS,
@@ -171,13 +172,14 @@ const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100]
 
 export function FilterPanel({ open, onClose, members, genres = [], regions = [] }: FilterPanelProps) {
   const {
-    memberIds, situations, budgets, durations, seasons, scoreFilter,
+    memberIds, situations, statuses, budgets, durations, seasons, scoreFilter,
     genreIds, genreSearchMode, excludeGenreIds,
     regionIds, excludeRegionIds, defaultExcludeRegionIds, defaultExcludeGenreIds,
     nearbyKm, stationName,
   } = useFilterStore(useShallow((s) => ({
     memberIds: s.memberIds,
     situations: s.situations,
+    statuses: s.statuses,
     budgets: s.budgets,
     durations: s.durations,
     seasons: s.seasons,
@@ -193,7 +195,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     stationName: s.stationName,
   })));
   const {
-    setMemberIds, setSituations, setBudgets, setDurations, setSeasons, setScoreFilter,
+    setMemberIds, setSituations, setStatuses, setBudgets, setDurations, setSeasons, setScoreFilter,
     setGenreIds, setGenreSearchMode, setExcludeGenreIds,
     setRegionIds, setExcludeRegionIds, setNearbyKm, setStationName, reset,
   } = useFilterStore.getState();
@@ -224,6 +226,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
   const hasFilters =
     memberIds.length > 0 ||
     situations.length > 0 ||
+    statuses.length > 0 ||
     budgets.length > 0 ||
     durations.length > 0 ||
     seasons.length > 0 ||
@@ -392,6 +395,26 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
               }}
             </IncludeExcludeSection>
           )}
+
+          {/* 実施済み */}
+          <FilterSection title="実施済み" count={statuses.includes("DONE") ? 1 : 0}>
+            <FilterChip
+              selected={statuses.includes("DONE") && statuses.some((s) => s !== "DONE")}
+              onClick={() => {
+                const both = statuses.includes("DONE") && statuses.some((s) => s !== "DONE");
+                setStatuses(both ? [] : ["PENDING", "HOLD", "DONE"] as Status[]);
+              }}
+              label="実施済みを含む"
+            />
+            <FilterChip
+              selected={statuses.length === 1 && statuses[0] === "DONE"}
+              onClick={() => {
+                const doneOnly = statuses.length === 1 && statuses[0] === "DONE";
+                setStatuses(doneOnly ? [] : ["DONE"] as Status[]);
+              }}
+              label="実施済みのみ"
+            />
+          </FilterSection>
 
           {/* シチュエーション — 単一選択 */}
           <FilterSection title="シチュエーション" count={situations.length}>

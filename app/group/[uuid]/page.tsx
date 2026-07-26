@@ -44,7 +44,10 @@ export default function ListPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
   const currentMemberId = getGroupMember(uuid)?.memberId;
-  const { wishes, loading, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
+  const { wishes: pendingHoldWishes, loading, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
+  const { wishes: doneWishes, refetch: refetchDone } = useWishes(uuid, { statuses: ["DONE"], skip: true });
+  const [doneLoaded, setDoneLoaded] = useState(false);
+  const doneLoadingRef = useRef(false);
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
   const {
@@ -85,6 +88,23 @@ export default function ListPage() {
     defaultExcludeRegionIds: s.defaultExcludeRegionIds,
   })));
   const { setSearchQuery } = useFilterStore.getState();
+
+  const includeDone = fStatuses.includes("DONE");
+  const doneOnly = fStatuses.length > 0 && fStatuses.every((s) => s === "DONE");
+
+  useEffect(() => {
+    if (!includeDone || doneLoaded || doneLoadingRef.current) return;
+    doneLoadingRef.current = true;
+    refetchDone().then(() => {
+      setDoneLoaded(true);
+      doneLoadingRef.current = false;
+    });
+  }, [includeDone, doneLoaded, refetchDone]);
+
+  const wishes = useMemo(
+    () => (doneLoaded ? [...pendingHoldWishes, ...doneWishes] : pendingHoldWishes),
+    [pendingHoldWishes, doneWishes, doneLoaded]
+  );
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
 
@@ -172,7 +192,13 @@ export default function ListPage() {
   const filtered = useMemo(() => {
     let result = [...wishes];
 
-    result = result.filter((w) => w.status === statusTab);
+    if (doneOnly) {
+      result = result.filter((w) => w.status === "DONE");
+    } else if (includeDone) {
+      result = result.filter((w) => w.status === statusTab || w.status === "DONE");
+    } else {
+      result = result.filter((w) => w.status === statusTab);
+    }
 
     if (situationTab !== "ALL") {
       result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
@@ -182,7 +208,6 @@ export default function ListPage() {
     if (fSituations.length > 0) {
       result = result.filter((w) => fSituations.includes(w.situation) || w.situation === "EITHER");
     }
-    if (fStatuses.length > 0) result = result.filter((w) => fStatuses.includes(w.status));
     if (fBudgets.length > 0) result = result.filter((w) => w.budget && fBudgets.includes(w.budget));
     if (fDurations.length > 0) result = result.filter((w) => w.duration && fDurations.includes(w.duration));
     if (fSeasons.length > 0) result = result.filter((w) => w.seasons.some((s) => fSeasons.includes(s)));
@@ -211,7 +236,7 @@ export default function ListPage() {
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, sortOrder, nearbyWishIds, fMemberIds, fSituations, fStatuses, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
+  }, [wishes, statusTab, situationTab, sortOrder, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);
