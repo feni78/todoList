@@ -39,12 +39,26 @@ export interface FileConflictWarn {
   totalMatched: number;
 }
 
+export interface FuzzyMatchCandidate {
+  wishId: string;
+  wishTitle: string;
+}
+
+export interface FuzzySkipItem {
+  csvTitle: string;
+  largeGenreId: string | null;
+  mediumGenreId: string | null;
+  smallGenreName: string;
+  candidates: FuzzyMatchCandidate[];
+}
+
 export interface GenreAssignAnalysis {
   fileConflicts: FileConflict[];
   newItems: GenreAssignItem[];
   updateItems: GenreAssignItem[];
   conflictItems: GenreAssignItem[];
   skipItems: { title: string }[];
+  fuzzySkipItems: FuzzySkipItem[];
   alreadyItems: GenreAssignItem[];
   fileConflictWarns: FileConflictWarn[];
 }
@@ -124,13 +138,13 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
       const newItems: GenreAssignItem[] = [];
       const updateItems: GenreAssignItem[] = [];
       const conflictItems: GenreAssignItem[] = [];
-      const skipItems: { title: string }[] = [];
+      const exactSkipItems: { title: string }[] = [];
       const alreadyItems: GenreAssignItem[] = [];
 
       for (const [title, entries] of titleToEntries) {
         const wish = titleToWish.get(title);
         if (!wish) {
-          skipItems.push({ title });
+          exactSkipItems.push({ title });
           continue;
         }
 
@@ -194,6 +208,37 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
         }
       }
 
+      // exactSkipItems のうち部分一致候補があるものを fuzzySkipItems に振り分け
+      const fuzzySkipItems: FuzzySkipItem[] = [];
+      const skipItems: { title: string }[] = [];
+      for (const skip of exactSkipItems) {
+        const candidates: FuzzyMatchCandidate[] = [];
+        for (const [wishTitle, wish] of titleToWish) {
+          if (candidates.length >= 5) break;
+          if (
+            wishTitle.includes(skip.title) ||
+            skip.title.includes(wishTitle)
+          ) {
+            candidates.push({ wishId: wish.id, wishTitle });
+          }
+        }
+        if (candidates.length > 0) {
+          const entries = titleToEntries.get(skip.title);
+          if (entries && entries.length > 0) {
+            const { config, smallGenreName } = entries[0];
+            fuzzySkipItems.push({
+              csvTitle: skip.title,
+              largeGenreId: config.largeGenreId,
+              mediumGenreId: config.mediumGenreId,
+              smallGenreName,
+              candidates,
+            });
+            continue;
+          }
+        }
+        skipItems.push(skip);
+      }
+
       // ファイルごとの衝突割合を算出（50%以上で警告）
       const fileConflictWarns: FileConflictWarn[] = [];
       for (const config of configs) {
@@ -207,7 +252,7 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
         }
       }
 
-      return { fileConflicts, newItems, updateItems, conflictItems, skipItems, alreadyItems, fileConflictWarns };
+      return { fileConflicts, newItems, updateItems, conflictItems, skipItems, fuzzySkipItems, alreadyItems, fileConflictWarns };
     },
     [groupId, genreTypeMap]
   );

@@ -4,15 +4,16 @@ import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Genre, GENRE_TYPE_LABELS } from "@/types";
-import type { FileConflictWarn } from "@/hooks/useCsvGenreAssign";
 import {
   useCsvGenreAssign,
   GenreFileConfig,
   GenreAssignAnalysis,
   GenreAssignItem,
   FileConflictOption,
+  FuzzySkipItem,
   fileNameWithoutExt,
 } from "@/hooks/useCsvGenreAssign";
+import type { FileConflictWarn } from "@/hooks/useCsvGenreAssign";
 import { parseCsvText } from "@/hooks/useCsvImport";
 import { createClient } from "@/lib/supabase/client";
 import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
@@ -35,6 +36,7 @@ interface Props {
 
 type Mode = "idle" | "analyzing" | "preview" | "applying" | "done";
 type ConflictResolution = "both" | number | "skip";
+type FuzzyResolution = string | "skip"; // wishId or "skip"
 
 type FilePreset = { largeGenreId: string | null; mediumGenreId: string | null };
 
@@ -67,9 +69,10 @@ async function upsertFilePresets(
     updated_at: new Date().toISOString(),
   }));
   if (rows.length === 0) return;
-  await supabase
+  const { error } = await supabase
     .from("csv_genre_file_presets")
     .upsert(rows, { onConflict: "group_id,file_name" });
+  if (error) console.error("[csv_genre_file_presets] upsert failed:", error);
 }
 
 async function countRows(file: File): Promise<number> {
@@ -195,6 +198,77 @@ function DetailSection({
   );
 }
 
+function FuzzySkipSection({
+  items,
+  resolutions,
+  onChange,
+}: {
+  items: FuzzySkipItem[];
+  resolutions: Map<string, FuzzyResolution>;
+  onChange: (csvTitle: string, wishId: FuzzyResolution) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  const matchedCount = items.filter((fi) => resolutions.get(fi.csvTitle) !== "skip").length;
+  return (
+    <div className="rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30 overflow-hidden text-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-blue-100/50 dark:hover:bg-blue-900/20 transition-colors"
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            部分一致候補（要確認） {items.length}件
+          </p>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+            CSVのタイトルとは異なるが類似するタスクが見つかりました
+            {matchedCount > 0 && `・${matchedCount}件マッチ済み`}
+          </p>
+        </div>
+        {open ? <ChevronUp size={15} className="shrink-0 text-blue-600" /> : <ChevronDown size={15} className="shrink-0 text-blue-600" />}
+      </button>
+      {open && (
+        <div className="border-t border-blue-200 dark:border-blue-800 flex flex-col">
+          {items.map((fi) => {
+            const res = resolutions.get(fi.csvTitle) ?? "skip";
+            return (
+              <div key={fi.csvTitle} className="px-4 py-3 border-b border-blue-100 dark:border-blue-900/50 last:border-0">
+                <p className="text-xs text-muted-foreground mb-1">CSVタイトル</p>
+                <p className="text-xs font-medium break-all mb-2">{fi.csvTitle}</p>
+                <div className="flex flex-col gap-1.5">
+                  {fi.candidates.map((cand) => (
+                    <label key={cand.wishId} className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name={`fuzzy-${fi.csvTitle}`}
+                        checked={res === cand.wishId}
+                        onChange={() => onChange(fi.csvTitle, cand.wishId)}
+                        className="shrink-0 mt-0.5"
+                      />
+                      <span className="text-xs text-blue-700 dark:text-blue-300 break-all">{cand.wishTitle}</span>
+                    </label>
+                  ))}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name={`fuzzy-${fi.csvTitle}`}
+                      checked={res === "skip"}
+                      onChange={() => onChange(fi.csvTitle, "skip")}
+                      className="shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground">スキップ</span>
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SkipDetailSection({ items }: { items: { title: string }[] }) {
   const [open, setOpen] = useState(false);
   if (items.length === 0) return null;
@@ -227,6 +301,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
   const [mode, setMode] = useState<Mode>("idle");
   const [analysis, setAnalysis] = useState<GenreAssignAnalysis | null>(null);
   const [resolutions, setResolutions] = useState<Map<string, ConflictResolution>>(new Map());
+  const [fuzzyResolutions, setFuzzyResolutions] = useState<Map<string, FuzzyResolution>>(new Map());
   const [result, setResult] = useState<{ assigned: number; smallGenresCreated: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -280,6 +355,9 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
       const initResolutions = new Map<string, ConflictResolution>();
       for (const fc of res.fileConflicts) initResolutions.set(fc.wishId, "both");
       setResolutions(initResolutions);
+      const initFuzzy = new Map<string, FuzzyResolution>();
+      for (const fi of res.fuzzySkipItems) initFuzzy.set(fi.csvTitle, "skip");
+      setFuzzyResolutions(initFuzzy);
       setMode("preview");
     } catch (err) {
       setError(err instanceof Error ? err.message : "分析に失敗しました");
@@ -325,6 +403,19 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
         });
       }
     }
+    for (const fi of analysis.fuzzySkipItems) {
+      const resolved = fuzzyResolutions.get(fi.csvTitle);
+      if (!resolved || resolved === "skip") continue;
+      const cand = fi.candidates.find((c) => c.wishId === resolved);
+      if (!cand) continue;
+      items.push({
+        wishId: resolved,
+        wishTitle: cand.wishTitle,
+        largeGenreId: fi.largeGenreId,
+        mediumGenreId: fi.mediumGenreId,
+        smallGenreName: fi.smallGenreName,
+      });
+    }
     return items;
   };
 
@@ -358,6 +449,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
     setMode("idle");
     setAnalysis(null);
     setResolutions(new Map());
+    setFuzzyResolutions(new Map());
     setResult(null);
     setError(null);
     onClose();
@@ -548,6 +640,28 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
                 <span className="text-muted-foreground">付与済み（変更なし）</span>
                 <span className="font-semibold">{analysis.alreadyItems.length}件</span>
               </div>
+              {analysis.fuzzySkipItems.length > 0 && (() => {
+                const matched = analysis.fuzzySkipItems.filter(
+                  (fi) => fuzzyResolutions.get(fi.csvTitle) !== "skip"
+                ).length;
+                const skipped = analysis.fuzzySkipItems.length - matched;
+                return (
+                  <>
+                    {matched > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">部分一致マッチ（付与予定）</span>
+                        <span className="font-semibold">{matched}件</span>
+                      </div>
+                    )}
+                    {skipped > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">部分一致スキップ</span>
+                        <span className="font-semibold">{skipped}件</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">スキップ（タスク未登録）</span>
                 <span className="font-semibold">{analysis.skipItems.length}件</span>
@@ -582,6 +696,15 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
               badge="済"
               badgeClass="bg-muted text-muted-foreground"
             />
+            {analysis.fuzzySkipItems.length > 0 && (
+              <FuzzySkipSection
+                items={analysis.fuzzySkipItems}
+                resolutions={fuzzyResolutions}
+                onChange={(csvTitle, wishId) =>
+                  setFuzzyResolutions((prev) => new Map(prev).set(csvTitle, wishId))
+                }
+              />
+            )}
             <SkipDetailSection items={analysis.skipItems} />
 
             {error && (
