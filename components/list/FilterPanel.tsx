@@ -264,6 +264,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                         const typeGenres = genres.filter((g) => g.genreType === type);
                         if (typeGenres.length === 0) return null;
                         const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
+                        const allSelected = type === "SMALL" && typeGenres.every((g) => genreIds.includes(g.id));
                         return (
                           <Fragment key={type}>
                             {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
@@ -275,6 +276,22 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                                 label={g.name}
                               />
                             ))}
+                            {type === "SMALL" && typeGenres.length > 1 && (
+                              <div className="w-full">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const ids = typeGenres.map((g) => g.id);
+                                    setGenreIds(allSelected
+                                      ? genreIds.filter((id) => !ids.includes(id))
+                                      : [...new Set([...genreIds, ...ids])]);
+                                  }}
+                                  className="text-xs text-primary hover:underline"
+                                >
+                                  {allSelected ? "全解除" : "全選択"}
+                                </button>
+                              </div>
+                            )}
                           </Fragment>
                         );
                       })}
@@ -312,6 +329,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                     const typeGenres = genres.filter((g) => g.genreType === type);
                     if (typeGenres.length === 0) return null;
                     const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
+                    const allExcluded = type === "SMALL" && typeGenres.every((g) => excludeGenreIds.includes(g.id));
                     return (
                       <Fragment key={type}>
                         {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
@@ -324,6 +342,22 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                             variant="exclude"
                           />
                         ))}
+                        {type === "SMALL" && typeGenres.length > 1 && (
+                          <div className="w-full">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const ids = typeGenres.map((g) => g.id);
+                                setExcludeGenreIds(allExcluded
+                                  ? excludeGenreIds.filter((id) => !ids.includes(id))
+                                  : [...new Set([...excludeGenreIds, ...ids])]);
+                              }}
+                              className="text-xs text-destructive hover:underline"
+                            >
+                              {allExcluded ? "全解除" : "全選択"}
+                            </button>
+                          </div>
+                        )}
                       </Fragment>
                     );
                   });
