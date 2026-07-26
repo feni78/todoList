@@ -382,7 +382,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-3xl w-full max-h-[90vh] overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]">
+      <DialogContent className="max-w-3xl sm:max-w-3xl w-full max-h-[90vh] overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]">
         <DialogHeader>
           <DialogTitle>CSVジャンル付与</DialogTitle>
         </DialogHeader>
@@ -637,7 +637,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      小ジャンル: <span className="font-medium text-foreground">{fileNameWithoutExt(entry.file.name)}</span>
+                      小ジャンル: <span className="font-medium text-foreground break-all">{fileNameWithoutExt(entry.file.name)}</span>
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <GenreSelect
