@@ -37,6 +37,7 @@ export interface UpdatePreviewItem {
   title: string;
   oldTitle?: string;      // タイトルが変わる場合の変更前タイトル
   memoAddition?: string;  // メモに追記される内容（先頭行）
+  newScoreLabel?: string; // スコア変更後のラベル（金/銀/銅）
   changes: string[];
 }
 
@@ -583,7 +584,11 @@ export function useCsvImport(groupId: string) {
       let matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
       if (matchByTitle) {
         const newUrl = row.url ? normalizeUrl(row.url) : null;
-        if (matchByTitle.url && newUrl && matchByTitle.url !== newUrl) matchByTitle = undefined;
+        // doneモードはタイトル完全一致を優先（URLが変わっていても既存扱い）
+        // normalモードはURL不一致の場合は別アイテムとして扱う
+        if (importMode !== "done" && matchByTitle.url && newUrl && matchByTitle.url !== newUrl) {
+          matchByTitle = undefined;
+        }
       }
       const existingMatch = matchByUrl ?? matchByTitle;
 
@@ -615,10 +620,14 @@ export function useCsvImport(groupId: string) {
           const addition = merged && existingMatch.memo
             ? merged.slice(existingMatch.memo.length).trimStart().split("\n")[0]
             : undefined;
+          const newScoreLabel = scoreWouldChange
+            ? csvScore === 30 ? "金★" : csvScore === 10 ? "銀★" : "銅★"
+            : undefined;
           updateItems.push({
             title: row.title,
             oldTitle: titleChanged ? existingMatch.title : undefined,
             memoAddition: memoWillChange ? addition : undefined,
+            newScoreLabel,
             changes,
           });
           updateCount++;
@@ -693,7 +702,10 @@ export function useCsvImport(groupId: string) {
         let matchByTitle = !matchByUrl ? titleToExisting.get(row.title) : undefined;
         if (matchByTitle) {
           const newUrl = row.url ? normalizeUrl(row.url) : null;
-          if (matchByTitle.url && newUrl && matchByTitle.url !== newUrl) matchByTitle = undefined;
+          // doneモードはタイトル完全一致を優先（URLが変わっていても既存扱い）
+          if (importMode !== "done" && matchByTitle.url && newUrl && matchByTitle.url !== newUrl) {
+            matchByTitle = undefined;
+          }
         }
         // 要確認アイテムを既存として扱うモード：大文字小文字違いも一致とみなす
         if (!matchByUrl && !matchByTitle && treatSuspiciousAsExisting) {

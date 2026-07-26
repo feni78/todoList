@@ -77,15 +77,23 @@ function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label:
       {open && (
         <div className="border-t border-border">
           {items.map((item, i) => (
-            <div key={i} className="px-4 py-2 border-b border-border/30 last:border-0 text-xs min-w-0">
+            <div key={i} className="px-4 py-2 border-b border-border/30 last:border-0 text-xs min-w-0 flex flex-col gap-0.5">
               <p className="break-all font-medium">{item.title}</p>
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {item.changes.map((c) => (
+                  <span key={c} className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">{c}</span>
+                ))}
+              </div>
               {item.oldTitle !== undefined && (
                 <p className="break-all text-muted-foreground">
-                  タイトル変更（<span className="line-through">{item.oldTitle}</span> → {item.title}）
+                  <span className="line-through">{item.oldTitle}</span> → {item.title}
                 </p>
               )}
               {item.memoAddition !== undefined && (
-                <p className="break-all text-muted-foreground">メモ追記（{item.memoAddition}）</p>
+                <p className="break-all text-muted-foreground">追記: {item.memoAddition}</p>
+              )}
+              {item.newScoreLabel !== undefined && (
+                <p className="text-muted-foreground">やりたい度: {item.newScoreLabel}</p>
               )}
             </div>
           ))}
