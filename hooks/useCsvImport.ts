@@ -115,10 +115,14 @@ function mergeBatchDuplicates(
 }
 
 // URLの末尾スラッシュ・大文字小文字・前後空白を正規化して誤マッチを防ぐ
+// Google Maps URLは data=... がエクスポートごとに変わるため、/data= 以降を除去して場所パスのみで比較する
 function normalizeUrl(url: string): string {
   try {
     const u = new URL(url.trim());
-    const path = u.pathname.replace(/\/$/, "");
+    let path = u.pathname.replace(/\/$/, "");
+    if (u.hostname.includes("google.com") && path.includes("/data=")) {
+      path = path.replace(/\/data=.*$/, "");
+    }
     return (u.origin + path).toLowerCase() + u.search + u.hash;
   } catch {
     return url.toLowerCase().trim();
