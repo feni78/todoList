@@ -43,6 +43,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [wishCount, setWishCount] = useState<number | null>(null);
+  const [regionlessCount, setRegionlessCount] = useState<number | null>(null);
+  const [locationlessCount, setLocationlessCount] = useState<number | null>(null);
   const [wishesLoaded, setWishesLoaded] = useState(false);
   const [wishesLoadingLocal, setWishesLoadingLocal] = useState(false);
   const wishesLoadingRef = useRef(false);
@@ -132,6 +134,45 @@ export default function SettingsPage() {
       .eq("group_id", uuid)
       .is("deleted_at", null)
       .then(({ count }) => setWishCount(count ?? 0));
+
+    // 緯度経度未設定の件数（軽量クエリ）
+    supabase
+      .from("wishes")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", uuid)
+      .is("deleted_at", null)
+      .or("latitude.is.null,longitude.is.null")
+      .then(({ count }) => setLocationlessCount(count ?? 0));
+
+    // 地域タグ未設定の件数（IDと地域名のみ取得してクライアントで分類）
+    (async () => {
+      type WishWithRegions = { id: string; wish_regions: Array<{ region: { name: string } | null }> };
+      let allData: WishWithRegions[] = [];
+      let from = 0;
+      const PAGE = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("wishes")
+          .select("id, wish_regions(region:regions(name))")
+          .eq("group_id", uuid)
+          .is("deleted_at", null)
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (error || !data) break;
+        allData = allData.concat(data as unknown as WishWithRegions[]);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+      const count = allData.filter((w) => {
+        const names = (w.wish_regions ?? [])
+          .map((wr) => wr.region?.name)
+          .filter((n): n is string => Boolean(n));
+        const hasBroad = names.some((n) => isBroadRegionTag(n));
+        const hasSpecific = names.some((n) => !isBroadRegionTag(n));
+        return !hasBroad || !hasSpecific;
+      }).length;
+      setRegionlessCount(count);
+    })();
   }, [uuid, fetchRouletteSettings, setSettings]);
 
   const ensureWishesLoaded = useCallback(async () => {
@@ -1150,7 +1191,7 @@ export default function SettingsPage() {
                 <div className="flex-1">
                   <h2 className="font-semibold">地域タグ未設定</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {!wishesLoaded ? "—" : regionlessWishes.length > 0 ? `${regionlessWishes.length}件未設定` : "全件設定済み"}
+                    {regionlessCount === null ? "—" : regionlessCount > 0 ? `${regionlessCount}件未設定` : "全件設定済み"}
                   </p>
                 </div>
                 <span className="p-1.5 invisible"><Plus size={16} /></span>
@@ -1299,7 +1340,7 @@ export default function SettingsPage() {
                 <div className="flex-1">
                   <h2 className="font-semibold">緯度経度未設定</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {!wishesLoaded ? "—" : locationlessWishes.length > 0 ? `${locationlessWishes.length}件未設定` : "全件設定済み"}
+                    {locationlessCount === null ? "—" : locationlessCount > 0 ? `${locationlessCount}件未設定` : "全件設定済み"}
                   </p>
                 </div>
                 <span className="p-1.5 invisible"><Plus size={16} /></span>
