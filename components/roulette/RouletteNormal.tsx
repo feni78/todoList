@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Wish, scoreToIcon } from "@/types";
-import { MapPin, ExternalLink } from "lucide-react";
+import { MapPin, ExternalLink, Loader2 } from "lucide-react";
 
 function ResultLinks({ memo }: { memo?: string }) {
   const urls = memo?.match(/https?:\/\/[^\s]+/g) ?? [];
@@ -34,6 +34,7 @@ interface RouletteNormalProps {
   result: Wish | null;
   pendingResult: Wish | null;
   probabilities?: Map<string, number> | null;
+  isLoading?: boolean;
 }
 
 const COLORS = [
@@ -43,7 +44,7 @@ const COLORS = [
 
 const MAX_WHEEL = 100;
 
-export function RouletteNormal({ wishes, isSpinning, result, pendingResult, probabilities }: RouletteNormalProps) {
+export function RouletteNormal({ wishes, isSpinning, result, pendingResult, probabilities, isLoading }: RouletteNormalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
@@ -156,7 +157,11 @@ export function RouletteNormal({ wishes, isSpinning, result, pendingResult, prob
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
         <span className="text-4xl mb-2">🎡</span>
-        <p className="text-sm">条件に合うアイテムがありません</p>
+        {isLoading ? (
+          <p className="text-sm flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" />読み込み中...</p>
+        ) : (
+          <p className="text-sm">条件に合うアイテムがありません</p>
+        )}
       </div>
     );
   }

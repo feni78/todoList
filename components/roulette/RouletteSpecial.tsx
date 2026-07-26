@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useAnimation } from "framer-motion";
 import { Wish, scoreToIcon } from "@/types";
-import { MapPin, ExternalLink } from "lucide-react";
+import { MapPin, ExternalLink, Loader2 } from "lucide-react";
 
 function ResultLinks({ memo }: { memo?: string }) {
   const urls = memo?.match(/https?:\/\/[^\s]+/g) ?? [];
@@ -35,6 +35,7 @@ interface RouletteSpecialProps {
   pendingResult: Wish | null;
   probabilities?: Map<string, number> | null;
   onAnimDone?: () => void;
+  isLoading?: boolean;
 }
 
 const ITEM_HEIGHT = 64;
@@ -42,7 +43,7 @@ const VISIBLE = 5;
 const MAX_SPIN_ITEMS = 250; // 移動距離の上限（これ以上だと減速が視覚的に見えなくなる）
 const MAX_DOM_ITEMS = 2000; // DOM ノード上限
 
-export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, probabilities, onAnimDone }: RouletteSpecialProps) {
+export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, probabilities, onAnimDone, isLoading }: RouletteSpecialProps) {
   const controls = useAnimation();
   const prevSpinning = useRef(isSpinning);
   const wishesRef = useRef(wishes);
@@ -145,7 +146,11 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
         <span className="text-4xl mb-2">🎰</span>
-        <p className="text-sm">条件に合うアイテムがありません</p>
+        {isLoading ? (
+          <p className="text-sm flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" />読み込み中...</p>
+        ) : (
+          <p className="text-sm">条件に合うアイテムがありません</p>
+        )}
       </div>
     );
   }

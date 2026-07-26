@@ -194,6 +194,7 @@ export default function RoulettePage() {
             result={result}
             pendingResult={pendingResult}
             probabilities={probabilities}
+            isLoading={wishesLoading}
           />
         ) : (
           <RouletteSpecial
@@ -202,6 +203,7 @@ export default function RoulettePage() {
             result={result}
             pendingResult={pendingResult}
             probabilities={probabilities}
+            isLoading={wishesLoading}
             onAnimDone={() => setSpecialAnimDone(true)}
           />
         )}
