@@ -8,6 +8,12 @@
       "port": 3100
     },
     {
+      "name": "todolist-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/work/todoList", "run", "dev", "--", "-p", "3300"],
+      "port": 3300
+    },
+    {
       "name": "price-compare-app-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "C:/work/price-compare-app", "run", "dev", "--", "-p", "3200"],

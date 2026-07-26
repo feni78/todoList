@@ -82,13 +82,14 @@ function mapRow(row: Record<string, unknown>): Wish {
   };
 }
 
-export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
+export function useWishes(groupId: string, options?: { statuses?: Status[]; includeVotes?: boolean }) {
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // statuses はページごとに固定なので ref で安定参照する
+  // statuses・includeVotes はページごとに固定なので ref で安定参照する
   const statusesRef = useRef<Status[]>(options?.statuses ?? ["PENDING", "HOLD"]);
+  const includeVotesRef = useRef(options?.includeVotes !== false);
   const fetchIdRef = useRef(0);
   const realtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -96,6 +97,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
     const fetchId = ++fetchIdRef.current;
     const supabase = createClient();
     const statuses = statusesRef.current;
+    const voteJoin = includeVotesRef.current ? ", wish_votes(id, member_id, score)" : "";
 
     const PAGE = 1000;
     let allData: Record<string, unknown>[] = [];
@@ -103,7 +105,8 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
     while (true) {
       const { data, error } = await supabase
         .from("wishes")
-        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), wish_regions(region:regions(id, group_id, name)), member:group_members!member_id(id, nickname), wish_votes(id, member_id, score), place_id, latitude, longitude`)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), wish_regions(region:regions(id, group_id, name)), member:group_members!member_id(id, nickname)${voteJoin}, place_id, latitude, longitude` as any)
         .eq("group_id", groupId)
         .is("deleted_at", null)
         .in("status", statuses)
@@ -115,7 +118,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[] }) {
         setLoading(false);
         return;
       }
-      allData = allData.concat(data ?? []);
+      allData = allData.concat((data ?? []) as unknown as Record<string, unknown>[]);
       if ((data ?? []).length < PAGE) break;
       from += PAGE;
     }

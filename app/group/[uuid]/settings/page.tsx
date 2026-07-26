@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
-  const { wishes, loading: wishesLoading, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"] });
+  const { wishes, loading: wishesLoading, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false });
   const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
@@ -560,6 +560,21 @@ export default function SettingsPage() {
     toast.success("URLをコピーしました");
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const regionlessWishes = useMemo(() =>
+    wishes.filter((w) => {
+      const hasBroad = w.regions.some((r) => isBroadRegionTag(r.name));
+      const hasSpecific = w.regions.some((r) => !isBroadRegionTag(r.name));
+      return !hasBroad || !hasSpecific;
+    }).sort((a, b) => a.id.localeCompare(b.id)),
+    [wishes]
+  );
+
+  const locationlessWishes = useMemo(() =>
+    wishes.filter((w) => w.latitude == null || w.longitude == null)
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    [wishes]
+  );
 
   const pageLoading = !group || wishesLoading || genresLoading || regionsLoading;
 
@@ -1096,11 +1111,6 @@ export default function SettingsPage() {
 
         {/* 地域タグ未設定アイテム */}
         {(() => {
-          const regionlessWishes = wishes.filter((w) => {
-            const hasBroad = w.regions.some((r) => isBroadRegionTag(r.name));
-            const hasSpecific = w.regions.some((r) => !isBroadRegionTag(r.name));
-            return !hasBroad || !hasSpecific;
-          }).sort((a, b) => a.id.localeCompare(b.id));
           const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
           const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
             .sort((a, b) => {
@@ -1251,9 +1261,6 @@ export default function SettingsPage() {
         })()}
 
         {(() => {
-          const locationlessWishes = wishes.filter((w) => {
-            return w.latitude == null || w.longitude == null;
-          }).sort((a, b) => a.id.localeCompare(b.id));
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
               <div className="flex items-center">
