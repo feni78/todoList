@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -16,7 +16,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useGroup } from "@/hooks/useGroup";
 import { getDefaultExcludeGenreIds, getDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
-import { SlidersHorizontal, RefreshCw } from "lucide-react";
+import { SlidersHorizontal, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { computeProbabilities } from "@/lib/utils/roulette";
@@ -27,7 +27,10 @@ type RouletteMode = "normal" | "special";
 export default function RoulettePage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
-  const { wishes, changeStatus } = useWishes(uuid, { statuses: ["PENDING", "DONE"] });
+  const { wishes: pendingWishes, loading: pendingLoading, changeStatus } = useWishes(uuid, { statuses: ["PENDING"], realtimeVotes: false });
+  const { wishes: doneWishes, loading: doneLoading, refetch: refetchDone } = useWishes(uuid, { statuses: ["DONE"], realtimeVotes: false, skip: true });
+  const [doneLoaded, setDoneLoaded] = useState(false);
+  const doneLoadingRef = useRef(false);
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
   const { mode, setMode, settings, devMode, filter, setSettings, setFilter, setDefaultExcludeGenreIds, setDefaultExcludeRegionIds } = useRouletteStore();
@@ -52,6 +55,24 @@ export default function RoulettePage() {
       excludeRegionIds: [...new Set([...regionDefaults, ...useRouletteStore.getState().filter.excludeRegionIds])],
     });
   }, [uuid, setDefaultExcludeGenreIds, setDefaultExcludeRegionIds, setFilter]);
+  // DONEアイテムをフィルターで有効にしたときだけ遅延ロード
+  const includeDone = filter.statuses.includes("DONE");
+  useEffect(() => {
+    if (!includeDone || doneLoaded || doneLoadingRef.current) return;
+    doneLoadingRef.current = true;
+    refetchDone().then(() => {
+      setDoneLoaded(true);
+      doneLoadingRef.current = false;
+    });
+  }, [includeDone, doneLoaded, refetchDone]);
+
+  const wishes = useMemo(
+    () => (doneLoaded ? [...pendingWishes, ...doneWishes] : pendingWishes),
+    [pendingWishes, doneWishes, doneLoaded]
+  );
+
+  const wishesLoading = pendingLoading || (includeDone && !doneLoaded && doneLoading);
+
   const nearbyKmRef = useRef<number | null>(null);
   const { spin, result, isSpinning, filteredWishes, pendingResult, completeNow } = useRoulette(wishes, userLocation, regions);
   const probabilities = devMode ? computeProbabilities(filteredWishes, settings) : null;
@@ -188,7 +209,7 @@ export default function RoulettePage() {
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <Button
             onClick={() => handleSpin()}
-            disabled={isSpinning || !specialAnimDone || (result !== null && !showResultUI) || filteredWishes.length === 0}
+            disabled={wishesLoading || isSpinning || !specialAnimDone || (result !== null && !showResultUI) || filteredWishes.length === 0}
             size="lg"
             className="w-full rounded-full text-base font-bold h-14 shadow-lg"
           >
@@ -208,9 +229,16 @@ export default function RoulettePage() {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          対象: {filteredWishes.length}件 · 忖度レベル: {settings.considerLevel}%
-        </p>
+        {wishesLoading ? (
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Loader2 size={12} className="animate-spin" />
+            読み込み中...
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            対象: {filteredWishes.length}件 · 忖度レベル: {settings.considerLevel}%
+          </p>
+        )}
       </div>
 
       <RouletteFilter

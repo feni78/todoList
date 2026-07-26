@@ -82,7 +82,7 @@ function mapRow(row: Record<string, unknown>): Wish {
   };
 }
 
-export function useWishes(groupId: string, options?: { statuses?: Status[]; includeVotes?: boolean; skip?: boolean }) {
+export function useWishes(groupId: string, options?: { statuses?: Status[]; includeVotes?: boolean; skip?: boolean; realtimeVotes?: boolean }) {
   const skip = options?.skip ?? false;
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [loading, setLoading] = useState(!skip);
@@ -91,6 +91,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
   // statuses・includeVotes はページごとに固定なので ref で安定参照する
   const statusesRef = useRef<Status[]>(options?.statuses ?? ["PENDING", "HOLD"]);
   const includeVotesRef = useRef(options?.includeVotes !== false);
+  const realtimeVotesRef = useRef(options?.realtimeVotes !== false);
   const skipRef = useRef(skip);
   const wishesRef = useRef<Wish[]>([]);
   const fetchIdRef = useRef(0);
@@ -159,11 +160,13 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
     };
 
     const supabase = createClient();
-    const channel = supabase
+    const ch = supabase
       .channel(`group:${groupId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wishes", filter: `group_id=eq.${groupId}` }, debouncedFetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "wish_votes" }, debouncedFetchSlow)
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "wishes", filter: `group_id=eq.${groupId}` }, debouncedFetch);
+    if (realtimeVotesRef.current) {
+      ch.on("postgres_changes", { event: "*", schema: "public", table: "wish_votes" }, debouncedFetchSlow);
+    }
+    const channel = ch.subscribe();
 
     return () => {
       if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
