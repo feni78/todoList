@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Genre } from "@/types";
+import { Fragment, useState } from "react";
+import { Genre, GenreType } from "@/types";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,21 +75,31 @@ export function BulkGenreBar({
       {/* ジャンル選択 */}
       {genres.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
-          {genres.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => toggleGenre(g.id)}
-              className={cn(
-                "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
-                pickedGenreIds.includes(g.id)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/70"
-              )}
-            >
-              {g.name}
-            </button>
-          ))}
+          {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((type, i, arr) => {
+            const typeGenres = genres.filter((g) => g.genreType === type);
+            if (typeGenres.length === 0) return null;
+            const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
+            return (
+              <Fragment key={type}>
+                {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
+                {typeGenres.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => toggleGenre(g.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-xs font-medium transition-colors",
+                      pickedGenreIds.includes(g.id)
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    )}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </Fragment>
+            );
+          })}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">ジャンルが未登録です（設定から追加できます）</p>

@@ -31,9 +31,9 @@ function mapRow(row: Record<string, unknown>): Wish {
     ? (row.wish_seasons as { season: string }[]).map((s) => s.season as Wish["seasons"][number])
     : [];
   const genres: Genre[] = Array.isArray(row.wish_genres)
-    ? (row.wish_genres as { genre: { id: string; group_id: string; name: string } }[])
+    ? (row.wish_genres as { genre: { id: string; group_id: string; name: string; genre_type: string } }[])
         .filter((g) => g.genre)
-        .map((g) => ({ id: g.genre.id, groupId: g.genre.group_id, name: g.genre.name }))
+        .map((g) => ({ id: g.genre.id, groupId: g.genre.group_id, name: g.genre.name, genreType: (g.genre.genre_type ?? 'MEDIUM') as Genre['genreType'] }))
     : [];
   const regions: Region[] = Array.isArray(row.wish_regions)
     ? (row.wish_regions as { region: { id: string; group_id: string; name: string } }[])
@@ -109,7 +109,7 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
       const { data, error } = await supabase
         .from("wishes")
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name)), wish_regions(region:regions(id, group_id, name)), member:group_members!member_id(id, nickname)${voteJoin}, place_id, latitude, longitude` as any)
+        .select(`*, wish_seasons(season), wish_genres(genre:genres(id, group_id, name, genre_type)), wish_regions(region:regions(id, group_id, name)), member:group_members!member_id(id, nickname)${voteJoin}, place_id, latitude, longitude` as any)
         .eq("group_id", groupId)
         .is("deleted_at", null)
         .in("status", statuses)

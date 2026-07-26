@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Wish, Genre, Region, SITUATION_ICONS, SEASON_LABELS, scoreToIcon } from "@/types";
+import { Wish, Genre, Region, SITUATION_ICONS, SEASON_LABELS, scoreToIcon, GENRE_TYPE_ORDER } from "@/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -117,6 +117,9 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
             ))}
             {[...wish.genres]
               .sort((a, b) => {
+                const ta = GENRE_TYPE_ORDER[a.genreType] ?? 1;
+                const tb = GENRE_TYPE_ORDER[b.genreType] ?? 1;
+                if (ta !== tb) return ta - tb;
                 const ia = genres.findIndex((g) => g.id === a.id);
                 const ib = genres.findIndex((g) => g.id === b.id);
                 return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);

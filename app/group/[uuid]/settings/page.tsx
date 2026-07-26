@@ -22,7 +22,7 @@ import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
-import { RouletteSettings, Wish } from "@/types";
+import { RouletteSettings, Wish, GenreType, GENRE_TYPE_LABELS } from "@/types";
 import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin, GitMerge } from "lucide-react";
 import { useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -66,10 +66,13 @@ export default function SettingsPage() {
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [editingGenreId, setEditingGenreId] = useState<string | null>(null);
   const [editingGenreName, setEditingGenreName] = useState("");
-  const [addingGenre, setAddingGenre] = useState(false);
+  const [editingGenreType, setEditingGenreType] = useState<GenreType>('MEDIUM');
+  const [addingGenreType, setAddingGenreType] = useState<GenreType | null>(null);
   const [newGenreName, setNewGenreName] = useState("");
   const [retryingLocation, setRetryingLocation] = useState(false);
-  const [genreSectionOpen, setGenreSectionOpen] = useState(false);
+  const [genreLargeSectionOpen, setGenreLargeSectionOpen] = useState(false);
+  const [genreMediumSectionOpen, setGenreMediumSectionOpen] = useState(false);
+  const [genreSmallSectionOpen, setGenreSmallSectionOpen] = useState(false);
   const [broadRegionSectionOpen, setBroadRegionSectionOpen] = useState(false);
   const [specificRegionSectionOpen, setSpecificRegionSectionOpen] = useState(false);
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
@@ -374,8 +377,9 @@ export default function SettingsPage() {
     toast.success("グループ名を更新しました");
   };
 
-  const moveGenre = async (index: number, dir: -1 | 1) => {
-    const next = [...genres];
+  const moveGenre = async (genreType: GenreType, index: number, dir: -1 | 1) => {
+    const typeGenres = genres.filter((g) => g.genreType === genreType);
+    const next = [...typeGenres];
     const target = index + dir;
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
@@ -563,10 +567,10 @@ export default function SettingsPage() {
   };
 
   const handleAddGenre = async () => {
-    if (!newGenreName.trim()) return;
+    if (!newGenreName.trim() || !addingGenreType) return;
     try {
-      await createGenre(newGenreName.trim());
-      setAddingGenre(false);
+      await createGenre(newGenreName.trim(), addingGenreType);
+      setAddingGenreType(null);
       setNewGenreName("");
       toast.success("ジャンルを追加しました");
     } catch {
@@ -577,7 +581,7 @@ export default function SettingsPage() {
   const handleEditGenre = async (id: string) => {
     if (!editingGenreName.trim()) return;
     try {
-      await updateGenre(id, editingGenreName.trim());
+      await updateGenre(id, { name: editingGenreName.trim(), genreType: editingGenreType });
       setEditingGenreId(null);
       toast.success("ジャンルを更新しました");
     } catch {
@@ -857,88 +861,113 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <div className="flex items-center">
-            <h2 className="font-semibold flex-1">ジャンル管理</h2>
-            <button
-              onClick={() => { setAddingGenre(true); setNewGenreName(""); }}
-              className={cn("p-1.5 text-muted-foreground hover:text-foreground transition-colors", !genreSectionOpen && "invisible")}
-            >
-              <Plus size={16} />
-            </button>
-            <button
-              type="button"
-              className="p-1.5"
-              onClick={() => setGenreSectionOpen((v) => !v)}
-            >
-              {genreSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
-            </button>
-          </div>
-          {genreSectionOpen && <div className="flex flex-col gap-2">
-            {(() => {
-              return genres.map((g, idx) => (
-                <div key={g.id} className="flex items-center gap-2 py-1">
-                  {editingGenreId === g.id ? (
-                    <>
-                      <input
-                        className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                        value={editingGenreName}
-                        onChange={(e) => setEditingGenreName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleEditGenre(g.id); if (e.key === "Escape") setEditingGenreId(null); }}
-                        autoFocus
-                      />
-                      <button onClick={() => handleEditGenre(g.id)} className="p-1.5 text-primary transition-colors">
-                        <Check size={15} />
-                      </button>
-                      <button onClick={() => setEditingGenreId(null)} className="p-1.5 text-muted-foreground transition-colors">
-                        <X size={15} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex flex-col">
-                        <button onClick={() => moveGenre(idx, -1)} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
-                          <ArrowUp size={12} />
-                        </button>
-                        <button onClick={() => moveGenre(idx, 1)} disabled={idx === genres.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
-                          <ArrowDown size={12} />
-                        </button>
-                      </div>
-                      <span className="flex-1 text-sm">{g.name}</span>
-                      <button onClick={() => { setEditingGenreId(g.id); setEditingGenreName(g.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                        <Pencil size={15} />
-                      </button>
-                      <button onClick={() => handleDeleteGenre(g.id, g.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                        <Trash2 size={15} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ));
-            })()}
-            {addingGenre && (
-              <div className="flex items-center gap-2 py-1">
-                <input
-                  className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                  placeholder="ジャンル名"
-                  value={newGenreName}
-                  onChange={(e) => setNewGenreName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddGenre(); if (e.key === "Escape") setAddingGenre(false); }}
-                  autoFocus
-                />
-                <button onClick={handleAddGenre} className="p-1.5 text-primary transition-colors">
-                  <Check size={15} />
+        {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((gtype) => {
+          const typeGenres = genres.filter((g) => g.genreType === gtype);
+          const sectionOpen = gtype === "LARGE" ? genreLargeSectionOpen : gtype === "MEDIUM" ? genreMediumSectionOpen : genreSmallSectionOpen;
+          const setSectionOpen = gtype === "LARGE" ? setGenreLargeSectionOpen : gtype === "MEDIUM" ? setGenreMediumSectionOpen : setGenreSmallSectionOpen;
+          const label = GENRE_TYPE_LABELS[gtype];
+          return (
+            <section key={gtype} className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <div className="flex items-center">
+                <h2 className="font-semibold flex-1">{label}管理</h2>
+                <button
+                  onClick={() => { setAddingGenreType(gtype); setNewGenreName(""); setSectionOpen(true); }}
+                  className={cn("p-1.5 text-muted-foreground hover:text-foreground transition-colors", !sectionOpen && "invisible")}
+                >
+                  <Plus size={16} />
                 </button>
-                <button onClick={() => setAddingGenre(false)} className="p-1.5 text-muted-foreground transition-colors">
-                  <X size={15} />
+                <button
+                  type="button"
+                  className="p-1.5"
+                  onClick={() => setSectionOpen((v) => !v)}
+                >
+                  {sectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
               </div>
-            )}
-            {genres.length === 0 && !addingGenre && (
-              <p className="text-sm text-muted-foreground">+ボタンでジャンルを追加できます</p>
-            )}
-          </div>}
-        </section>
+              {sectionOpen && (
+                <div className="flex flex-col gap-2">
+                  {typeGenres.map((g, idx) => (
+                    <div key={g.id} className="flex items-center gap-2 py-1">
+                      {editingGenreId === g.id ? (
+                        <>
+                          <div className="flex-1 flex flex-col gap-1">
+                            <input
+                              className="w-full text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                              value={editingGenreName}
+                              onChange={(e) => setEditingGenreName(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") handleEditGenre(g.id); if (e.key === "Escape") setEditingGenreId(null); }}
+                              autoFocus
+                            />
+                            <div className="flex gap-1">
+                              {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => setEditingGenreType(t)}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-xs font-medium transition-colors",
+                                    editingGenreType === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                                  )}
+                                >
+                                  {GENRE_TYPE_LABELS[t]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <button onClick={() => handleEditGenre(g.id)} className="p-1.5 text-primary transition-colors">
+                            <Check size={15} />
+                          </button>
+                          <button onClick={() => setEditingGenreId(null)} className="p-1.5 text-muted-foreground transition-colors">
+                            <X size={15} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex flex-col">
+                            <button onClick={() => moveGenre(gtype, idx, -1)} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
+                              <ArrowUp size={12} />
+                            </button>
+                            <button onClick={() => moveGenre(gtype, idx, 1)} disabled={idx === typeGenres.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
+                              <ArrowDown size={12} />
+                            </button>
+                          </div>
+                          <span className="flex-1 text-sm">{g.name}</span>
+                          <button onClick={() => { setEditingGenreId(g.id); setEditingGenreName(g.name); setEditingGenreType(g.genreType); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                            <Pencil size={15} />
+                          </button>
+                          <button onClick={() => handleDeleteGenre(g.id, g.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {addingGenreType === gtype && (
+                    <div className="flex items-center gap-2 py-1">
+                      <input
+                        className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                        placeholder={`${label}名`}
+                        value={newGenreName}
+                        onChange={(e) => setNewGenreName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleAddGenre(); if (e.key === "Escape") setAddingGenreType(null); }}
+                        autoFocus
+                      />
+                      <button onClick={handleAddGenre} className="p-1.5 text-primary transition-colors">
+                        <Check size={15} />
+                      </button>
+                      <button onClick={() => setAddingGenreType(null)} className="p-1.5 text-muted-foreground transition-colors">
+                        <X size={15} />
+                      </button>
+                    </div>
+                  )}
+                  {typeGenres.length === 0 && addingGenreType !== gtype && (
+                    <p className="text-sm text-muted-foreground">+ボタンで{label}を追加できます</p>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })}
 
         {genres.length > 0 && (
           <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">

@@ -45,10 +45,16 @@ export function scoreToLabel(score: number): string {
   return "未評価";
 }
 
+export type GenreType = 'LARGE' | 'MEDIUM' | 'SMALL';
+
+export const GENRE_TYPE_ORDER: Record<GenreType, number> = { LARGE: 0, MEDIUM: 1, SMALL: 2 };
+export const GENRE_TYPE_LABELS: Record<GenreType, string> = { LARGE: '大ジャンル', MEDIUM: '中ジャンル', SMALL: '小ジャンル' };
+
 export interface Genre {
   id: string;
   groupId: string;
   name: string;
+  genreType: GenreType;
 }
 
 export interface Region {

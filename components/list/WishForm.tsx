@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import {
   Wish,
   Genre,
+  GenreType,
   Region,
   GroupMember,
   Situation,
@@ -391,23 +392,33 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       {genres.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <Label>ジャンル（任意・複数選択可）</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {genres.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => toggleGenre(g.id)}
-                className={cn(
-                  "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
-                  form.genreIds.includes(g.id)
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                {g.name}
-              </button>
-            ))}
-          </div>
+          {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((type, i, arr) => {
+            const typeGenres = genres.filter((g) => g.genreType === type);
+            if (typeGenres.length === 0) return null;
+            const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
+            return (
+              <Fragment key={type}>
+                {hasPrev && <hr className="border-border/40" />}
+                <div className="flex flex-wrap gap-1.5">
+                  {typeGenres.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => toggleGenre(g.id)}
+                      className={cn(
+                        "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                        form.genreIds.includes(g.id)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </Fragment>
+            );
+          })}
         </div>
       )}
 

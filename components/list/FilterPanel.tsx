@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { StationSearch } from "@/components/common/StationSearch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import {
   GroupMember,
   Genre,
+  GenreType,
   Region,
   Situation,
   Budget,
@@ -259,14 +260,24 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                 if (mode === "include") {
                   return (
                     <>
-                      {genres.map((g) => (
-                        <FilterChip
-                          key={g.id}
-                          selected={genreIds.includes(g.id)}
-                          onClick={() => setGenreIds(toggle(genreIds, g.id))}
-                          label={g.name}
-                        />
-                      ))}
+                      {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((type, i, arr) => {
+                        const typeGenres = genres.filter((g) => g.genreType === type);
+                        if (typeGenres.length === 0) return null;
+                        const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
+                        return (
+                          <Fragment key={type}>
+                            {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
+                            {typeGenres.map((g) => (
+                              <FilterChip
+                                key={g.id}
+                                selected={genreIds.includes(g.id)}
+                                onClick={() => setGenreIds(toggle(genreIds, g.id))}
+                                label={g.name}
+                              />
+                            ))}
+                          </Fragment>
+                        );
+                      })}
                       <div className="w-full flex items-center gap-2 mt-1 pt-1 border-t border-border/40">
                         <span className="text-xs text-muted-foreground">複数選択時:</span>
                         <button
@@ -297,15 +308,25 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
                     </>
                   );
                 } else {
-                  return genres.map((g) => (
-                    <FilterChip
-                      key={g.id}
-                      selected={excludeGenreIds.includes(g.id)}
-                      onClick={() => setExcludeGenreIds(toggle(excludeGenreIds, g.id))}
-                      label={g.name}
-                      variant="exclude"
-                    />
-                  ));
+                  return (["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((type, i, arr) => {
+                    const typeGenres = genres.filter((g) => g.genreType === type);
+                    if (typeGenres.length === 0) return null;
+                    const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
+                    return (
+                      <Fragment key={type}>
+                        {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
+                        {typeGenres.map((g) => (
+                          <FilterChip
+                            key={g.id}
+                            selected={excludeGenreIds.includes(g.id)}
+                            onClick={() => setExcludeGenreIds(toggle(excludeGenreIds, g.id))}
+                            label={g.name}
+                            variant="exclude"
+                          />
+                        ))}
+                      </Fragment>
+                    );
+                  });
                 }
               }}
             </IncludeExcludeSection>
