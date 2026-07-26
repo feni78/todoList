@@ -159,10 +159,31 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
           const entriesToCheck = validEntries.length > 0 ? validEntries : entries;
           const uniqueKeys = new Set(entriesToCheck.map((e) => `${e.config.largeGenreId}:${e.config.mediumGenreId}`));
           if (uniqueKeys.size > 1) {
+            // 既に全ジャンル（大・中・小）が付与済みのオプションは除外
+            const isOptionAlreadyAssigned = (e: typeof entriesToCheck[0]) => {
+              const largeOk = !e.config.largeGenreId || wish.genreIds.includes(e.config.largeGenreId);
+              const mediumOk = !e.config.mediumGenreId || wish.genreIds.includes(e.config.mediumGenreId);
+              const existingSmall = genres.find((g) => g.name === e.smallGenreName && g.genreType === "SMALL");
+              const smallOk = existingSmall ? wish.genreIds.includes(existingSmall.id) : false;
+              return largeOk && mediumOk && smallOk;
+            };
+            const unassignedEntries = entriesToCheck.filter((e) => !isOptionAlreadyAssigned(e));
+            if (unassignedEntries.length === 0) {
+              // 全オプション付与済み
+              alreadyItems.push({
+                wishId: wish.id,
+                wishTitle: title,
+                largeGenreId: entriesToCheck[0].config.largeGenreId,
+                mediumGenreId: entriesToCheck[0].config.mediumGenreId,
+                smallGenreName: entriesToCheck[0].smallGenreName,
+                existingGenreIds: wish.genreIds,
+              });
+              continue;
+            }
             fileConflicts.push({
               wishId: wish.id,
               wishTitle: title,
-              options: entriesToCheck.map((e) => ({
+              options: unassignedEntries.map((e) => ({
                 fileName: e.config.file.name,
                 smallGenreName: e.smallGenreName,
                 largeGenreId: e.config.largeGenreId,
