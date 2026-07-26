@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Genre, GENRE_TYPE_LABELS } from "@/types";
@@ -13,6 +13,7 @@ import {
   fileNameWithoutExt,
 } from "@/hooks/useCsvGenreAssign";
 import { parseCsvText } from "@/hooks/useCsvImport";
+import { createClient } from "@/lib/supabase/client";
 import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,24 +35,40 @@ interface Props {
 type Mode = "idle" | "analyzing" | "preview" | "applying" | "done";
 type ConflictResolution = number | "skip";
 
-// localStorage: グループ別・ファイル名別のジャンル履歴
-function historyKey(groupId: string) {
-  return `csvGenreHistory:${groupId}`;
-}
-function loadHistory(groupId: string): Record<string, { largeGenreId: string | null; mediumGenreId: string | null }> {
-  try {
-    return JSON.parse(localStorage.getItem(historyKey(groupId)) ?? "{}");
-  } catch {
-    return {};
+type FilePreset = { largeGenreId: string | null; mediumGenreId: string | null };
+
+async function fetchFilePresets(groupId: string): Promise<Record<string, FilePreset>> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("csv_genre_file_presets")
+    .select("file_name, large_genre_id, medium_genre_id")
+    .eq("group_id", groupId);
+  const result: Record<string, FilePreset> = {};
+  for (const row of data ?? []) {
+    result[row.file_name] = {
+      largeGenreId: row.large_genre_id ?? null,
+      mediumGenreId: row.medium_genre_id ?? null,
+    };
   }
+  return result;
 }
-function saveHistory(
+
+async function upsertFilePresets(
   groupId: string,
-  updates: Record<string, { largeGenreId: string | null; mediumGenreId: string | null }>
-) {
-  const history = loadHistory(groupId);
-  Object.assign(history, updates);
-  localStorage.setItem(historyKey(groupId), JSON.stringify(history));
+  updates: Record<string, FilePreset>
+): Promise<void> {
+  const supabase = createClient();
+  const rows = Object.entries(updates).map(([file_name, p]) => ({
+    group_id: groupId,
+    file_name,
+    large_genre_id: p.largeGenreId,
+    medium_genre_id: p.mediumGenreId,
+    updated_at: new Date().toISOString(),
+  }));
+  if (rows.length === 0) return;
+  await supabase
+    .from("csv_genre_file_presets")
+    .upsert(rows, { onConflict: "group_id,file_name" });
 }
 
 async function countRows(file: File): Promise<number> {
@@ -205,12 +222,18 @@ function SkipDetailSection({ items }: { items: { title: string }[] }) {
 
 export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyComplete }: Props) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
+  const [presets, setPresets] = useState<Record<string, FilePreset>>({});
   const [mode, setMode] = useState<Mode>("idle");
   const [analysis, setAnalysis] = useState<GenreAssignAnalysis | null>(null);
   const [resolutions, setResolutions] = useState<Map<string, ConflictResolution>>(new Map());
   const [result, setResult] = useState<{ assigned: number; smallGenresCreated: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    fetchFilePresets(groupId).then(setPresets);
+  }, [open, groupId]);
 
   const { analyzeGenreAssign, applyGenreAssign } = useCsvGenreAssign(groupId, genres);
 
@@ -220,10 +243,9 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
-    const history = loadHistory(groupId);
     const newEntries = await Promise.all(
       files.map(async (file) => {
-        const saved = history[file.name];
+        const saved = presets[file.name];
         return {
           file,
           largeGenreId: saved?.largeGenreId ?? null,
@@ -299,15 +321,15 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
     try {
       const assignments = buildAssignments();
       const res = await applyGenreAssign(assignments);
-      // 使用したジャンル設定をファイル名ごとに保存
-      const historyUpdates: Record<string, { largeGenreId: string | null; mediumGenreId: string | null }> = {};
+      // 使用したジャンル設定をファイル名ごとにDB保存
+      const presetUpdates: Record<string, FilePreset> = {};
       for (const entry of entries) {
-        historyUpdates[entry.file.name] = {
+        presetUpdates[entry.file.name] = {
           largeGenreId: entry.largeGenreId,
           mediumGenreId: entry.mediumGenreId,
         };
       }
-      saveHistory(groupId, historyUpdates);
+      await upsertFilePresets(groupId, presetUpdates);
       setResult(res);
       setMode("done");
       onApplyComplete?.();
@@ -319,6 +341,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
 
   const handleClose = () => {
     setEntries([]);
+    setPresets({});
     setMode("idle");
     setAnalysis(null);
     setResolutions(new Map());
@@ -340,7 +363,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-x-hidden overflow-y-auto">
+      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]">
         <DialogHeader>
           <DialogTitle>CSVジャンル付与</DialogTitle>
         </DialogHeader>
