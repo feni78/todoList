@@ -11,11 +11,11 @@ import {
   GenreAssignItem,
   FileConflictOption,
   FuzzySkipItem,
+  FilePreset,
   fileNameWithoutExt,
 } from "@/hooks/useCsvGenreAssign";
 import type { FileConflictWarn } from "@/hooks/useCsvGenreAssign";
 import { parseCsvText } from "@/hooks/useCsvImport";
-import { createClient } from "@/lib/supabase/client";
 import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,43 +37,6 @@ interface Props {
 type Mode = "idle" | "analyzing" | "preview" | "applying" | "done";
 type ConflictResolution = "both" | number | "skip";
 type FuzzyResolution = string | "skip"; // wishId or "skip"
-
-type FilePreset = { largeGenreId: string | null; mediumGenreId: string | null };
-
-async function fetchFilePresets(groupId: string): Promise<Record<string, FilePreset>> {
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("csv_genre_file_presets")
-    .select("file_name, large_genre_id, medium_genre_id")
-    .eq("group_id", groupId);
-  const result: Record<string, FilePreset> = {};
-  for (const row of data ?? []) {
-    result[row.file_name] = {
-      largeGenreId: row.large_genre_id ?? null,
-      mediumGenreId: row.medium_genre_id ?? null,
-    };
-  }
-  return result;
-}
-
-async function upsertFilePresets(
-  groupId: string,
-  updates: Record<string, FilePreset>
-): Promise<void> {
-  const supabase = createClient();
-  const rows = Object.entries(updates).map(([file_name, p]) => ({
-    group_id: groupId,
-    file_name,
-    large_genre_id: p.largeGenreId,
-    medium_genre_id: p.mediumGenreId,
-    updated_at: new Date().toISOString(),
-  }));
-  if (rows.length === 0) return;
-  const { error } = await supabase
-    .from("csv_genre_file_presets")
-    .upsert(rows, { onConflict: "group_id,file_name" });
-  if (error) console.error("[csv_genre_file_presets] upsert failed:", error);
-}
 
 async function countRows(file: File): Promise<number> {
   return new Promise((resolve) => {
@@ -306,12 +269,12 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { analyzeGenreAssign, applyGenreAssign, fetchPresets, savePresets } = useCsvGenreAssign(groupId, genres);
+
   useEffect(() => {
     if (!open) return;
-    fetchFilePresets(groupId).then(setPresets);
-  }, [open, groupId]);
-
-  const { analyzeGenreAssign, applyGenreAssign } = useCsvGenreAssign(groupId, genres);
+    fetchPresets().then(setPresets);
+  }, [open, fetchPresets]);
 
   const largeGenres = genres.filter((g) => g.genreType === "LARGE");
   const mediumGenres = genres.filter((g) => g.genreType === "MEDIUM");
@@ -433,7 +396,7 @@ export function CsvGenreAssignDialog({ open, onClose, groupId, genres, onApplyCo
           mediumGenreId: entry.mediumGenreId,
         };
       }
-      await upsertFilePresets(groupId, presetUpdates);
+      await savePresets(presetUpdates);
       setResult(res);
       setMode("done");
       onApplyComplete?.();

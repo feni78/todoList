@@ -2,6 +2,8 @@
 
 import { useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+
+export type FilePreset = { largeGenreId: string | null; mediumGenreId: string | null };
 import { Genre, GenreType } from "@/types";
 import { parseCsvText } from "@/hooks/useCsvImport";
 
@@ -304,5 +306,37 @@ export function useCsvGenreAssign(groupId: string, genres: Genre[]) {
     [groupId, genres]
   );
 
-  return { analyzeGenreAssign, applyGenreAssign };
+  const fetchPresets = useCallback(async (): Promise<Record<string, FilePreset>> => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("csv_genre_file_presets")
+      .select("file_name, large_genre_id, medium_genre_id")
+      .eq("group_id", groupId);
+    const result: Record<string, FilePreset> = {};
+    for (const row of data ?? []) {
+      result[row.file_name] = {
+        largeGenreId: row.large_genre_id ?? null,
+        mediumGenreId: row.medium_genre_id ?? null,
+      };
+    }
+    return result;
+  }, [groupId]);
+
+  const savePresets = useCallback(async (updates: Record<string, FilePreset>): Promise<void> => {
+    const supabase = createClient();
+    const rows = Object.entries(updates).map(([file_name, p]) => ({
+      group_id: groupId,
+      file_name,
+      large_genre_id: p.largeGenreId,
+      medium_genre_id: p.mediumGenreId,
+      updated_at: new Date().toISOString(),
+    }));
+    if (rows.length === 0) return;
+    const { error } = await supabase
+      .from("csv_genre_file_presets")
+      .upsert(rows, { onConflict: "group_id,file_name" });
+    if (error) console.error("[csv_genre_file_presets] upsert failed:", error);
+  }, [groupId]);
+
+  return { analyzeGenreAssign, applyGenreAssign, fetchPresets, savePresets };
 }
