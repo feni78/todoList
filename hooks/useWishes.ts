@@ -82,14 +82,17 @@ function mapRow(row: Record<string, unknown>): Wish {
   };
 }
 
-export function useWishes(groupId: string, options?: { statuses?: Status[]; includeVotes?: boolean }) {
+export function useWishes(groupId: string, options?: { statuses?: Status[]; includeVotes?: boolean; skip?: boolean }) {
+  const skip = options?.skip ?? false;
   const [wishes, setWishes] = useState<Wish[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!skip);
   const [error, setError] = useState<string | null>(null);
 
   // statuses・includeVotes はページごとに固定なので ref で安定参照する
   const statusesRef = useRef<Status[]>(options?.statuses ?? ["PENDING", "HOLD"]);
   const includeVotesRef = useRef(options?.includeVotes !== false);
+  const skipRef = useRef(skip);
+  const wishesRef = useRef<Wish[]>([]);
   const fetchIdRef = useRef(0);
   const realtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -131,15 +134,20 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
       seen.add(id);
       return true;
     });
-    setWishes(uniqueData.map((row) => mapRow(row as Record<string, unknown>)));
+    const mapped = uniqueData.map((row) => mapRow(row as Record<string, unknown>));
+    wishesRef.current = mapped;
+    setWishes(mapped);
     setLoading(false);
   }, [groupId]);
 
   useEffect(() => {
+    if (skipRef.current) return;
     fetchWishes();
   }, [fetchWishes]);
 
   useEffect(() => {
+    if (skipRef.current) return;
+
     const debouncedFetch = () => {
       if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
       realtimeTimerRef.current = setTimeout(() => fetchWishes(), 600);
@@ -407,5 +415,5 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
     []
   );
 
-  return { wishes, loading, error, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, toggleFavorite, bulkUpdateGenres, refetch: fetchWishes };
+  return { wishes, wishesRef, loading, error, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, toggleFavorite, bulkUpdateGenres, refetch: fetchWishes };
 }

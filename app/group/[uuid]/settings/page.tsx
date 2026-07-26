@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -35,13 +35,17 @@ export default function SettingsPage() {
   const router = useRouter();
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
-  const { wishes, loading: wishesLoading, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false });
+  const { wishes, wishesRef, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false, skip: true });
   const { group, setGroup, setCurrentMember } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [wishCount, setWishCount] = useState<number | null>(null);
+  const [wishesLoaded, setWishesLoaded] = useState(false);
+  const [wishesLoadingLocal, setWishesLoadingLocal] = useState(false);
+  const wishesLoadingRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editingGroupName, setEditingGroupName] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState("");
@@ -120,7 +124,25 @@ export default function SettingsPage() {
         });
       }
     });
+    // wishesの件数だけ軽量クエリで取得
+    const supabase = createClient();
+    supabase
+      .from("wishes")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", uuid)
+      .is("deleted_at", null)
+      .then(({ count }) => setWishCount(count ?? 0));
   }, [uuid, fetchRouletteSettings, setSettings]);
+
+  const ensureWishesLoaded = useCallback(async () => {
+    if (wishesLoaded || wishesLoadingRef.current) return;
+    wishesLoadingRef.current = true;
+    setWishesLoadingLocal(true);
+    await refetchWishes();
+    setWishesLoaded(true);
+    setWishesLoadingLocal(false);
+    wishesLoadingRef.current = false;
+  }, [wishesLoaded, refetchWishes]);
 
   const handleDarkMode = (val: boolean) => {
     setDarkModeState(val);
@@ -144,8 +166,9 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExport = () => {
-    const data = wishes.map((w) => ({
+  const handleExport = async () => {
+    await ensureWishesLoaded();
+    const data = wishesRef.current.map((w) => ({
       title: w.title,
       situation: w.situation,
       status: w.status,
@@ -171,6 +194,7 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
+    await ensureWishesLoaded();
     try {
       const text = await file.text();
       const data = JSON.parse(text) as (Partial<Wish> & { genres?: string[]; regions?: string[] })[];
@@ -198,7 +222,7 @@ export default function SettingsPage() {
       let skipped = 0;
       for (const item of data) {
         if (!item.title) continue;
-        const isDuplicate = wishes.some(
+        const isDuplicate = wishesRef.current.some(
           (w) =>
             w.title === item.title &&
             w.situation === (item.situation ?? "HOME") &&
@@ -576,7 +600,7 @@ export default function SettingsPage() {
     [wishes]
   );
 
-  const pageLoading = !group || wishesLoading || genresLoading || regionsLoading;
+  const pageLoading = !group || genresLoading || regionsLoading;
 
   return (
     <div className="flex flex-col min-h-screen pb-16">
@@ -665,9 +689,9 @@ export default function SettingsPage() {
           <h2 className="font-semibold">データ</h2>
           <p className="text-sm text-muted-foreground">タスクをJSONファイルでエクスポート・インポートできます</p>
           <div className="flex flex-col gap-2">
-            <Button variant="outline" onClick={handleExport} className="w-full gap-2">
+            <Button variant="outline" onClick={handleExport} className="w-full gap-2" disabled={wishesLoadingLocal}>
               <Upload size={16} />
-              エクスポート（{wishes.length}件）
+              {wishesLoadingLocal ? "読み込み中..." : `エクスポート（${wishCount ?? "..."}件）`}
             </Button>
             <Button
               variant="outline"
@@ -1126,21 +1150,29 @@ export default function SettingsPage() {
                 <div className="flex-1">
                   <h2 className="font-semibold">地域タグ未設定</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {regionlessWishes.length > 0 ? `${regionlessWishes.length}件未設定` : "全件設定済み"}
+                    {!wishesLoaded ? "—" : regionlessWishes.length > 0 ? `${regionlessWishes.length}件未設定` : "全件設定済み"}
                   </p>
                 </div>
                 <span className="p-1.5 invisible"><Plus size={16} /></span>
                 <button
                   type="button"
                   className="p-1.5"
-                  onClick={() => setRegionlessSectionOpen((v) => !v)}
+                  onClick={async () => {
+                    const next = !regionlessSectionOpen;
+                    setRegionlessSectionOpen(next);
+                    if (next) await ensureWishesLoaded();
+                  }}
                 >
                   {regionlessSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
               </div>
               {regionlessSectionOpen && (
                 <div className="flex flex-col gap-2">
-                  {regionlessWishes.length === 0 ? (
+                  {wishesLoadingLocal ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                    </div>
+                  ) : regionlessWishes.length === 0 ? (
                     <p className="text-sm text-muted-foreground">地域タグ未設定のアイテムはありません</p>
                   ) : regionlessWishes.map((w) => {
                     const expanded = regionlessExpandedId === w.id;
@@ -1267,21 +1299,29 @@ export default function SettingsPage() {
                 <div className="flex-1">
                   <h2 className="font-semibold">緯度経度未設定</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {locationlessWishes.length > 0 ? `${locationlessWishes.length}件未設定` : "全件設定済み"}
+                    {!wishesLoaded ? "—" : locationlessWishes.length > 0 ? `${locationlessWishes.length}件未設定` : "全件設定済み"}
                   </p>
                 </div>
                 <span className="p-1.5 invisible"><Plus size={16} /></span>
                 <button
                   type="button"
                   className="p-1.5"
-                  onClick={() => setLocationlessSectionOpen((v) => !v)}
+                  onClick={async () => {
+                    const next = !locationlessSectionOpen;
+                    setLocationlessSectionOpen(next);
+                    if (next) await ensureWishesLoaded();
+                  }}
                 >
                   {locationlessSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
               </div>
               {locationlessSectionOpen && (
                 <div className="flex flex-col gap-2">
-                  {locationlessWishes.length === 0 ? (
+                  {wishesLoadingLocal ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                    </div>
+                  ) : locationlessWishes.length === 0 ? (
                     <p className="text-sm text-muted-foreground">緯度経度未設定のアイテムはありません</p>
                   ) : locationlessWishes.map((w) => {
                     const expanded = locationlessExpandedId === w.id;
@@ -1601,12 +1641,12 @@ export default function SettingsPage() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => setMergeDialogOpen(true)}
-            disabled={merging}
+            onClick={async () => { await ensureWishesLoaded(); setMergeDialogOpen(true); }}
+            disabled={merging || wishesLoadingLocal}
             className="w-full gap-2"
           >
             <GitMerge size={16} />
-            {merging ? "統合中..." : "重複を統合"}
+            {merging ? "統合中..." : wishesLoadingLocal ? "読み込み中..." : "重複を統合"}
           </Button>
         </section>
 
