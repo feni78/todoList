@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useGroupStore } from "@/lib/store/groupStore";
 
 interface WishFormData {
   title: string;
@@ -144,6 +145,7 @@ function SegmentButton<T extends string>({
 }
 
 export function WishForm({ initial, currentMemberId, members = [], genres = [], regions = [], onSubmit, onCancel, loading }: WishFormProps) {
+  const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
   const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
   // 新規作成 or 自分が登録したものの編集 → 必須
   const scoreRequired = !initial || initial.memberId === currentMemberId;
@@ -396,26 +398,47 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
             const typeGenres = genres.filter((g) => g.genreType === type);
             if (typeGenres.length === 0) return null;
             const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
+            const renderChips = (list: typeof typeGenres) => list.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => toggleGenre(g.id)}
+                className={cn(
+                  "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                  form.genreIds.includes(g.id)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {g.name}
+              </button>
+            ));
+            if (type === "SMALL") {
+              const group1 = typeGenres.filter((g) => !smallGenreSubGroups.group2Ids.includes(g.id));
+              const group2 = typeGenres.filter((g) => smallGenreSubGroups.group2Ids.includes(g.id));
+              return (
+                <Fragment key={type}>
+                  {hasPrev && <hr className="border-border/40" />}
+                  {group1.length > 0 && (
+                    <>
+                      <p className="text-xs text-muted-foreground">{smallGenreSubGroups.group1Name}</p>
+                      <div className="flex flex-wrap gap-1.5">{renderChips(group1)}</div>
+                    </>
+                  )}
+                  {group2.length > 0 && (
+                    <>
+                      {group1.length > 0 && <hr className="border-border/30" />}
+                      <p className="text-xs text-muted-foreground">{smallGenreSubGroups.group2Name}</p>
+                      <div className="flex flex-wrap gap-1.5">{renderChips(group2)}</div>
+                    </>
+                  )}
+                </Fragment>
+              );
+            }
             return (
               <Fragment key={type}>
                 {hasPrev && <hr className="border-border/40" />}
-                <div className="flex flex-wrap gap-1.5">
-                  {typeGenres.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() => toggleGenre(g.id)}
-                      className={cn(
-                        "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
-                        form.genreIds.includes(g.id)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      )}
-                    >
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
+                <div className="flex flex-wrap gap-1.5">{renderChips(typeGenres)}</div>
               </Fragment>
             );
           })}
