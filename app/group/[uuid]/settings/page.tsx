@@ -82,6 +82,7 @@ export default function SettingsPage() {
   }, [uuid, setSmallGenreSubGroupsStore]);
   const [editingSubGroupName, setEditingSubGroupName] = useState<1 | 2 | null>(null);
   const [subGroupNameInput, setSubGroupNameInput] = useState("");
+  const subGroupNameComposing = useRef(false);
   const [broadRegionSectionOpen, setBroadRegionSectionOpen] = useState(false);
   const [specificRegionSectionOpen, setSpecificRegionSectionOpen] = useState(false);
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
@@ -1007,8 +1008,10 @@ export default function SettingsPage() {
                               className="flex-1 text-xs border border-border rounded px-2 py-0.5 bg-background"
                               value={subGroupNameInput}
                               onChange={(e) => setSubGroupNameInput(e.target.value)}
+                              onCompositionStart={() => { subGroupNameComposing.current = true; }}
+                              onCompositionEnd={() => { subGroupNameComposing.current = false; }}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") {
+                                if (e.key === "Enter" && !subGroupNameComposing.current) {
                                   const next = groupNum === 1
                                     ? { ...smallGenreSubGroups, group1Name: subGroupNameInput.trim() || name }
                                     : { ...smallGenreSubGroups, group2Name: subGroupNameInput.trim() || name };
