@@ -62,27 +62,34 @@ export function RouletteSpecial({ wishes, isSpinning, result, pendingResult, pro
     }
   }, [result, isSpinning, animDone]);
 
-  // スピンなしで結果がある場合（モード切替時など）スロットを正しい位置に合わせる
+  // wishesまたはresultが変わったとき（フィルター変更・モード切替など）スロット位置を整合させる
   const resultId = result?.id ?? null;
   useEffect(() => {
-    if (!resultId || isSpinning) return;
-    const wishes = wishesRef.current;
+    if (isSpinning || count === 0) return;
+    if (!resultId) {
+      controls.set({ y: 0 });
+      return;
+    }
     const resultIndex = wishes.findIndex((w) => w.id === resultId);
-    if (resultIndex < 0 || wishes.length === 0) return;
-    const c = wishes.length;
+    if (resultIndex < 0) {
+      // 結果が現在のリストにない（フィルター変更等）→ 先頭にリセット
+      controls.set({ y: 0 });
+      return;
+    }
     const centerOffset = Math.floor(VISIBLE / 2);
-    const targetY = -((resultIndex + 3 * c - centerOffset) * ITEM_HEIGHT);
+    const targetY = -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
     controls.set({ y: targetY });
-  }, [resultId, isSpinning, controls]);
+  }, [resultId, isSpinning, count, wishes, controls]);
 
   useEffect(() => {
     if (isSpinning && !prevSpinning.current && count > 0 && pendingResult) {
-      prevSpinning.current = true;
-      setAnimDone(false);
-
       const currentWishes = wishesRef.current;
       const resultIndex = currentWishes.findIndex((w) => w.id === pendingResult.id);
+      // resultが現在のリストにない場合はprevSpinningをfalseのままにして再試行できるようにする
       if (resultIndex < 0) return;
+
+      prevSpinning.current = true;
+      setAnimDone(false);
 
       const centerOffset = Math.floor(VISIBLE / 2);
       const targetY = -((resultIndex + 3 * count - centerOffset) * ITEM_HEIGHT);
