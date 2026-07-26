@@ -295,6 +295,21 @@ export function useWishes(groupId: string, options?: { statuses?: Status[]; incl
           return n;
         });
         wishCache.set(cacheKeyRef.current, next);
+        // スコア変更を他のcacheKey（ルーレット等）にも伝播
+        if (myScore !== undefined && entry) {
+          for (const [key, cached] of wishCache) {
+            if (key === cacheKeyRef.current || !key.startsWith(`${groupId}:`)) continue;
+            wishCache.set(key, cached.map((w) => {
+              if (w.id !== wishId) return w;
+              const n = { ...w };
+              const filteredVotes = n.votes.filter((v) => v.memberId !== entry.memberId);
+              n.votes = myScore === null ? filteredVotes : [...filteredVotes, { id: "optimistic", wishId, memberId: entry.memberId, score: myScore }];
+              n.avgScore = n.votes.length > 0 ? n.votes.reduce((s, v) => s + v.score, 0) / n.votes.length : 0;
+              n.hasMaxVote = n.votes.some((v) => v.score === 100);
+              return n;
+            }));
+          }
+        }
         return next;
       });
 
