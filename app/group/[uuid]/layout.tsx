@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
-import { getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, getDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
+import { getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, getDefaultExcludeRegionIds, SmallGenreSubGroups } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { JoinGroupForm } from "@/components/group/JoinGroupForm";
 import { useGroupStore } from "@/lib/store/groupStore";
@@ -12,7 +12,7 @@ import { Group, GroupMember } from "@/types";
 export default function GroupLayout({ children }: { children: React.ReactNode }) {
   const { uuid } = useParams<{ uuid: string }>();
   const pathname = usePathname();
-  const { setGroup, setCurrentMember, group } = useGroupStore();
+  const { setGroup, setCurrentMember, setSmallGenreSubGroups, group } = useGroupStore();
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
   const [checking, setChecking] = useState(true);
   const [needsJoin, setNeedsJoin] = useState(false);
@@ -39,8 +39,9 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
         return;
       }
 
-      const g = groupData as Group & { members: GroupMember[] };
+      const g = groupData as Group & { members: GroupMember[]; small_genre_subgroups?: SmallGenreSubGroups };
       setGroup({ id: g.id, name: g.name, members: g.members });
+      if (g.small_genre_subgroups) setSmallGenreSubGroups(g.small_genre_subgroups);
       setGroupName(g.name);
 
       if (!stored) {
@@ -65,7 +66,7 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
     };
 
     init();
-  }, [uuid, setGroup, setCurrentMember]);
+  }, [uuid, setGroup, setCurrentMember, setSmallGenreSubGroups]);
 
   useEffect(() => {
     const defaults = getDefaultExcludeGenreIds(uuid);

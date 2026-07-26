@@ -20,7 +20,7 @@ import { useCsvImport } from "@/hooks/useCsvImport";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
-import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
+import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds, SmallGenreSubGroups } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish, GenreType, GENRE_TYPE_LABELS } from "@/types";
 import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin, GitMerge } from "lucide-react";
@@ -74,6 +74,14 @@ export default function SettingsPage() {
   const [genreLargeSectionOpen, setGenreLargeSectionOpen] = useState(false);
   const [genreMediumSectionOpen, setGenreMediumSectionOpen] = useState(false);
   const [genreSmallSectionOpen, setGenreSmallSectionOpen] = useState(false);
+  const { smallGenreSubGroups, setSmallGenreSubGroups: setSmallGenreSubGroupsStore } = useGroupStore();
+  const setSmallGenreSubGroupsState = useCallback(async (next: SmallGenreSubGroups) => {
+    setSmallGenreSubGroupsStore(next);
+    const supabase = createClient();
+    await supabase.from("groups").update({ small_genre_subgroups: next }).eq("id", uuid);
+  }, [uuid, setSmallGenreSubGroupsStore]);
+  const [editingSubGroupName, setEditingSubGroupName] = useState<1 | 2 | null>(null);
+  const [subGroupNameInput, setSubGroupNameInput] = useState("");
   const [broadRegionSectionOpen, setBroadRegionSectionOpen] = useState(false);
   const [specificRegionSectionOpen, setSpecificRegionSectionOpen] = useState(false);
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
@@ -918,6 +926,60 @@ export default function SettingsPage() {
           const sectionOpen = gtype === "LARGE" ? genreLargeSectionOpen : gtype === "MEDIUM" ? genreMediumSectionOpen : genreSmallSectionOpen;
           const setSectionOpen = gtype === "LARGE" ? setGenreLargeSectionOpen : gtype === "MEDIUM" ? setGenreMediumSectionOpen : setGenreSmallSectionOpen;
           const label = GENRE_TYPE_LABELS[gtype];
+
+          const renderGenreRow = (g: typeof typeGenres[0], idx: number, allInGroup: typeof typeGenres, moveUp: () => void, moveDown: () => void) => (
+            <div key={g.id} className="flex items-center gap-2 py-1">
+              {editingGenreId === g.id ? (
+                <>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <input
+                      className="w-full text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                      value={editingGenreName}
+                      onChange={(e) => setEditingGenreName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleEditGenre(g.id); if (e.key === "Escape") setEditingGenreId(null); }}
+                      autoFocus
+                    />
+                    <div className="flex gap-1">
+                      {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((t) => (
+                        <button key={t} type="button" onClick={() => setEditingGenreType(t)}
+                          className={cn("px-2 py-0.5 rounded text-xs font-medium transition-colors", editingGenreType === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                          {GENRE_TYPE_LABELS[t]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button onClick={() => handleEditGenre(g.id)} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                  <button onClick={() => setEditingGenreId(null)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-col">
+                    <button onClick={moveUp} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={12} /></button>
+                    <button onClick={moveDown} disabled={idx === allInGroup.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={12} /></button>
+                  </div>
+                  <span className="flex-1 text-sm">{g.name}</span>
+                  {gtype === "SMALL" && (
+                    <button
+                      type="button"
+                      title={smallGenreSubGroups.group2Ids.includes(g.id) ? `${smallGenreSubGroups.group1Name}へ移動` : `${smallGenreSubGroups.group2Name}へ移動`}
+                      onClick={() => {
+                        const next = smallGenreSubGroups.group2Ids.includes(g.id)
+                          ? { ...smallGenreSubGroups, group2Ids: smallGenreSubGroups.group2Ids.filter((id) => id !== g.id) }
+                          : { ...smallGenreSubGroups, group2Ids: [...smallGenreSubGroups.group2Ids, g.id] };
+                        setSmallGenreSubGroupsState(next);
+                      }}
+                      className="p-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      {smallGenreSubGroups.group2Ids.includes(g.id) ? "①" : "②"}
+                    </button>
+                  )}
+                  <button onClick={() => { setEditingGenreId(g.id); setEditingGenreName(g.name); setEditingGenreType(g.genreType); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></button>
+                  <button onClick={() => handleDeleteGenre(g.id, g.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={15} /></button>
+                </>
+              )}
+            </div>
+          );
+
           return (
             <section key={gtype} className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
               <div className="flex items-center">
@@ -928,72 +990,65 @@ export default function SettingsPage() {
                 >
                   <Plus size={16} />
                 </button>
-                <button
-                  type="button"
-                  className="p-1.5"
-                  onClick={() => setSectionOpen((v) => !v)}
-                >
+                <button type="button" className="p-1.5" onClick={() => setSectionOpen((v) => !v)}>
                   {sectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
                 </button>
               </div>
               {sectionOpen && (
                 <div className="flex flex-col gap-2">
-                  {typeGenres.map((g, idx) => (
-                    <div key={g.id} className="flex items-center gap-2 py-1">
-                      {editingGenreId === g.id ? (
-                        <>
-                          <div className="flex-1 flex flex-col gap-1">
+                  {gtype === "SMALL" ? (() => {
+                    const group1 = typeGenres.filter((g) => !smallGenreSubGroups.group2Ids.includes(g.id));
+                    const group2 = typeGenres.filter((g) => smallGenreSubGroups.group2Ids.includes(g.id));
+                    const SubGroupHeader = ({ groupNum, name }: { groupNum: 1 | 2; name: string }) => (
+                      <div className="flex items-center gap-1 mt-1 mb-0.5">
+                        {editingSubGroupName === groupNum ? (
+                          <>
                             <input
-                              className="w-full text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                              value={editingGenreName}
-                              onChange={(e) => setEditingGenreName(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === "Enter") handleEditGenre(g.id); if (e.key === "Escape") setEditingGenreId(null); }}
+                              className="flex-1 text-xs border border-border rounded px-2 py-0.5 bg-background"
+                              value={subGroupNameInput}
+                              onChange={(e) => setSubGroupNameInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const next = groupNum === 1
+                                    ? { ...smallGenreSubGroups, group1Name: subGroupNameInput.trim() || name }
+                                    : { ...smallGenreSubGroups, group2Name: subGroupNameInput.trim() || name };
+                                  setSmallGenreSubGroupsState(next);
+                                  setEditingSubGroupName(null);
+                                }
+                                if (e.key === "Escape") setEditingSubGroupName(null);
+                              }}
                               autoFocus
                             />
-                            <div className="flex gap-1">
-                              {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((t) => (
-                                <button
-                                  key={t}
-                                  type="button"
-                                  onClick={() => setEditingGenreType(t)}
-                                  className={cn(
-                                    "px-2 py-0.5 rounded text-xs font-medium transition-colors",
-                                    editingGenreType === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                                  )}
-                                >
-                                  {GENRE_TYPE_LABELS[t]}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <button onClick={() => handleEditGenre(g.id)} className="p-1.5 text-primary transition-colors">
-                            <Check size={15} />
-                          </button>
-                          <button onClick={() => setEditingGenreId(null)} className="p-1.5 text-muted-foreground transition-colors">
-                            <X size={15} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex flex-col">
-                            <button onClick={() => moveGenre(gtype, idx, -1)} disabled={idx === 0} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
-                              <ArrowUp size={12} />
-                            </button>
-                            <button onClick={() => moveGenre(gtype, idx, 1)} disabled={idx === typeGenres.length - 1} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors">
-                              <ArrowDown size={12} />
-                            </button>
-                          </div>
-                          <span className="flex-1 text-sm">{g.name}</span>
-                          <button onClick={() => { setEditingGenreId(g.id); setEditingGenreName(g.name); setEditingGenreType(g.genreType); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                            <Pencil size={15} />
-                          </button>
-                          <button onClick={() => handleDeleteGenre(g.id, g.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors">
-                            <Trash2 size={15} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  ))}
+                            <button onClick={() => {
+                              const next = groupNum === 1
+                                ? { ...smallGenreSubGroups, group1Name: subGroupNameInput.trim() || name }
+                                : { ...smallGenreSubGroups, group2Name: subGroupNameInput.trim() || name };
+                              setSmallGenreSubGroupsState(next);
+                              setEditingSubGroupName(null);
+                            }} className="p-0.5 text-primary"><Check size={12} /></button>
+                            <button onClick={() => setEditingSubGroupName(null)} className="p-0.5 text-muted-foreground"><X size={12} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs font-medium text-muted-foreground flex-1">{name}</span>
+                            <button type="button" onClick={() => { setEditingSubGroupName(groupNum); setSubGroupNameInput(name); }} className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={11} /></button>
+                          </>
+                        )}
+                      </div>
+                    );
+                    return (
+                      <>
+                        <SubGroupHeader groupNum={1} name={smallGenreSubGroups.group1Name} />
+                        {group1.map((g, idx) => renderGenreRow(g, idx, group1, () => moveGenre("SMALL", typeGenres.indexOf(g), -1), () => moveGenre("SMALL", typeGenres.indexOf(g), 1)))}
+                        {group1.length === 0 && <p className="text-xs text-muted-foreground pl-1">（なし）</p>}
+                        <div className="border-t border-border/40 mt-1" />
+                        <SubGroupHeader groupNum={2} name={smallGenreSubGroups.group2Name} />
+                        {group2.map((g, idx) => renderGenreRow(g, idx, group2, () => moveGenre("SMALL", typeGenres.indexOf(g), -1), () => moveGenre("SMALL", typeGenres.indexOf(g), 1)))}
+                        {group2.length === 0 && <p className="text-xs text-muted-foreground pl-1">（なし）</p>}
+                        <p className="text-xs text-muted-foreground">②ボタンで{smallGenreSubGroups.group2Name}へ、①ボタンで{smallGenreSubGroups.group1Name}へ移動</p>
+                      </>
+                    );
+                  })() : typeGenres.map((g, idx) => renderGenreRow(g, idx, typeGenres, () => moveGenre(gtype, idx, -1), () => moveGenre(gtype, idx, 1)))}
                   {addingGenreType === gtype && (
                     <div className="flex items-center gap-2 py-1">
                       <input
@@ -1004,12 +1059,8 @@ export default function SettingsPage() {
                         onKeyDown={(e) => { if (e.key === "Enter") handleAddGenre(); if (e.key === "Escape") setAddingGenreType(null); }}
                         autoFocus
                       />
-                      <button onClick={handleAddGenre} className="p-1.5 text-primary transition-colors">
-                        <Check size={15} />
-                      </button>
-                      <button onClick={() => setAddingGenreType(null)} className="p-1.5 text-muted-foreground transition-colors">
-                        <X size={15} />
-                      </button>
+                      <button onClick={handleAddGenre} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                      <button onClick={() => setAddingGenreType(null)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
                     </div>
                   )}
                   {typeGenres.length === 0 && addingGenreType !== gtype && (

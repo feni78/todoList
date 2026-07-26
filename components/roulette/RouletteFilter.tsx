@@ -27,6 +27,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useGroupStore } from "@/lib/store/groupStore";
 
 interface RouletteFilterProps {
   open: boolean;
@@ -187,6 +188,7 @@ const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100]
 export function RouletteFilter({ open, onClose, members, genres = [], regions = [] }: RouletteFilterProps) {
   const filter = useRouletteStore(useShallow((s) => s.filter));
   const { setFilter, resetFilter } = useRouletteStore.getState();
+  const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
 
   const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
   const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
@@ -262,34 +264,46 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
                       const typeGenres = genres.filter((g) => g.genreType === type);
                       if (typeGenres.length === 0) return null;
                       const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
-                      const allSelected = type === "SMALL" && typeGenres.every((g) => filter.genreIds.includes(g.id));
+                      if (type === "SMALL") {
+                        const group1 = typeGenres.filter((g) => !smallGenreSubGroups.group2Ids.includes(g.id));
+                        const group2 = typeGenres.filter((g) => smallGenreSubGroups.group2Ids.includes(g.id));
+                        const allSelected = typeGenres.every((g) => filter.genreIds.includes(g.id));
+                        return (
+                          <Fragment key={type}>
+                            {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
+                            {group1.length > 0 && (
+                              <>
+                                <div className="w-full text-xs text-muted-foreground font-medium pt-0.5">{smallGenreSubGroups.group1Name}</div>
+                                {group1.map((g) => (
+                                  <FilterChip key={g.id} selected={filter.genreIds.includes(g.id)} onClick={() => setFilter({ genreIds: toggle(filter.genreIds, g.id) })} label={g.name} />
+                                ))}
+                              </>
+                            )}
+                            {group2.length > 0 && (
+                              <>
+                                <div className="w-full border-t border-border/30 my-0.5" />
+                                <div className="w-full text-xs text-muted-foreground font-medium">{smallGenreSubGroups.group2Name}</div>
+                                {group2.map((g) => (
+                                  <FilterChip key={g.id} selected={filter.genreIds.includes(g.id)} onClick={() => setFilter({ genreIds: toggle(filter.genreIds, g.id) })} label={g.name} />
+                                ))}
+                              </>
+                            )}
+                            {typeGenres.length > 1 && (
+                              <div className="w-full">
+                                <button type="button" onClick={() => { const ids = typeGenres.map((g) => g.id); setFilter({ genreIds: allSelected ? filter.genreIds.filter((id) => !ids.includes(id)) : [...new Set([...filter.genreIds, ...ids])] }); }} className="text-xs text-primary hover:underline">
+                                  {allSelected ? "全解除" : "全選択"}
+                                </button>
+                              </div>
+                            )}
+                          </Fragment>
+                        );
+                      }
                       return (
                         <Fragment key={type}>
                           {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
                           {typeGenres.map((g) => (
-                            <FilterChip
-                              key={g.id}
-                              selected={filter.genreIds.includes(g.id)}
-                              onClick={() => setFilter({ genreIds: toggle(filter.genreIds, g.id) })}
-                              label={g.name}
-                            />
+                            <FilterChip key={g.id} selected={filter.genreIds.includes(g.id)} onClick={() => setFilter({ genreIds: toggle(filter.genreIds, g.id) })} label={g.name} />
                           ))}
-                          {type === "SMALL" && typeGenres.length > 1 && (
-                            <div className="w-full">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const ids = typeGenres.map((g) => g.id);
-                                  setFilter({ genreIds: allSelected
-                                    ? filter.genreIds.filter((id) => !ids.includes(id))
-                                    : [...new Set([...filter.genreIds, ...ids])] });
-                                }}
-                                className="text-xs text-primary hover:underline"
-                              >
-                                {allSelected ? "全解除" : "全選択"}
-                              </button>
-                            </div>
-                          )}
                         </Fragment>
                       );
                     })}
@@ -317,35 +331,46 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
                     const typeGenres = genres.filter((g) => g.genreType === type);
                     if (typeGenres.length === 0) return null;
                     const hasPrev = arr.slice(0, i).some((t) => genres.some((g) => g.genreType === t));
-                    const allExcluded = type === "SMALL" && typeGenres.every((g) => filter.excludeGenreIds.includes(g.id));
+                    if (type === "SMALL") {
+                      const group1 = typeGenres.filter((g) => !smallGenreSubGroups.group2Ids.includes(g.id));
+                      const group2 = typeGenres.filter((g) => smallGenreSubGroups.group2Ids.includes(g.id));
+                      const allExcluded = typeGenres.every((g) => filter.excludeGenreIds.includes(g.id));
+                      return (
+                        <Fragment key={type}>
+                          {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
+                          {group1.length > 0 && (
+                            <>
+                              <div className="w-full text-xs text-muted-foreground font-medium pt-0.5">{smallGenreSubGroups.group1Name}</div>
+                              {group1.map((g) => (
+                                <FilterChip key={g.id} selected={filter.excludeGenreIds.includes(g.id)} onClick={() => setFilter({ excludeGenreIds: toggle(filter.excludeGenreIds, g.id) })} label={g.name} variant="exclude" />
+                              ))}
+                            </>
+                          )}
+                          {group2.length > 0 && (
+                            <>
+                              <div className="w-full border-t border-border/30 my-0.5" />
+                              <div className="w-full text-xs text-muted-foreground font-medium">{smallGenreSubGroups.group2Name}</div>
+                              {group2.map((g) => (
+                                <FilterChip key={g.id} selected={filter.excludeGenreIds.includes(g.id)} onClick={() => setFilter({ excludeGenreIds: toggle(filter.excludeGenreIds, g.id) })} label={g.name} variant="exclude" />
+                              ))}
+                            </>
+                          )}
+                          {typeGenres.length > 1 && (
+                            <div className="w-full">
+                              <button type="button" onClick={() => { const ids = typeGenres.map((g) => g.id); setFilter({ excludeGenreIds: allExcluded ? filter.excludeGenreIds.filter((id) => !ids.includes(id)) : [...new Set([...filter.excludeGenreIds, ...ids])] }); }} className="text-xs text-destructive hover:underline">
+                                {allExcluded ? "全解除" : "全選択"}
+                              </button>
+                            </div>
+                          )}
+                        </Fragment>
+                      );
+                    }
                     return (
                       <Fragment key={type}>
                         {hasPrev && <div className="w-full border-t border-border/40 my-0.5" />}
                         {typeGenres.map((g) => (
-                          <FilterChip
-                            key={g.id}
-                            selected={filter.excludeGenreIds.includes(g.id)}
-                            onClick={() => setFilter({ excludeGenreIds: toggle(filter.excludeGenreIds, g.id) })}
-                            label={g.name}
-                            variant="exclude"
-                          />
+                          <FilterChip key={g.id} selected={filter.excludeGenreIds.includes(g.id)} onClick={() => setFilter({ excludeGenreIds: toggle(filter.excludeGenreIds, g.id) })} label={g.name} variant="exclude" />
                         ))}
-                        {type === "SMALL" && typeGenres.length > 1 && (
-                          <div className="w-full">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const ids = typeGenres.map((g) => g.id);
-                                setFilter({ excludeGenreIds: allExcluded
-                                  ? filter.excludeGenreIds.filter((id) => !ids.includes(id))
-                                  : [...new Set([...filter.excludeGenreIds, ...ids])] });
-                              }}
-                              className="text-xs text-destructive hover:underline"
-                            >
-                              {allExcluded ? "全解除" : "全選択"}
-                            </button>
-                          </div>
-                        )}
                       </Fragment>
                     );
                   })

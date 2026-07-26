@@ -105,3 +105,30 @@ export function saveDefaultExcludeRegionIds(groupId: string, ids: string[]): voi
   if (typeof window === "undefined") return;
   localStorage.setItem(`futari_default_exclude_region_${groupId}`, JSON.stringify(ids));
 }
+
+export interface SmallGenreSubGroups {
+  group1Name: string;
+  group2Name: string;
+  group2Ids: string[];
+}
+
+const SMALL_GENRE_SUBGROUPS_DEFAULT: SmallGenreSubGroups = {
+  group1Name: "グループ①",
+  group2Name: "グループ②",
+  group2Ids: [],
+};
+
+export function getSmallGenreSubGroups(groupId: string): SmallGenreSubGroups {
+  if (typeof window === "undefined") return { ...SMALL_GENRE_SUBGROUPS_DEFAULT };
+  try {
+    const raw = localStorage.getItem(`futari_small_genre_subgroups_${groupId}`);
+    return raw ? { ...SMALL_GENRE_SUBGROUPS_DEFAULT, ...(JSON.parse(raw) as Partial<SmallGenreSubGroups>) } : { ...SMALL_GENRE_SUBGROUPS_DEFAULT };
+  } catch {
+    return { ...SMALL_GENRE_SUBGROUPS_DEFAULT };
+  }
+}
+
+export function saveSmallGenreSubGroups(groupId: string, data: SmallGenreSubGroups): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`futari_small_genre_subgroups_${groupId}`, JSON.stringify(data));
+}
