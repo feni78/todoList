@@ -253,13 +253,13 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
           </FilterSection>
 
           {/* お気に入り */}
-          <div className="flex flex-wrap gap-2 py-4 border-t border-border/60">
+          <FilterSection title="お気に入り" count={filter.favoriteOnly ? 1 : 0}>
             <FilterChip
               selected={filter.favoriteOnly}
               onClick={() => setFilter({ favoriteOnly: !filter.favoriteOnly })}
               label="★お気に入りのみ"
             />
-          </div>
+          </FilterSection>
 
           {/* ジャンル */}
           {genres.length > 0 && (
