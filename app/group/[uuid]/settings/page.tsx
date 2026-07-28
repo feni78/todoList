@@ -119,7 +119,6 @@ export default function SettingsPage() {
   const [mismatchManualInputs, setMismatchManualInputs] = useState<Record<string, { lat: string; lng: string }>>({});
   const [savingMismatchId, setSavingMismatchId] = useState<string | null>(null);
   const [mismatchRegionSelections, setMismatchRegionSelections] = useState<Record<string, string[]>>({});
-  const [savingMismatchRegionId, setSavingMismatchRegionId] = useState<string | null>(null);
   const [dismissingMismatchId, setDismissingMismatchId] = useState<string | null>(null);
   const [csvGenreAssignOpen, setCsvGenreAssignOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -873,35 +872,28 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveMismatchRegions = async (item: MismatchItem, regionIds: string[]) => {
-    setSavingMismatchRegionId(item.id);
-    try {
-      const supabase = createClient();
-      await supabase.from("wish_regions").delete().eq("wish_id", item.id);
-      if (regionIds.length > 0) {
-        await supabase.from("wish_regions").insert(regionIds.map((region_id) => ({ wish_id: item.id, region_id })));
-      }
-      toast.success(`「${item.title}」の地域タグを更新しました`);
-      setMismatchItems((prev) => prev.filter((m) => m.id !== item.id));
-    } catch {
-      toast.error("保存に失敗しました");
-    } finally {
-      setSavingMismatchRegionId(null);
-    }
-  };
-
-  const handleSaveMismatchManual = async (item: MismatchItem) => {
+  const handleSaveMismatch = async (item: MismatchItem, selectedRegionIds: string[] | null) => {
     const inputs = mismatchManualInputs[item.id];
-    if (!inputs) return;
-    const lat = parseFloat(inputs.lat);
-    const lng = parseFloat(inputs.lng);
-    if (isNaN(lat) || isNaN(lng)) return;
+    const latNum = inputs?.lat ? parseFloat(inputs.lat) : NaN;
+    const lngNum = inputs?.lng ? parseFloat(inputs.lng) : NaN;
+    const hasLatLng = !isNaN(latNum) && !isNaN(lngNum);
+    const hasRegions = selectedRegionIds !== null;
+    if (!hasRegions && !hasLatLng) return;
     setSavingMismatchId(item.id);
     try {
       const supabase = createClient();
-      await supabase.from("wishes").update({ latitude: lat, longitude: lng }).eq("id", item.id);
-      toast.success(`「${item.title}」の緯度経度を更新しました`);
+      if (hasRegions) {
+        await supabase.from("wish_regions").delete().eq("wish_id", item.id);
+        if (selectedRegionIds!.length > 0) {
+          await supabase.from("wish_regions").insert(selectedRegionIds!.map((region_id) => ({ wish_id: item.id, region_id })));
+        }
+      }
+      if (hasLatLng) {
+        await supabase.from("wishes").update({ latitude: latNum, longitude: lngNum }).eq("id", item.id);
+      }
+      toast.success(`「${item.title}」を更新しました`);
       setMismatchItems((prev) => prev.filter((m) => m.id !== item.id));
+      setMismatchManualInputs((prev) => { const n = { ...prev }; delete n[item.id]; return n; });
     } catch {
       toast.error("保存に失敗しました");
     } finally {
@@ -2264,12 +2256,6 @@ export default function SettingsPage() {
                                     </div>
                                   </div>
                                 )}
-                                <Button size="sm" variant="outline" className="w-full h-7 text-xs"
-                                  disabled={savingMismatchRegionId === item.id}
-                                  onClick={() => handleSaveMismatchRegions(item, selected)}
-                                >
-                                  {savingMismatchRegionId === item.id ? "保存中..." : "地域タグを保存"}
-                                </Button>
                               </div>
                             )}
                           </div>
@@ -2287,49 +2273,57 @@ export default function SettingsPage() {
                           {fixingMismatchId === item.id ? "取得中..." : "URLからlat/lngを再取得"}
                         </Button>
                       )}
-                      <div className="flex gap-1.5 items-end">
-                        <div className="flex-1 flex flex-col gap-0.5">
-                          <label className="text-[10px] text-muted-foreground">緯度</label>
-                          <input
-                            type="number"
-                            step="any"
-                            placeholder="35.6812"
-                            value={mismatchManualInputs[item.id]?.lat ?? ""}
-                            onChange={(e) => setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: e.target.value, lng: prev[item.id]?.lng ?? "" } }))}
-                            onPaste={(e) => {
-                              const text = e.clipboardData.getData("text");
-                              const match = text.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-                              if (match) { e.preventDefault(); setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: match[1], lng: match[2] } })); }
-                            }}
-                            className="w-full px-2 py-1 rounded-lg border border-border bg-background text-xs"
-                          />
-                        </div>
-                        <div className="flex-1 flex flex-col gap-0.5">
-                          <label className="text-[10px] text-muted-foreground">経度</label>
-                          <input
-                            type="number"
-                            step="any"
-                            placeholder="139.7670"
-                            value={mismatchManualInputs[item.id]?.lng ?? ""}
-                            onChange={(e) => setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: prev[item.id]?.lat ?? "", lng: e.target.value } }))}
-                            className="w-full px-2 py-1 rounded-lg border border-border bg-background text-xs"
-                          />
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs shrink-0"
-                          disabled={
-                            savingMismatchId === item.id || fixingMismatchId === item.id ||
-                            !mismatchManualInputs[item.id]?.lat || !mismatchManualInputs[item.id]?.lng ||
-                            isNaN(parseFloat(mismatchManualInputs[item.id]?.lat ?? "")) ||
-                            isNaN(parseFloat(mismatchManualInputs[item.id]?.lng ?? ""))
-                          }
-                          onClick={() => handleSaveMismatchManual(item)}
-                        >
-                          {savingMismatchId === item.id ? "保存中..." : "保存"}
-                        </Button>
-                      </div>
+                      {(() => {
+                        const tagOpen = !!(mismatchRegionSelections[item.id]);
+                        const selected = mismatchRegionSelections[item.id] ?? item.currentRegions.map((name) => regions.find((r) => r.name === name)?.id).filter((id): id is string => Boolean(id));
+                        const inputs = mismatchManualInputs[item.id];
+                        const latNum = inputs?.lat ? parseFloat(inputs.lat) : NaN;
+                        const lngNum = inputs?.lng ? parseFloat(inputs.lng) : NaN;
+                        const hasLatLng = !isNaN(latNum) && !isNaN(lngNum);
+                        const canSave = tagOpen || hasLatLng;
+                        return (
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex gap-1.5 items-end">
+                              <div className="flex-1 flex flex-col gap-0.5">
+                                <label className="text-[10px] text-muted-foreground">緯度</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  placeholder="35.6812"
+                                  value={inputs?.lat ?? ""}
+                                  onChange={(e) => setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: e.target.value, lng: prev[item.id]?.lng ?? "" } }))}
+                                  onPaste={(e) => {
+                                    const text = e.clipboardData.getData("text");
+                                    const match = text.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+                                    if (match) { e.preventDefault(); setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: match[1], lng: match[2] } })); }
+                                  }}
+                                  className="w-full px-2 py-1 rounded-lg border border-border bg-background text-xs"
+                                />
+                              </div>
+                              <div className="flex-1 flex flex-col gap-0.5">
+                                <label className="text-[10px] text-muted-foreground">経度</label>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  placeholder="139.7670"
+                                  value={inputs?.lng ?? ""}
+                                  onChange={(e) => setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: prev[item.id]?.lat ?? "", lng: e.target.value } }))}
+                                  className="w-full px-2 py-1 rounded-lg border border-border bg-background text-xs"
+                                />
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full h-7 text-xs"
+                              disabled={savingMismatchId === item.id || fixingMismatchId === item.id || !canSave}
+                              onClick={() => handleSaveMismatch(item, tagOpen ? selected : null)}
+                            >
+                              {savingMismatchId === item.id ? "保存中..." : "保存"}
+                            </Button>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="flex justify-end mt-2">
                       <Button
