@@ -43,6 +43,7 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [fullImporting, setFullImporting] = useState(false);
   const [wishCount, setWishCount] = useState<number | null>(null);
   const [regionlessCount, setRegionlessCount] = useState<number | null>(null);
   const [locationlessCount, setLocationlessCount] = useState<number | null>(null);
@@ -50,6 +51,7 @@ export default function SettingsPage() {
   const [wishesLoadingLocal, setWishesLoadingLocal] = useState(false);
   const wishesLoadingRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fullFileInputRef = useRef<HTMLInputElement>(null);
   const [editingGroupName, setEditingGroupName] = useState(false);
   const [groupNameInput, setGroupNameInput] = useState("");
   const [switchingUser, setSwitchingUser] = useState(false);
@@ -263,6 +265,229 @@ export default function SettingsPage() {
     await supabase.from("groups").update({ last_exported_at: now }).eq("id", uuid);
     setLastExportedAt(now);
     toast.success("エクスポートしました");
+  };
+
+  const handleFullExport = async () => {
+    await ensureWishesLoaded();
+    const supabase = createClient();
+
+    const { data: presetRows } = await supabase
+      .from("csv_genre_file_presets")
+      .select("file_name, large_genre_id, medium_genre_id")
+      .eq("group_id", uuid);
+
+    const genreIdToName = new Map(genres.map((g) => [g.id, g.name]));
+
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      groupName: group?.name ?? "",
+      considerLevel: settings.considerLevel,
+      smallGenreSubGroups: smallGenreSubGroups ?? {},
+      genres: genres.map((g, i) => ({ name: g.name, genreType: g.genreType, sortOrder: i })),
+      regions: regions.map((r) => ({ name: r.name })),
+      csvGenreFilePresets: (presetRows ?? []).map((p) => ({
+        fileName: (p as { file_name: string; large_genre_id: string | null; medium_genre_id: string | null }).file_name,
+        largeGenreName: (p as { large_genre_id: string | null }).large_genre_id ? genreIdToName.get((p as { large_genre_id: string }).large_genre_id) ?? null : null,
+        mediumGenreName: (p as { medium_genre_id: string | null }).medium_genre_id ? genreIdToName.get((p as { medium_genre_id: string }).medium_genre_id) ?? null : null,
+      })),
+      wishes: wishesRef.current.map((w) => ({
+        title: w.title,
+        situation: w.situation,
+        status: w.status,
+        memo: w.memo ?? null,
+        budget: w.budget ?? null,
+        duration: w.duration ?? null,
+        seasons: w.seasons,
+        genres: w.genres.map((g) => ({ name: g.name, genreType: g.genreType })),
+        regions: w.regions.map((r) => r.name),
+        isFavorite: w.isFavorite,
+        doneAt: w.doneAt,
+        latitude: w.latitude ?? null,
+        longitude: w.longitude ?? null,
+      })),
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `yaritai_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("フルバックアップをエクスポートしました");
+  };
+
+  const handleFullImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!confirm("現在のデータに上書き・追加します。よろしいですか？")) {
+      if (fullFileInputRef.current) fullFileInputRef.current.value = "";
+      return;
+    }
+    setFullImporting(true);
+    await ensureWishesLoaded();
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as {
+        version: number;
+        groupName?: string;
+        considerLevel?: number;
+        smallGenreSubGroups?: SmallGenreSubGroups;
+        genres?: { name: string; genreType: string; sortOrder: number }[];
+        regions?: { name: string }[];
+        csvGenreFilePresets?: { fileName: string; largeGenreName: string | null; mediumGenreName: string | null }[];
+        wishes?: ImportItem[];
+      };
+      if (!data || typeof data !== "object" || data.version !== 1) throw new Error("不正なフォーマットです");
+
+      const supabase = createClient();
+      const genreCache = new Map(genres.map((g) => [g.name, g.id]));
+      const regionCache = new Map(regions.map((r) => [r.name, r.id]));
+
+      // グループ名
+      if (data.groupName && typeof data.groupName === "string" && group) {
+        await supabase.from("groups").update({ name: data.groupName }).eq("id", uuid);
+        setGroup({ ...group, name: data.groupName });
+      }
+
+      // 忖度レベル
+      if (typeof data.considerLevel === "number") {
+        await saveRouletteSettings(uuid, { considerLevel: data.considerLevel });
+        setSettings({ considerLevel: data.considerLevel });
+      }
+
+      // 小ジャンルサブグループ
+      if (data.smallGenreSubGroups && typeof data.smallGenreSubGroups === "object") {
+        await setSmallGenreSubGroupsState(data.smallGenreSubGroups as SmallGenreSubGroups);
+      }
+
+      // ジャンル（不足分を追加）
+      if (Array.isArray(data.genres)) {
+        for (const g of data.genres) {
+          if (!genreCache.has(g.name)) {
+            const { data: created } = await supabase
+              .from("genres")
+              .insert({ group_id: uuid, name: g.name, genre_type: g.genreType, sort_order: g.sortOrder })
+              .select("id")
+              .single();
+            if (created) genreCache.set(g.name, (created as { id: string }).id);
+          }
+        }
+      }
+
+      // 地域（不足分を追加）
+      if (Array.isArray(data.regions)) {
+        for (const r of data.regions) {
+          if (!regionCache.has(r.name)) {
+            const { data: created } = await supabase
+              .from("regions")
+              .insert({ group_id: uuid, name: r.name })
+              .select("id")
+              .single();
+            if (created) regionCache.set(r.name, (created as { id: string }).id);
+          }
+        }
+      }
+
+      // CSVジャンルプリセット（upsert）
+      if (Array.isArray(data.csvGenreFilePresets)) {
+        for (const p of data.csvGenreFilePresets) {
+          const largeGenreId = p.largeGenreName ? (genreCache.get(p.largeGenreName) ?? null) : null;
+          const mediumGenreId = p.mediumGenreName ? (genreCache.get(p.mediumGenreName) ?? null) : null;
+          await supabase.from("csv_genre_file_presets").upsert({
+            group_id: uuid,
+            file_name: p.fileName,
+            large_genre_id: largeGenreId,
+            medium_genre_id: mediumGenreId,
+          }, { onConflict: "group_id,file_name" });
+        }
+      }
+
+      // タスク（重複スキップ）
+      let imported = 0;
+      let skipped = 0;
+      if (Array.isArray(data.wishes)) {
+        const resolveGenreIds = async (items: ExportGenre[]) => {
+          const ids: string[] = [];
+          for (const item of items) {
+            const name = typeof item === "string" ? item : item.name;
+            const genreType = typeof item === "string" ? "MEDIUM" : (item.genreType ?? "MEDIUM");
+            if (genreCache.has(name)) {
+              ids.push(genreCache.get(name)!);
+            } else {
+              const { data: created } = await supabase
+                .from("genres")
+                .insert({ group_id: uuid, name, genre_type: genreType })
+                .select("id")
+                .single();
+              if (created) { genreCache.set(name, (created as { id: string }).id); ids.push((created as { id: string }).id); }
+            }
+          }
+          return ids;
+        };
+        const resolveRegionIds = async (names: string[]) => {
+          const ids: string[] = [];
+          for (const name of names) {
+            if (regionCache.has(name)) {
+              ids.push(regionCache.get(name)!);
+            } else {
+              const { data: created } = await supabase.from("regions").insert({ group_id: uuid, name }).select("id").single();
+              if (created) { regionCache.set(name, (created as { id: string }).id); ids.push((created as { id: string }).id); }
+            }
+          }
+          return ids;
+        };
+
+        for (const item of data.wishes) {
+          if (!item.title) continue;
+          const isDuplicate = wishesRef.current.some(
+            (w) =>
+              w.title === item.title &&
+              w.situation === (item.situation ?? "HOME") &&
+              w.status === (item.status ?? "PENDING") &&
+              (w.memo ?? "") === (item.memo ?? "") &&
+              (w.budget ?? "") === (item.budget ?? "") &&
+              (w.duration ?? "") === (item.duration ?? "") &&
+              JSON.stringify([...(w.seasons ?? [])].sort()) === JSON.stringify([...(item.seasons ?? [])].sort())
+          );
+          if (isDuplicate) { skipped++; continue; }
+
+          const genreIds = await resolveGenreIds(item.genres ?? []);
+          const regionIds = await resolveRegionIds(item.regions ?? []);
+          const created = await createWish({
+            title: item.title,
+            situation: item.situation ?? "HOME",
+            status: item.status ?? "PENDING",
+            memo: item.memo,
+            budget: item.budget,
+            duration: item.duration,
+            seasons: item.seasons ?? [],
+            genreIds,
+            regionIds,
+          });
+          const extra: Record<string, unknown> = {};
+          if (item.doneAt) extra.done_at = item.doneAt;
+          if (item.latitude != null) extra.latitude = item.latitude;
+          if (item.longitude != null) extra.longitude = item.longitude;
+          if (item.isFavorite) extra.is_favorite = item.isFavorite;
+          if (Object.keys(extra).length > 0) {
+            await supabase.from("wishes").update(extra).eq("id", (created as { id: string }).id);
+          }
+          imported++;
+        }
+      }
+
+      const parts: string[] = [];
+      if (imported > 0) parts.push(`タスク${imported}件をインポート`);
+      if (skipped > 0) parts.push(`重複${skipped}件スキップ`);
+      toast.success(parts.length > 0 ? parts.join("、") : "フルバックアップを復元しました");
+    } catch {
+      toast.error("インポートに失敗しました");
+    } finally {
+      setFullImporting(false);
+      if (fullFileInputRef.current) fullFileInputRef.current.value = "";
+    }
   };
 
   type ExportGenre = { name: string; genreType: string } | string;
@@ -1047,6 +1272,23 @@ export default function SettingsPage() {
               {importing ? "インポート中..." : "インポート"}
             </Button>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+          </div>
+          <div className="border-t border-border pt-4 flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">フルバックアップ：タスクに加えてジャンル・地域・ルーレット設定なども含めてエクスポート／インポートできます</p>
+            <Button variant="outline" onClick={handleFullExport} className="w-full gap-2" disabled={wishesLoadingLocal}>
+              <Upload size={16} />
+              {wishesLoadingLocal ? "読み込み中..." : "フルバックアップ エクスポート"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => fullFileInputRef.current?.click()}
+              disabled={fullImporting}
+              className="w-full gap-2"
+            >
+              <Download size={16} />
+              {fullImporting ? "インポート中..." : "フルバックアップ インポート"}
+            </Button>
+            <input ref={fullFileInputRef} type="file" accept=".json" className="hidden" onChange={handleFullImport} />
           </div>
         </section>
 
