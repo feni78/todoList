@@ -120,6 +120,7 @@ export default function SettingsPage() {
   const [savingMismatchId, setSavingMismatchId] = useState<string | null>(null);
   const [mismatchRegionSelections, setMismatchRegionSelections] = useState<Record<string, string[]>>({});
   const [savingMismatchRegionId, setSavingMismatchRegionId] = useState<string | null>(null);
+  const [dismissingMismatchId, setDismissingMismatchId] = useState<string | null>(null);
   const [csvGenreAssignOpen, setCsvGenreAssignOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
@@ -778,6 +779,7 @@ export default function SettingsPage() {
           .select("id, title, latitude, longitude, memo, wish_regions(region:regions(name))")
           .eq("group_id", uuid)
           .is("deleted_at", null)
+          .neq("region_check_ok", true)
           .not("latitude", "is", null)
           .not("longitude", "is", null)
           .order("id")
@@ -904,6 +906,19 @@ export default function SettingsPage() {
       toast.error("保存に失敗しました");
     } finally {
       setSavingMismatchId(null);
+    }
+  };
+
+  const handleDismissMismatch = async (item: MismatchItem) => {
+    setDismissingMismatchId(item.id);
+    try {
+      const supabase = createClient();
+      await supabase.from("wishes").update({ region_check_ok: true }).eq("id", item.id);
+      setMismatchItems((prev) => prev.filter((m) => m.id !== item.id));
+    } catch {
+      toast.error("保存に失敗しました");
+    } finally {
+      setDismissingMismatchId(null);
     }
   };
 
@@ -2315,6 +2330,17 @@ export default function SettingsPage() {
                           {savingMismatchId === item.id ? "保存中..." : "保存"}
                         </Button>
                       </div>
+                    </div>
+                    <div className="flex justify-end mt-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs text-muted-foreground"
+                        disabled={dismissingMismatchId === item.id}
+                        onClick={() => handleDismissMismatch(item)}
+                      >
+                        {dismissingMismatchId === item.id ? "処理中..." : "今後表示しない"}
+                      </Button>
                     </div>
                   </div>
                 ))}
