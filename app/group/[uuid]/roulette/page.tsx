@@ -16,7 +16,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useGroup } from "@/hooks/useGroup";
 import { getDefaultExcludeGenreIds, getDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
-import { SlidersHorizontal, RefreshCw, Loader2 } from "lucide-react";
+import { SlidersHorizontal, RefreshCw, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { computeProbabilities } from "@/lib/utils/roulette";
@@ -231,16 +231,30 @@ export default function RoulettePage() {
           )}
         </div>
 
-        {wishesLoading ? (
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <Loader2 size={12} className="animate-spin" />
-            読み込み中...
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            対象: {filteredWishes.length}件 · 忖度レベル: {settings.considerLevel}%
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          {wishesLoading ? (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" />
+              読み込み中...
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              対象: {filteredWishes.length}件 · 忖度レベル: {settings.considerLevel}%
+            </p>
+          )}
+          <button
+            onClick={() => setFilter({ favoriteOnly: !filter.favoriteOnly })}
+            className={cn(
+              "flex items-center gap-1 text-xs px-2 py-1 rounded-full border transition-colors",
+              filter.favoriteOnly
+                ? "border-yellow-400 text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30"
+                : "border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Star size={11} fill={filter.favoriteOnly ? "currentColor" : "none"} />
+            お気に入り
+          </button>
+        </div>
       </div>
 
       <RouletteFilter

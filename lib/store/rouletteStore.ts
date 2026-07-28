@@ -5,6 +5,7 @@ type RouletteMode = "normal" | "special";
 
 interface RouletteFilter extends Omit<FilterState, "statuses" | "searchQuery"> {
   statuses: Status[];
+  favoriteOnly: boolean;
 }
 
 interface RouletteState {
@@ -52,6 +53,7 @@ const defaultFilter: RouletteFilter = {
   excludeRegionIds: [],
   nearbyKm: null,
   stationName: null,
+  favoriteOnly: false,
 };
 
 export const useRouletteStore = create<RouletteState>((set) => ({

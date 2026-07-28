@@ -49,6 +49,7 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
       if (!userLocation || w.latitude == null || w.longitude == null) return false;
       if (haversineKm(userLocation.lat, userLocation.lng, w.latitude, w.longitude) > filter.nearbyKm) return false;
     }
+    if (filter.favoriteOnly && !w.isFavorite) return false;
     return true;
   }), [wishes, filter, userLocation, regions]);
 
