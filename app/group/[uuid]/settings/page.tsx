@@ -118,6 +118,8 @@ export default function SettingsPage() {
   const [fixingMismatchId, setFixingMismatchId] = useState<string | null>(null);
   const [mismatchManualInputs, setMismatchManualInputs] = useState<Record<string, { lat: string; lng: string }>>({});
   const [savingMismatchId, setSavingMismatchId] = useState<string | null>(null);
+  const [mismatchRegionSelections, setMismatchRegionSelections] = useState<Record<string, string[]>>({});
+  const [savingMismatchRegionId, setSavingMismatchRegionId] = useState<string | null>(null);
   const [csvGenreAssignOpen, setCsvGenreAssignOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
@@ -799,6 +801,23 @@ export default function SettingsPage() {
       toast.error(`更新失敗: ${err instanceof Error ? err.message : "不明なエラー"}`);
     } finally {
       setFixingMismatchId(null);
+    }
+  };
+
+  const handleSaveMismatchRegions = async (item: MismatchItem, regionIds: string[]) => {
+    setSavingMismatchRegionId(item.id);
+    try {
+      const supabase = createClient();
+      await supabase.from("wish_regions").delete().eq("wish_id", item.id);
+      if (regionIds.length > 0) {
+        await supabase.from("wish_regions").insert(regionIds.map((region_id) => ({ wish_id: item.id, region_id })));
+      }
+      toast.success(`「${item.title}」の地域タグを更新しました`);
+      setMismatchItems((prev) => prev.filter((m) => m.id !== item.id));
+    } catch {
+      toast.error("保存に失敗しました");
+    } finally {
+      setSavingMismatchRegionId(null);
     }
   };
 
@@ -2110,6 +2129,63 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1.5 pt-1 border-t border-border/60">
+                      {/* 地域タグ手動設定 */}
+                      {(() => {
+                        const selected = mismatchRegionSelections[item.id] ?? item.currentRegions.map((name) => regions.find((r) => r.name === name)?.id).filter((id): id is string => Boolean(id));
+                        const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+                        const specificRegions = regions.filter((r) => !isBroadRegionTag(r.name));
+                        const toggle = (id: string) => {
+                          const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+                          setMismatchRegionSelections((prev) => ({ ...prev, [item.id]: next }));
+                        };
+                        return (
+                          <div className="flex flex-col gap-1.5">
+                            {broadRegions.length > 0 && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[10px] text-muted-foreground font-medium">中地域</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {broadRegions.map((r) => (
+                                    <button
+                                      key={r.id}
+                                      type="button"
+                                      onClick={() => toggle(r.id)}
+                                      className={cn("px-2 py-0.5 rounded-lg text-xs font-medium transition-colors", selected.includes(r.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                                    >
+                                      {r.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {specificRegions.length > 0 && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[10px] text-muted-foreground font-medium">小地域</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {specificRegions.map((r) => (
+                                    <button
+                                      key={r.id}
+                                      type="button"
+                                      onClick={() => toggle(r.id)}
+                                      className={cn("px-2 py-0.5 rounded-lg text-xs font-medium transition-colors", selected.includes(r.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                                    >
+                                      {r.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full h-7 text-xs gap-1"
+                              disabled={savingMismatchRegionId === item.id}
+                              onClick={() => handleSaveMismatchRegions(item, selected)}
+                            >
+                              {savingMismatchRegionId === item.id ? "保存中..." : "地域タグを保存"}
+                            </Button>
+                          </div>
+                        );
+                      })()}
                       {item.memoUrl && (
                         <Button
                           size="sm"
