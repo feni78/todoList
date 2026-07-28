@@ -26,7 +26,7 @@ import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useShallow } from "zustand/react/shallow";
 import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Star } from "lucide-react";
 import { useGroupStore } from "@/lib/store/groupStore";
 
 interface RouletteFilterProps {
@@ -63,13 +63,14 @@ function FilterChip({ selected, onClick, label, variant = "default" }: {
   );
 }
 
-function FilterSection({ title, children, collapsible = false, defaultOpen = true, noDivider = false, count = 0 }: {
+function FilterSection({ title, children, collapsible = false, defaultOpen = true, noDivider = false, count = 0, right }: {
   title: string;
   children: React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
   noDivider?: boolean;
   count?: number;
+  right?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(collapsible ? defaultOpen : true);
   return (
@@ -88,6 +89,7 @@ function FilterSection({ title, children, collapsible = false, defaultOpen = tru
           )}
           {collapsible && (open ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />)}
         </button>
+        {right}
       </div>
       {open && <div className="flex flex-wrap gap-2">{children}</div>}
     </div>
@@ -219,7 +221,8 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
     filter.regionIds.length > 0 ||
     filter.excludeRegionIds.length > 0 ||
     filter.nearbyKm !== null ||
-    filter.scoreFilter !== null;
+    filter.scoreFilter !== null ||
+    filter.favoriteOnly;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -230,7 +233,25 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
 
         <div className="flex flex-col">
           {/* 実施済み */}
-          <FilterSection title="実施済み" noDivider>
+          <FilterSection
+            title="実施済み"
+            noDivider
+            right={
+              <button
+                type="button"
+                onClick={() => setFilter({ favoriteOnly: !filter.favoriteOnly })}
+                className={cn(
+                  "flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl border transition-colors shrink-0",
+                  filter.favoriteOnly
+                    ? "border-yellow-400 text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Star size={11} fill={filter.favoriteOnly ? "currentColor" : "none"} />
+                お気に入り
+              </button>
+            }
+          >
             <FilterChip
               selected={filter.statuses.includes("DONE") && filter.statuses.includes("PENDING")}
               onClick={() => {
