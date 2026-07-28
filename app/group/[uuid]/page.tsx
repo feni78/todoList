@@ -236,6 +236,8 @@ export default function ListPage() {
 
     if (sortOrder === "priority") {
       result.sort((a, b) => b.avgScore - a.avgScore);
+    } else {
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     return result;
