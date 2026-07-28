@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
-import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses, toBroadRegionTag, toSpecificRegionTag } from "@/lib/utils/regionTag";
 import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
@@ -107,6 +107,15 @@ export default function SettingsPage() {
   const [mergeRegionTags, setMergeRegionTags] = useState(true);
   const [merging, setMerging] = useState(false);
   const [retryLocationDialogOpen, setRetryLocationDialogOpen] = useState(false);
+  const [checkingMismatch, setCheckingMismatch] = useState(false);
+  interface MismatchItem {
+    id: string; title: string; latitude: number; longitude: number;
+    memoUrl: string | null; currentRegions: string[];
+    geocodedBroad: string | null; geocodedSpecific: string | null;
+  }
+  const [mismatchItems, setMismatchItems] = useState<MismatchItem[]>([]);
+  const [mismatchDialogOpen, setMismatchDialogOpen] = useState(false);
+  const [fixingMismatchId, setFixingMismatchId] = useState<string | null>(null);
   const [csvGenreAssignOpen, setCsvGenreAssignOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
@@ -680,6 +689,92 @@ export default function SettingsPage() {
       toast.error("位置情報の再取得に失敗しました");
     } finally {
       setRetryingLocation(false);
+    }
+  };
+
+  const handleCheckRegionMismatch = async () => {
+    setCheckingMismatch(true);
+    try {
+      const supabase = createClient();
+      type WishRow = { id: string; title: string; latitude: number; longitude: number; memo: string | null; wish_regions: { region: { name: string } | null }[] };
+      let allWishes: WishRow[] = [];
+      let from = 0;
+      const PAGE = 200;
+      while (true) {
+        const { data, error } = await supabase
+          .from("wishes")
+          .select("id, title, latitude, longitude, memo, wish_regions(region:regions(name))")
+          .eq("group_id", uuid)
+          .is("deleted_at", null)
+          .not("latitude", "is", null)
+          .not("longitude", "is", null)
+          .order("id")
+          .range(from, from + PAGE - 1);
+        if (error || !data) break;
+        allWishes = allWishes.concat(data as unknown as WishRow[]);
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+
+      const CONCURRENCY = 3;
+      const mismatches: MismatchItem[] = [];
+      for (let i = 0; i < allWishes.length; i += CONCURRENCY) {
+        const batch = allWishes.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map(async (w) => {
+          try {
+            const resp = await fetch("/api/geocode/reverse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lat: w.latitude, lng: w.longitude }),
+            });
+            if (!resp.ok) return;
+            const { prefecture, city } = await resp.json() as { prefecture: string | null; city: string | null };
+            if (!prefecture || !city) return;
+            const geocodedBroad = toBroadRegionTag(prefecture, city);
+            const geocodedSpecific = toSpecificRegionTag(prefecture, city);
+            const currentNames = (w.wish_regions ?? []).map((wr) => wr.region?.name).filter((n): n is string => Boolean(n));
+            const broadMatch = !geocodedBroad || currentNames.includes(geocodedBroad);
+            const specificMatch = !geocodedSpecific || currentNames.includes(geocodedSpecific);
+            if (!broadMatch || !specificMatch) {
+              const memoLines = w.memo?.split("\n") ?? [];
+              const lastLine = memoLines[memoLines.length - 1]?.trim() ?? "";
+              const memoUrl = /^https?:\/\//.test(lastLine) ? lastLine : null;
+              mismatches.push({ id: w.id, title: w.title, latitude: w.latitude, longitude: w.longitude, memoUrl, currentRegions: currentNames, geocodedBroad, geocodedSpecific });
+            }
+          } catch { /* ignore individual failures */ }
+        }));
+      }
+      setMismatchItems(mismatches);
+      setMismatchDialogOpen(true);
+    } catch {
+      toast.error("チェックに失敗しました");
+    } finally {
+      setCheckingMismatch(false);
+    }
+  };
+
+  const handleFixMismatch = async (item: MismatchItem) => {
+    if (!item.memoUrl) return;
+    setFixingMismatchId(item.id);
+    try {
+      const resp = await fetch("/api/places/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: item.memoUrl, name: item.title }),
+      });
+      if (!resp.ok) {
+        const e = await resp.json().catch(() => ({})) as { error?: string };
+        throw new Error(e.error ?? `HTTP ${resp.status}`);
+      }
+      const place = await resp.json() as { placeId: string; latitude: number; longitude: number };
+      const supabase = createClient();
+      await supabase.from("wishes").update({ place_id: place.placeId, latitude: place.latitude, longitude: place.longitude }).eq("id", item.id);
+      toast.success(`「${item.title}」の緯度経度を更新しました`);
+      setMismatchItems((prev) => prev.filter((m) => m.id !== item.id));
+    } catch (err) {
+      toast.error(`更新失敗: ${err instanceof Error ? err.message : "不明なエラー"}`);
+    } finally {
+      setFixingMismatchId(null);
     }
   };
 
@@ -1833,6 +1928,15 @@ export default function SettingsPage() {
             <GitMerge size={16} />
             {merging ? "統合中..." : wishesLoadingLocal ? "読み込み中..." : "重複を統合"}
           </Button>
+          <Button
+            variant="outline"
+            onClick={handleCheckRegionMismatch}
+            disabled={checkingMismatch}
+            className="w-full gap-2"
+          >
+            <MapPin size={16} />
+            {checkingMismatch ? "チェック中..." : "地域タグ不一致をチェック"}
+          </Button>
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
@@ -1924,6 +2028,63 @@ export default function SettingsPage() {
             >
               統合する
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={mismatchDialogOpen} onOpenChange={setMismatchDialogOpen}>
+        <DialogContent className="max-w-md w-full max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>地域タグ不一致チェック結果</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 flex flex-col gap-2 py-2">
+            {mismatchItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">不一致のアイテムはありませんでした 🎉</p>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">{mismatchItems.length}件の不一致が見つかりました。lat/lngが古い位置を指している可能性があります。</p>
+                {mismatchItems.map((item) => (
+                  <div key={item.id} className="border border-border rounded-xl p-3 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium flex-1 min-w-0 break-words">{item.title}</p>
+                      {item.memoUrl && (
+                        <a href={item.memoUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-muted-foreground hover:text-primary transition-colors">
+                          <MapPin size={14} />
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1 text-xs">
+                      <div className="flex gap-1.5">
+                        <span className="text-muted-foreground shrink-0">現在のタグ:</span>
+                        <span className="text-foreground">{item.currentRegions.join(", ") || "なし"}</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <span className="text-muted-foreground shrink-0">lat/lngから:</span>
+                        <span className="text-destructive">{[item.geocodedBroad, item.geocodedSpecific].filter(Boolean).join(", ") || "取得不可"}</span>
+                      </div>
+                      <div className="flex gap-1.5 text-muted-foreground/60">
+                        <span className="shrink-0">座標:</span>
+                        <span>{item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}</span>
+                      </div>
+                    </div>
+                    {item.memoUrl && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="self-end h-7 text-xs gap-1"
+                        disabled={fixingMismatchId === item.id}
+                        onClick={() => handleFixMismatch(item)}
+                      >
+                        <MapPin size={12} />
+                        {fixingMismatchId === item.id ? "取得中..." : "URLからlat/lngを再取得"}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMismatchDialogOpen(false)}>閉じる</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
