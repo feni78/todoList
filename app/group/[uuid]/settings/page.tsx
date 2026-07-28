@@ -2129,60 +2129,67 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1.5 pt-1 border-t border-border/60">
-                      {/* 地域タグ手動設定 */}
+                      {/* 地域タグ手動設定（折りたたみ） */}
                       {(() => {
+                        const tagOpen = !!(mismatchRegionSelections[item.id]);
                         const selected = mismatchRegionSelections[item.id] ?? item.currentRegions.map((name) => regions.find((r) => r.name === name)?.id).filter((id): id is string => Boolean(id));
                         const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
-                        const specificRegions = regions.filter((r) => !isBroadRegionTag(r.name));
+                        const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))].sort((a, b) => {
+                          const [ga, na] = specificRegionSortKey(a.name);
+                          const [gb, nb] = specificRegionSortKey(b.name);
+                          return ga !== gb ? ga - gb : na.localeCompare(nb, "ja");
+                        });
                         const toggle = (id: string) => {
                           const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
                           setMismatchRegionSelections((prev) => ({ ...prev, [item.id]: next }));
                         };
                         return (
                           <div className="flex flex-col gap-1.5">
-                            {broadRegions.length > 0 && (
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[10px] text-muted-foreground font-medium">中地域</span>
-                                <div className="flex flex-wrap gap-1">
-                                  {broadRegions.map((r) => (
-                                    <button
-                                      key={r.id}
-                                      type="button"
-                                      onClick={() => toggle(r.id)}
-                                      className={cn("px-2 py-0.5 rounded-lg text-xs font-medium transition-colors", selected.includes(r.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                                    >
-                                      {r.name}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {specificRegions.length > 0 && (
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[10px] text-muted-foreground font-medium">小地域</span>
-                                <div className="flex flex-wrap gap-1">
-                                  {specificRegions.map((r) => (
-                                    <button
-                                      key={r.id}
-                                      type="button"
-                                      onClick={() => toggle(r.id)}
-                                      className={cn("px-2 py-0.5 rounded-lg text-xs font-medium transition-colors", selected.includes(r.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                                    >
-                                      {r.name}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full h-7 text-xs gap-1"
-                              disabled={savingMismatchRegionId === item.id}
-                              onClick={() => handleSaveMismatchRegions(item, selected)}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!tagOpen) setMismatchRegionSelections((prev) => ({ ...prev, [item.id]: selected }));
+                                else setMismatchRegionSelections((prev) => { const next = { ...prev }; delete next[item.id]; return next; });
+                              }}
+                              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors self-start"
                             >
-                              {savingMismatchRegionId === item.id ? "保存中..." : "地域タグを保存"}
-                            </Button>
+                              {tagOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              地域タグを変更
+                            </button>
+                            {tagOpen && (
+                              <div className="flex flex-col gap-1.5">
+                                {broadRegions.length > 0 && (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] text-muted-foreground font-medium">中地域</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {broadRegions.map((r) => (
+                                        <button key={r.id} type="button" onClick={() => toggle(r.id)}
+                                          className={cn("px-2 py-0.5 rounded-lg text-xs font-medium transition-colors", selected.includes(r.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                                        >{r.name}</button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {specificRegions.length > 0 && (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] text-muted-foreground font-medium">小地域</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {specificRegions.map((r) => (
+                                        <button key={r.id} type="button" onClick={() => toggle(r.id)}
+                                          className={cn("px-2 py-0.5 rounded-lg text-xs font-medium transition-colors", selected.includes(r.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                                        >{r.name}</button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                <Button size="sm" variant="outline" className="w-full h-7 text-xs"
+                                  disabled={savingMismatchRegionId === item.id}
+                                  onClick={() => handleSaveMismatchRegions(item, selected)}
+                                >
+                                  {savingMismatchRegionId === item.id ? "保存中..." : "地域タグを保存"}
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         );
                       })()}
