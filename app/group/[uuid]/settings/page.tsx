@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
-import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses, toBroadRegionTag, toSpecificRegionTag } from "@/lib/utils/regionTag";
+import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses, toBroadRegionTag, toSpecificRegionTag, BROAD_TAG_NAMES } from "@/lib/utils/regionTag";
 import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
@@ -116,6 +116,8 @@ export default function SettingsPage() {
   const [mismatchItems, setMismatchItems] = useState<MismatchItem[]>([]);
   const [mismatchDialogOpen, setMismatchDialogOpen] = useState(false);
   const [fixingMismatchId, setFixingMismatchId] = useState<string | null>(null);
+  const [mismatchManualInputs, setMismatchManualInputs] = useState<Record<string, { lat: string; lng: string }>>({});
+  const [savingMismatchId, setSavingMismatchId] = useState<string | null>(null);
   const [csvGenreAssignOpen, setCsvGenreAssignOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
@@ -693,13 +695,29 @@ export default function SettingsPage() {
   };
 
   const handleCheckRegionMismatch = async () => {
+    // API通信なし・座標ベースチェック
+    // 中地域タグと lat/lng の矩形範囲を比較して不一致を検出する
+    const BOUNDS: Record<string, { latMin: number; latMax: number; lngMin: number; lngMax: number }> = {
+      "東京23区":  { latMin: 35.53, latMax: 35.82, lngMin: 139.56, lngMax: 139.92 },
+      "東京市部":  { latMin: 35.51, latMax: 35.90, lngMin: 138.94, lngMax: 139.63 },
+      "神奈川":    { latMin: 35.10, latMax: 35.68, lngMin: 138.93, lngMax: 139.78 },
+      "千葉":      { latMin: 34.90, latMax: 36.00, lngMin: 139.73, lngMax: 140.95 },
+      "埼玉":      { latMin: 35.74, latMax: 36.30, lngMin: 138.72, lngMax: 139.93 },
+      "茨城":      { latMin: 35.72, latMax: 36.80, lngMin: 139.69, lngMax: 140.86 },
+    };
+    // 関東圏全体（「旅行先」タグの逆チェック用）
+    const KANTO = { latMin: 34.88, latMax: 36.85, lngMin: 138.70, lngMax: 141.00 };
+
+    const inBox = (lat: number, lng: number, b: typeof KANTO) =>
+      lat >= b.latMin && lat <= b.latMax && lng >= b.lngMin && lng <= b.lngMax;
+
     setCheckingMismatch(true);
     try {
       const supabase = createClient();
       type WishRow = { id: string; title: string; latitude: number; longitude: number; memo: string | null; wish_regions: { region: { name: string } | null }[] };
       let allWishes: WishRow[] = [];
       let from = 0;
-      const PAGE = 200;
+      const PAGE = 1000;
       while (true) {
         const { data, error } = await supabase
           .from("wishes")
@@ -716,33 +734,39 @@ export default function SettingsPage() {
         from += PAGE;
       }
 
-      const CONCURRENCY = 3;
       const mismatches: MismatchItem[] = [];
-      for (let i = 0; i < allWishes.length; i += CONCURRENCY) {
-        const batch = allWishes.slice(i, i + CONCURRENCY);
-        await Promise.all(batch.map(async (w) => {
-          try {
-            const resp = await fetch("/api/geocode/reverse", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lat: w.latitude, lng: w.longitude }),
-            });
-            if (!resp.ok) return;
-            const { prefecture, city } = await resp.json() as { prefecture: string | null; city: string | null };
-            if (!prefecture || !city) return;
-            const geocodedBroad = toBroadRegionTag(prefecture, city);
-            const geocodedSpecific = toSpecificRegionTag(prefecture, city);
-            const currentNames = (w.wish_regions ?? []).map((wr) => wr.region?.name).filter((n): n is string => Boolean(n));
-            const broadMatch = !geocodedBroad || currentNames.includes(geocodedBroad);
-            const specificMatch = !geocodedSpecific || currentNames.includes(geocodedSpecific);
-            if (!broadMatch || !specificMatch) {
-              const memoLines = w.memo?.split("\n") ?? [];
-              const lastLine = memoLines[memoLines.length - 1]?.trim() ?? "";
-              const memoUrl = /^https?:\/\//.test(lastLine) ? lastLine : null;
-              mismatches.push({ id: w.id, title: w.title, latitude: w.latitude, longitude: w.longitude, memoUrl, currentRegions: currentNames, geocodedBroad, geocodedSpecific });
+      for (const w of allWishes) {
+        const lat = w.latitude;
+        const lng = w.longitude;
+        const currentNames = (w.wish_regions ?? []).map((wr) => wr.region?.name).filter((n): n is string => Boolean(n));
+        const broadTags = currentNames.filter((n) => BROAD_TAG_NAMES.has(n));
+        if (broadTags.length === 0) continue; // 中地域タグなし → 判定不能
+
+        let mismatch = false;
+        let geocodedBroad: string | null = null;
+        let geocodedSpecific: string | null = null;
+
+        for (const tag of broadTags) {
+          if (tag === "旅行先") {
+            // 旅行先なのに関東圏内にある → 不一致
+            if (inBox(lat, lng, KANTO)) { mismatch = true; geocodedBroad = "関東圏内"; break; }
+          } else {
+            // ローカルタグなのに該当都道府県の矩形外 → 不一致
+            const box = BOUNDS[tag];
+            if (box && !inBox(lat, lng, box)) {
+              mismatch = true;
+              geocodedBroad = inBox(lat, lng, KANTO) ? "関東圏内（別エリア）" : "関東圏外";
+              break;
             }
-          } catch { /* ignore individual failures */ }
-        }));
+          }
+        }
+
+        if (mismatch) {
+          const memoLines = w.memo?.split("\n") ?? [];
+          const lastLine = memoLines[memoLines.length - 1]?.trim() ?? "";
+          const memoUrl = /^https?:\/\//.test(lastLine) ? lastLine : null;
+          mismatches.push({ id: w.id, title: w.title, latitude: lat, longitude: lng, memoUrl, currentRegions: currentNames, geocodedBroad, geocodedSpecific });
+        }
       }
       setMismatchItems(mismatches);
       setMismatchDialogOpen(true);
@@ -775,6 +799,25 @@ export default function SettingsPage() {
       toast.error(`更新失敗: ${err instanceof Error ? err.message : "不明なエラー"}`);
     } finally {
       setFixingMismatchId(null);
+    }
+  };
+
+  const handleSaveMismatchManual = async (item: MismatchItem) => {
+    const inputs = mismatchManualInputs[item.id];
+    if (!inputs) return;
+    const lat = parseFloat(inputs.lat);
+    const lng = parseFloat(inputs.lng);
+    if (isNaN(lat) || isNaN(lng)) return;
+    setSavingMismatchId(item.id);
+    try {
+      const supabase = createClient();
+      await supabase.from("wishes").update({ latitude: lat, longitude: lng }).eq("id", item.id);
+      toast.success(`「${item.title}」の緯度経度を更新しました`);
+      setMismatchItems((prev) => prev.filter((m) => m.id !== item.id));
+    } catch {
+      toast.error("保存に失敗しました");
+    } finally {
+      setSavingMismatchId(null);
     }
   };
 
@@ -2066,18 +2109,63 @@ export default function SettingsPage() {
                         <span>{item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}</span>
                       </div>
                     </div>
-                    {item.memoUrl && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="self-end h-7 text-xs gap-1"
-                        disabled={fixingMismatchId === item.id}
-                        onClick={() => handleFixMismatch(item)}
-                      >
-                        <MapPin size={12} />
-                        {fixingMismatchId === item.id ? "取得中..." : "URLからlat/lngを再取得"}
-                      </Button>
-                    )}
+                    <div className="flex flex-col gap-1.5 pt-1 border-t border-border/60">
+                      {item.memoUrl && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-7 text-xs gap-1"
+                          disabled={fixingMismatchId === item.id || savingMismatchId === item.id}
+                          onClick={() => handleFixMismatch(item)}
+                        >
+                          <MapPin size={12} />
+                          {fixingMismatchId === item.id ? "取得中..." : "URLからlat/lngを再取得"}
+                        </Button>
+                      )}
+                      <div className="flex gap-1.5 items-end">
+                        <div className="flex-1 flex flex-col gap-0.5">
+                          <label className="text-[10px] text-muted-foreground">緯度</label>
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="35.6812"
+                            value={mismatchManualInputs[item.id]?.lat ?? ""}
+                            onChange={(e) => setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: e.target.value, lng: prev[item.id]?.lng ?? "" } }))}
+                            onPaste={(e) => {
+                              const text = e.clipboardData.getData("text");
+                              const match = text.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+                              if (match) { e.preventDefault(); setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: match[1], lng: match[2] } })); }
+                            }}
+                            className="w-full px-2 py-1 rounded-lg border border-border bg-background text-xs"
+                          />
+                        </div>
+                        <div className="flex-1 flex flex-col gap-0.5">
+                          <label className="text-[10px] text-muted-foreground">経度</label>
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="139.7670"
+                            value={mismatchManualInputs[item.id]?.lng ?? ""}
+                            onChange={(e) => setMismatchManualInputs((prev) => ({ ...prev, [item.id]: { lat: prev[item.id]?.lat ?? "", lng: e.target.value } }))}
+                            className="w-full px-2 py-1 rounded-lg border border-border bg-background text-xs"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs shrink-0"
+                          disabled={
+                            savingMismatchId === item.id || fixingMismatchId === item.id ||
+                            !mismatchManualInputs[item.id]?.lat || !mismatchManualInputs[item.id]?.lng ||
+                            isNaN(parseFloat(mismatchManualInputs[item.id]?.lat ?? "")) ||
+                            isNaN(parseFloat(mismatchManualInputs[item.id]?.lng ?? ""))
+                          }
+                          onClick={() => handleSaveMismatchManual(item)}
+                        >
+                          {savingMismatchId === item.id ? "保存中..." : "保存"}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </>
