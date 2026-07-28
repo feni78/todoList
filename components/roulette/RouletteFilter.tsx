@@ -26,7 +26,7 @@ import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useShallow } from "zustand/react/shallow";
 import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight, Star } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useGroupStore } from "@/lib/store/groupStore";
 
 interface RouletteFilterProps {
@@ -233,25 +233,7 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
 
         <div className="flex flex-col">
           {/* 実施済み */}
-          <FilterSection
-            title="実施済み"
-            noDivider
-            right={
-              <button
-                type="button"
-                onClick={() => setFilter({ favoriteOnly: !filter.favoriteOnly })}
-                className={cn(
-                  "flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl border transition-colors shrink-0",
-                  filter.favoriteOnly
-                    ? "border-yellow-400 text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30"
-                    : "border-border text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Star size={11} fill={filter.favoriteOnly ? "currentColor" : "none"} />
-                お気に入り
-              </button>
-            }
-          >
+          <FilterSection title="実施済み" noDivider>
             <FilterChip
               selected={filter.statuses.includes("DONE") && filter.statuses.includes("PENDING")}
               onClick={() => {
@@ -269,6 +251,15 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
               label="実施済みのみ"
             />
           </FilterSection>
+
+          {/* お気に入り */}
+          <div className="flex flex-wrap gap-2 py-4 border-t border-border/60">
+            <FilterChip
+              selected={filter.favoriteOnly}
+              onClick={() => setFilter({ favoriteOnly: !filter.favoriteOnly })}
+              label="★お気に入りのみ"
+            />
+          </div>
 
           {/* ジャンル */}
           {genres.length > 0 && (
