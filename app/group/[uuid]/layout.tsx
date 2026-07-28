@@ -39,8 +39,8 @@ export default function GroupLayout({ children }: { children: React.ReactNode })
         return;
       }
 
-      const g = groupData as Group & { members: GroupMember[]; small_genre_subgroups?: SmallGenreSubGroups };
-      setGroup({ id: g.id, name: g.name, members: g.members });
+      const g = groupData as Group & { members: GroupMember[]; small_genre_subgroups?: SmallGenreSubGroups; last_exported_at?: string | null };
+      setGroup({ id: g.id, name: g.name, members: g.members, lastExportedAt: g.last_exported_at ?? null });
       if (g.small_genre_subgroups) setSmallGenreSubGroups(g.small_genre_subgroups);
       setGroupName(g.name);
 

@@ -21,7 +21,7 @@ import { useShallow } from "zustand/react/shallow";
 import { getGroupMember } from "@/lib/utils/localStorage";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS, meetsScoreFilter } from "@/types";
-import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag } from "lucide-react";
+import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag, Star } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
 import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
 import { FilterSummary } from "@/components/list/FilterSummary";
@@ -44,7 +44,7 @@ export default function ListPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const group = useGroupStore((s) => s.group);
   const currentMemberId = getGroupMember(uuid)?.memberId;
-  const { wishes: pendingHoldWishes, loading, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, bulkUpdateGenres, refetch } = useWishes(uuid);
+  const { wishes: pendingHoldWishes, loading, createWish, updateWish, deleteWish, bulkDeleteWishes, changeStatus, toggleFavorite, bulkUpdateGenres, refetch } = useWishes(uuid);
   const { wishes: doneWishes, refetch: refetchDone } = useWishes(uuid, { statuses: ["DONE"], skip: true });
   const [doneLoaded, setDoneLoaded] = useState(false);
   const doneLoadingRef = useRef(false);
@@ -117,6 +117,7 @@ export default function ListPage() {
   const [csvOpen, setCsvOpen] = useState(false);
   const [bulkAdding, setBulkAdding] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
   const [adding, setAdding] = useState(false);
   const [selectionMode, setSelectionMode] = useState<"genre" | "delete" | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -200,6 +201,8 @@ export default function ListPage() {
       result = result.filter((w) => w.status === statusTab);
     }
 
+    if (showFavoriteOnly) result = result.filter((w) => w.isFavorite);
+
     if (situationTab !== "ALL") {
       result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
     }
@@ -236,7 +239,7 @@ export default function ListPage() {
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, sortOrder, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
+  }, [wishes, statusTab, situationTab, showFavoriteOnly, sortOrder, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);
@@ -334,6 +337,14 @@ export default function ListPage() {
     }
   };
 
+  const handleToggleFavorite = async (id: string, value: boolean) => {
+    try {
+      await toggleFavorite(id, value);
+    } catch {
+      toast.error("お気に入りの更新に失敗しました");
+    }
+  };
+
   const totalInTab = useMemo(() => {
     if (doneOnly) return wishes.filter((w) => w.status === "DONE").length;
     if (includeDone) return wishes.filter((w) => w.status === statusTab || w.status === "DONE").length;
@@ -364,7 +375,7 @@ export default function ListPage() {
       <TopBar
         right={
           <button
-            onClick={() => setSearchOpen((v) => !v)}
+            onClick={() => { if (fSearchQuery) return; setSearchOpen((v) => !v); }}
             className={cn(
               "p-2 rounded-lg transition-colors",
               searchOpen || fSearchQuery
@@ -417,10 +428,20 @@ export default function ListPage() {
         ))}
         <div className="flex-1" />
         <button
-          onClick={() => setSortOrder((s) => s === "priority" ? "createdAt" : "priority")}
+          onClick={() => setShowFavoriteOnly((v) => !v)}
           className={cn(
-            "shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
+            "shrink-0 flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors",
+            showFavoriteOnly
+              ? "border-yellow-400 text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30"
+              : "border-border text-muted-foreground hover:text-foreground"
           )}
+        >
+          <Star size={12} fill={showFavoriteOnly ? "currentColor" : "none"} />
+          お気に入り
+        </button>
+        <button
+          onClick={() => setSortOrder((s) => s === "priority" ? "createdAt" : "priority")}
+          className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
         >
           <ArrowUpDown size={11} />
           {sortOrder === "priority" ? "やりたい度順" : "新着順"}
@@ -428,14 +449,14 @@ export default function ListPage() {
         <button
           onClick={() => setFilterOpen(true)}
           className={cn(
-            "shrink-0 p-1.5 rounded-lg transition-colors",
+            "shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
             hasActiveFilters
-              ? "bg-primary/15 text-primary"
-              : "text-muted-foreground hover:text-foreground"
+              ? "border-primary text-primary bg-primary/10"
+              : "border-border text-muted-foreground hover:text-foreground"
           )}
-          title="絞り込み"
         >
-          <SlidersHorizontal size={16} />
+          <SlidersHorizontal size={13} />
+          絞り込み{hasActiveFilters ? "中" : ""}
         </button>
       </div>
 
@@ -461,10 +482,11 @@ export default function ListPage() {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onStatusChange={handleStatusChange}
+          onToggleFavorite={handleToggleFavorite}
           selectionMode={selectionMode !== null}
           selectedIds={selectedIds}
           onToggleSelect={handleToggleSelect}
-          emptyMessage={statusTab === "PENDING" ? "やりたいことを追加しよう！" : "保留中のアイテムはありません"}
+          emptyMessage={showFavoriteOnly ? "お気に入りのアイテムはありません" : statusTab === "PENDING" ? "やりたいことを追加しよう！" : "保留中のアイテムはありません"}
         />
       )}
 

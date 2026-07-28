@@ -103,6 +103,7 @@ export interface Group {
   id: string;
   name: string;
   members: GroupMember[];
+  lastExportedAt?: string | null;
 }
 
 export interface GroupMember {

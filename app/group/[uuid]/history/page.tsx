@@ -15,7 +15,7 @@ import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { isBroadRegionTag } from "@/lib/utils/regionTag";
-import { meetsScoreFilter } from "@/types";
+import { Situation, SITUATION_LABELS, SITUATION_ICONS, meetsScoreFilter } from "@/types";
 import { findStation } from "@/lib/utils/station";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -73,6 +73,7 @@ export default function HistoryPage() {
   const SORT_CYCLE: SortOrder[] = ["priority", "createdAt", "doneAt"];
 
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
+  const [situationTab, setSituationTab] = useState<"ALL" | Situation>("ALL");
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
   const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
@@ -151,6 +152,7 @@ export default function HistoryPage() {
   const filtered = useMemo(() => {
     let result = [...wishes];
     if (showFavoriteOnly) result = result.filter((w) => w.isFavorite);
+    if (situationTab !== "ALL") result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
     if (fMemberIds.length > 0) result = result.filter((w) => fMemberIds.includes(w.memberId));
     if (fSituations.length > 0) {
       result = result.filter((w) => fSituations.includes(w.situation) || w.situation === "EITHER");
@@ -185,7 +187,7 @@ export default function HistoryPage() {
       result.sort((a, b) => new Date(b.doneAt ?? 0).getTime() - new Date(a.doneAt ?? 0).getTime());
     }
     return result;
-  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, historySearchQuery, regions]);
+  }, [wishes, showFavoriteOnly, situationTab, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, historySearchQuery, regions]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -248,7 +250,7 @@ export default function HistoryPage() {
         title="実施済み"
         right={
           <button
-            onClick={() => setSearchOpen((v) => !v)}
+            onClick={() => { if (historySearchQuery) return; setSearchOpen((v) => !v); }}
             className={cn(
               "p-2 rounded-lg transition-colors",
               searchOpen || historySearchQuery
@@ -282,44 +284,65 @@ export default function HistoryPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+      <div className="flex items-center gap-1.5 px-3 pt-3 pb-1 overflow-x-auto scrollbar-none">
+        {(["ALL", "HOME", "OUTSIDE"] as const).map((v) => {
+          const label = v === "ALL" ? "すべて" : `${SITUATION_ICONS[v]} ${SITUATION_LABELS[v]}`;
+          return (
+            <button
+              key={v}
+              onClick={() => setSituationTab(v)}
+              className={cn(
+                "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                situationTab === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+        <div className="flex-1" />
         <button
           onClick={() => setShowFavoriteOnly((v) => !v)}
           className={cn(
-            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
+            "shrink-0 flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-colors",
             showFavoriteOnly
               ? "border-yellow-400 text-yellow-500 bg-yellow-50 dark:bg-yellow-950/30"
               : "border-border text-muted-foreground hover:text-foreground"
           )}
         >
-          <Star size={13} fill={showFavoriteOnly ? "currentColor" : "none"} />
+          <Star size={12} fill={showFavoriteOnly ? "currentColor" : "none"} />
           お気に入り
         </button>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSortOrder((s) => { const i = SORT_CYCLE.indexOf(s); return SORT_CYCLE[(i + 1) % SORT_CYCLE.length]; })}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
-          >
-            <ArrowUpDown size={11} />
-            {SORT_LABELS[sortOrder]}
-          </button>
-          <button
-            onClick={() => setFilterOpen(true)}
-            className={cn(
-              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
-              hasFilter
-                ? "border-primary text-primary bg-primary/10"
-                : "border-border text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <SlidersHorizontal size={13} />
-            絞り込み{hasFilter ? "中" : ""}
-          </button>
-        </div>
+        <button
+          onClick={() => setSortOrder((s) => { const i = SORT_CYCLE.indexOf(s); return SORT_CYCLE[(i + 1) % SORT_CYCLE.length]; })}
+          className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
+        >
+          <ArrowUpDown size={11} />
+          {SORT_LABELS[sortOrder]}
+        </button>
+        <button
+          onClick={() => setFilterOpen(true)}
+          className={cn(
+            "shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors",
+            hasFilter
+              ? "border-primary text-primary bg-primary/10"
+              : "border-border text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <SlidersHorizontal size={13} />
+          絞り込み{hasFilter ? "中" : ""}
+        </button>
       </div>
 
       <FilterSummary genres={genres} regions={regions} members={group?.members ?? []} />
+
+      {!loading && (
+        <p className="px-4 pb-1 text-xs text-muted-foreground">
+          {filtered.length !== wishes.length
+            ? `${wishes.length}件中 ${filtered.length}件を表示`
+            : `${wishes.length}件`}
+        </p>
+      )}
 
       <div className="flex-1 py-2">
         {loading ? (

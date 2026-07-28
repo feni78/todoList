@@ -37,7 +37,7 @@ export default function SettingsPage() {
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
   const { wishes, wishesRef, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false, skip: true });
-  const { group, setGroup, setCurrentMember } = useGroupStore();
+  const { group, setGroup, setCurrentMember, setLastExportedAt } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -258,6 +258,10 @@ export default function SettingsPage() {
     a.download = `yaritai_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    const now = new Date().toISOString();
+    const supabase = createClient();
+    await supabase.from("groups").update({ last_exported_at: now }).eq("id", uuid);
+    setLastExportedAt(now);
     toast.success("エクスポートしました");
   };
 
@@ -1025,6 +1029,9 @@ export default function SettingsPage() {
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">データ</h2>
           <p className="text-sm text-muted-foreground">タスクをJSONファイルでエクスポート・インポートできます</p>
+          {group?.lastExportedAt && (
+            <p className="text-xs text-muted-foreground">最終エクスポート: {new Date(group.lastExportedAt).toLocaleString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</p>
+          )}
           <div className="flex flex-col gap-2">
             <Button variant="outline" onClick={handleExport} className="w-full gap-2" disabled={wishesLoadingLocal}>
               <Upload size={16} />
