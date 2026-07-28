@@ -269,53 +269,61 @@ export default function SettingsPage() {
 
   const handleFullExport = async () => {
     await ensureWishesLoaded();
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const { data: presetRows } = await supabase
-      .from("csv_genre_file_presets")
-      .select("file_name, large_genre_id, medium_genre_id")
-      .eq("group_id", uuid);
+      const { data: presetRows } = await supabase
+        .from("csv_genre_file_presets")
+        .select("file_name, large_genre_id, medium_genre_id")
+        .eq("group_id", uuid);
 
-    const genreIdToName = new Map(genres.map((g) => [g.id, g.name]));
+      const genreIdToName = new Map(genres.map((g) => [g.id, g.name]));
 
-    const data = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      groupName: group?.name ?? "",
-      considerLevel: settings.considerLevel,
-      smallGenreSubGroups: smallGenreSubGroups ?? {},
-      genres: genres.map((g, i) => ({ name: g.name, genreType: g.genreType, sortOrder: i })),
-      regions: regions.map((r) => ({ name: r.name })),
-      csvGenreFilePresets: (presetRows ?? []).map((p) => ({
-        fileName: (p as { file_name: string; large_genre_id: string | null; medium_genre_id: string | null }).file_name,
-        largeGenreName: (p as { large_genre_id: string | null }).large_genre_id ? genreIdToName.get((p as { large_genre_id: string }).large_genre_id) ?? null : null,
-        mediumGenreName: (p as { medium_genre_id: string | null }).medium_genre_id ? genreIdToName.get((p as { medium_genre_id: string }).medium_genre_id) ?? null : null,
-      })),
-      wishes: wishesRef.current.map((w) => ({
-        title: w.title,
-        situation: w.situation,
-        status: w.status,
-        memo: w.memo ?? null,
-        budget: w.budget ?? null,
-        duration: w.duration ?? null,
-        seasons: w.seasons,
-        genres: w.genres.map((g) => ({ name: g.name, genreType: g.genreType })),
-        regions: w.regions.map((r) => r.name),
-        isFavorite: w.isFavorite,
-        doneAt: w.doneAt,
-        latitude: w.latitude ?? null,
-        longitude: w.longitude ?? null,
-      })),
-    };
+      const exportData = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        groupName: group?.name ?? "",
+        considerLevel: settings.considerLevel,
+        smallGenreSubGroups: smallGenreSubGroups ?? {},
+        genres: genres.map((g, i) => ({ name: g.name, genreType: g.genreType, sortOrder: i })),
+        regions: regions.map((r) => ({ name: r.name })),
+        csvGenreFilePresets: (presetRows ?? []).map((p) => ({
+          fileName: (p as { file_name: string; large_genre_id: string | null; medium_genre_id: string | null }).file_name,
+          largeGenreName: (p as { large_genre_id: string | null }).large_genre_id ? genreIdToName.get((p as { large_genre_id: string }).large_genre_id) ?? null : null,
+          mediumGenreName: (p as { medium_genre_id: string | null }).medium_genre_id ? genreIdToName.get((p as { medium_genre_id: string }).medium_genre_id) ?? null : null,
+        })),
+        wishes: wishesRef.current.map((w) => ({
+          title: w.title,
+          situation: w.situation,
+          status: w.status,
+          memo: w.memo ?? null,
+          budget: w.budget ?? null,
+          duration: w.duration ?? null,
+          seasons: w.seasons,
+          genres: w.genres.map((g) => ({ name: g.name, genreType: g.genreType })),
+          regions: w.regions.map((r) => r.name),
+          isFavorite: w.isFavorite,
+          doneAt: w.doneAt,
+          latitude: w.latitude ?? null,
+          longitude: w.longitude ?? null,
+        })),
+      };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `yaritai_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("フルバックアップをエクスポートしました");
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `yaritai_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const now = new Date().toISOString();
+      await supabase.from("groups").update({ last_exported_at: now }).eq("id", uuid);
+      setLastExportedAt(now);
+      toast.success("フルバックアップをエクスポートしました");
+    } catch {
+      toast.error("エクスポートに失敗しました");
+    }
   };
 
   const handleFullImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
