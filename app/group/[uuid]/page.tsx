@@ -236,10 +236,10 @@ export default function ListPage() {
 
     if (sortOrder === "priority") {
       result.sort((a, b) => {
+        if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
         const va = Math.min(a.votes.length, 2);
         const vb = Math.min(b.votes.length, 2);
-        if (vb !== va) return vb - va; // 両者入力 > 片方 > 未入力
-        return b.avgScore - a.avgScore;
+        return vb - va; // 同スコアならふたりとも > ひとり > 未入力
       });
     } else {
       result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
