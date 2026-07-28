@@ -698,8 +698,9 @@ export default function SettingsPage() {
 
   const handleCheckRegionMismatch = async () => {
     // API通信なし・座標ベースチェック
-    // 中地域タグと lat/lng の矩形範囲を比較して不一致を検出する
-    const BOUNDS: Record<string, { latMin: number; latMax: number; lngMin: number; lngMax: number }> = {
+    // 中地域タグ・小地域タグと lat/lng の矩形範囲を比較して不一致を検出する
+    type Box = { latMin: number; latMax: number; lngMin: number; lngMax: number };
+    const BOUNDS: Record<string, Box> = {
       "東京23区":  { latMin: 35.53, latMax: 35.82, lngMin: 139.56, lngMax: 139.92 },
       "東京市部":  { latMin: 35.51, latMax: 35.90, lngMin: 138.94, lngMax: 139.63 },
       "神奈川":    { latMin: 35.10, latMax: 35.68, lngMin: 138.93, lngMax: 139.78 },
@@ -708,9 +709,60 @@ export default function SettingsPage() {
       "茨城":      { latMin: 35.72, latMax: 36.80, lngMin: 139.69, lngMax: 140.86 },
     };
     // 関東圏全体（「旅行先」タグの逆チェック用）
-    const KANTO = { latMin: 34.88, latMax: 36.85, lngMin: 138.70, lngMax: 141.00 };
+    const KANTO: Box = { latMin: 34.88, latMax: 36.85, lngMin: 138.70, lngMax: 141.00 };
 
-    const inBox = (lat: number, lng: number, b: typeof KANTO) =>
+    // 小地域タグの都道府県名チェック用バウンディングボックス（47都道府県）
+    const PREF_BOUNDS: Record<string, Box> = {
+      "北海道":   { latMin: 41.30, latMax: 45.60, lngMin: 139.30, lngMax: 145.90 },
+      "青森県":   { latMin: 40.20, latMax: 41.60, lngMin: 139.70, lngMax: 141.70 },
+      "岩手県":   { latMin: 38.70, latMax: 40.50, lngMin: 140.60, lngMax: 142.10 },
+      "宮城県":   { latMin: 37.80, latMax: 39.00, lngMin: 140.30, lngMax: 141.70 },
+      "秋田県":   { latMin: 38.90, latMax: 40.60, lngMin: 139.70, lngMax: 141.00 },
+      "山形県":   { latMin: 37.70, latMax: 39.00, lngMin: 139.40, lngMax: 140.80 },
+      "福島県":   { latMin: 36.80, latMax: 37.90, lngMin: 139.20, lngMax: 141.10 },
+      "茨城県":   { latMin: 35.72, latMax: 36.80, lngMin: 139.69, lngMax: 140.86 },
+      "栃木県":   { latMin: 36.20, latMax: 37.20, lngMin: 139.30, lngMax: 140.40 },
+      "群馬県":   { latMin: 36.10, latMax: 37.00, lngMin: 138.40, lngMax: 139.70 },
+      "埼玉県":   { latMin: 35.74, latMax: 36.30, lngMin: 138.72, lngMax: 139.93 },
+      "千葉県":   { latMin: 34.90, latMax: 36.00, lngMin: 139.73, lngMax: 140.95 },
+      "東京都":   { latMin: 35.51, latMax: 35.90, lngMin: 138.94, lngMax: 139.92 },
+      "神奈川県": { latMin: 35.10, latMax: 35.68, lngMin: 138.93, lngMax: 139.78 },
+      "新潟県":   { latMin: 36.80, latMax: 38.60, lngMin: 137.60, lngMax: 139.60 },
+      "富山県":   { latMin: 36.40, latMax: 37.00, lngMin: 136.80, lngMax: 137.90 },
+      "石川県":   { latMin: 36.10, latMax: 37.90, lngMin: 136.10, lngMax: 137.30 },
+      "福井県":   { latMin: 35.40, latMax: 36.30, lngMin: 135.70, lngMax: 136.90 },
+      "山梨県":   { latMin: 35.20, latMax: 35.90, lngMin: 138.20, lngMax: 139.20 },
+      "長野県":   { latMin: 35.20, latMax: 37.00, lngMin: 137.30, lngMax: 138.90 },
+      "岐阜県":   { latMin: 35.10, latMax: 36.50, lngMin: 136.30, lngMax: 137.80 },
+      "静岡県":   { latMin: 34.60, latMax: 35.70, lngMin: 137.50, lngMax: 139.20 },
+      "愛知県":   { latMin: 34.60, latMax: 35.50, lngMin: 136.70, lngMax: 137.80 },
+      "三重県":   { latMin: 33.80, latMax: 35.20, lngMin: 135.80, lngMax: 136.90 },
+      "滋賀県":   { latMin: 34.80, latMax: 35.70, lngMin: 135.90, lngMax: 136.60 },
+      "京都府":   { latMin: 34.70, latMax: 35.80, lngMin: 135.00, lngMax: 135.90 },
+      "大阪府":   { latMin: 34.30, latMax: 35.00, lngMin: 135.30, lngMax: 135.80 },
+      "兵庫県":   { latMin: 34.20, latMax: 35.70, lngMin: 134.20, lngMax: 135.60 },
+      "奈良県":   { latMin: 33.90, latMax: 34.90, lngMin: 135.60, lngMax: 136.20 },
+      "和歌山県": { latMin: 33.40, latMax: 34.40, lngMin: 135.00, lngMax: 136.10 },
+      "鳥取県":   { latMin: 35.00, latMax: 35.60, lngMin: 133.30, lngMax: 134.50 },
+      "島根県":   { latMin: 34.20, latMax: 35.50, lngMin: 131.70, lngMax: 133.50 },
+      "岡山県":   { latMin: 34.50, latMax: 35.20, lngMin: 133.20, lngMax: 134.50 },
+      "広島県":   { latMin: 34.00, latMax: 35.20, lngMin: 132.00, lngMax: 133.90 },
+      "山口県":   { latMin: 33.70, latMax: 34.70, lngMin: 130.80, lngMax: 132.20 },
+      "徳島県":   { latMin: 33.50, latMax: 34.40, lngMin: 133.80, lngMax: 134.90 },
+      "香川県":   { latMin: 34.10, latMax: 34.50, lngMin: 133.40, lngMax: 134.30 },
+      "愛媛県":   { latMin: 32.90, latMax: 34.30, lngMin: 132.10, lngMax: 133.70 },
+      "高知県":   { latMin: 32.70, latMax: 33.90, lngMin: 132.50, lngMax: 134.30 },
+      "福岡県":   { latMin: 33.10, latMax: 34.30, lngMin: 130.00, lngMax: 131.20 },
+      "佐賀県":   { latMin: 33.10, latMax: 33.70, lngMin: 129.70, lngMax: 130.60 },
+      "長崎県":   { latMin: 32.00, latMax: 34.70, lngMin: 128.40, lngMax: 130.30 },
+      "熊本県":   { latMin: 32.00, latMax: 33.20, lngMin: 130.10, lngMax: 131.40 },
+      "大分県":   { latMin: 32.70, latMax: 33.70, lngMin: 130.80, lngMax: 131.90 },
+      "宮崎県":   { latMin: 31.40, latMax: 32.90, lngMin: 130.70, lngMax: 131.90 },
+      "鹿児島県": { latMin: 30.20, latMax: 32.00, lngMin: 130.20, lngMax: 131.30 },
+      "沖縄県":   { latMin: 24.00, latMax: 26.90, lngMin: 122.90, lngMax: 131.30 },
+    };
+
+    const inBox = (lat: number, lng: number, b: Box) =>
       lat >= b.latMin && lat <= b.latMax && lng >= b.lngMin && lng <= b.lngMax;
 
     setCheckingMismatch(true);
@@ -758,6 +810,21 @@ export default function SettingsPage() {
             if (box && !inBox(lat, lng, box)) {
               mismatch = true;
               geocodedBroad = inBox(lat, lng, KANTO) ? "関東圏内（別エリア）" : "関東圏外";
+              break;
+            }
+          }
+        }
+
+        // 小地域タグから都道府県名を抽出して座標と照合
+        if (!mismatch) {
+          const specificTags = currentNames.filter((n) => !BROAD_TAG_NAMES.has(n));
+          for (const tag of specificTags) {
+            const pref = Object.keys(PREF_BOUNDS).find((p) => tag.startsWith(p));
+            if (!pref) continue;
+            const prefBox = PREF_BOUNDS[pref];
+            if (!inBox(lat, lng, prefBox)) {
+              mismatch = true;
+              geocodedSpecific = inBox(lat, lng, KANTO) ? `座標は関東圏内（${tag}と不一致）` : `座標は${pref}圏外（${tag}と不一致）`;
               break;
             }
           }
