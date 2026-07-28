@@ -116,7 +116,7 @@ export default function ListPage() {
   const [bulkText, setBulkText] = useState("");
   const [csvOpen, setCsvOpen] = useState(false);
   const [bulkAdding, setBulkAdding] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(() => !!fSearchQuery);
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
   const [adding, setAdding] = useState(false);
   const [selectionMode, setSelectionMode] = useState<"genre" | "delete" | null>(null);

@@ -78,7 +78,7 @@ export default function HistoryPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
   const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
   const nearbyKmRef = useRef<number | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(() => !!historySearchQuery);
   const [selectionMode, setSelectionMode] = useState<"genre" | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
