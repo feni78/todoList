@@ -225,6 +225,15 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-4">
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+          キャンセル
+        </Button>
+        <Button type="submit" disabled={loading || !form.title.trim() || (scoreRequired && !form.myScore)} className="flex-1">
+          {loading ? "保存中..." : "保存"}
+        </Button>
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="title">タイトル *</Label>
         <Input

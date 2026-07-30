@@ -13,11 +13,13 @@ interface HistoryFormProps {
   loading?: boolean;
 }
 
+function toLocalDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export function HistoryForm({ initial, onSubmit, onCancel, loading }: HistoryFormProps) {
-  const todayStr = new Date().toISOString().split("T")[0];
-  const initDate = initial?.doneAt
-    ? new Date(initial.doneAt).toISOString().split("T")[0]
-    : todayStr;
+  const todayStr = toLocalDateStr(new Date());
+  const initDate = initial?.doneAt ? toLocalDateStr(new Date(initial.doneAt)) : todayStr;
 
   const [doneAt, setDoneAt] = useState(initDate);
   const [comment, setComment] = useState(initial?.comment ?? "");
@@ -25,7 +27,7 @@ export function HistoryForm({ initial, onSubmit, onCancel, loading }: HistoryFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit({
-      doneAt: new Date(doneAt).toISOString(),
+      doneAt: new Date(doneAt + "T00:00:00").toISOString(),
       comment: comment.trim() || undefined,
     });
   };

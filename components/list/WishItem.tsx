@@ -13,6 +13,10 @@ import { useGroupStore } from "@/lib/store/groupStore";
 
 type WishUpdateData = (Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) & { doneAt?: string | null };
 
+function toLocalDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 interface WishItemProps {
   wish: Wish;
   genres?: Genre[];
@@ -45,7 +49,7 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
         situation: wish.situation,
         status: wish.status,
         seasons: wish.seasons,
-        doneAt: new Date(dateStr).toISOString(),
+        doneAt: new Date(dateStr + "T00:00:00").toISOString(),
       });
     } catch { /* ignore */ }
   };
@@ -105,7 +109,7 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
               <input
                 type="date"
                 className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0"
-                value={wish.doneAt ? wish.doneAt.slice(0, 10) : wish.updatedAt.slice(0, 10)}
+                value={toLocalDateStr(new Date(wish.doneAt ?? wish.updatedAt))}
                 onChange={(e) => handleDoneAtChange(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
               />

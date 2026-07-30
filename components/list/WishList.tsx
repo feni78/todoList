@@ -38,6 +38,7 @@ export function WishList({ wishes, genres = [], regions = [], onUpdate, onDelete
     estimateSize: () => 72,
     overscan: 8,
     scrollMargin,
+    getItemKey: (index) => wishes[index].id,
   });
 
   if (wishes.length === 0) {
