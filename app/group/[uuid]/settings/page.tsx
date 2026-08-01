@@ -257,7 +257,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `yaritai_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `yaritai_${(group?.name ?? "").replace(/[\\/:*?"<>|]/g, "_")}_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     const now = new Date().toISOString();
@@ -313,7 +313,7 @@ export default function SettingsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `yaritai_full_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `yaritai_full_backup_${(group?.name ?? "").replace(/[\\/:*?"<>|]/g, "_")}_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
 
