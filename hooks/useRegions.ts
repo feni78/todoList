@@ -54,7 +54,9 @@ export function useRegions(groupId: string) {
         supabase.from("regions").update({ sort_order: idx }).eq("id", id)
       )
     );
-    const failed = results.filter((r) => r.status === "rejected").length;
+    const failed = results.filter(
+      (r) => r.status === "rejected" || (r.status === "fulfilled" && (r.value as { error?: unknown }).error != null)
+    ).length;
     if (failed > 0) toast.error(`並び替えの保存に失敗しました（${failed}件）`);
     await fetchRegions();
   }, [fetchRegions]);
