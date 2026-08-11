@@ -5,7 +5,7 @@ import { StationSearch } from "@/components/common/StationSearch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { X, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import {
   GroupMember,
   Genre,
