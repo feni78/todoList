@@ -113,6 +113,14 @@ export default function ListPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("priority");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+
+  const stationLocation = useMemo(() => {
+    if (!fStationName) return null;
+    const s = findStation(fStationName);
+    return s ? { lat: s.lat, lng: s.lng } : null;
+  }, [fStationName]);
+
+  const effectiveLocation = stationLocation ?? userLocation;
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -244,13 +252,13 @@ export default function ListPage() {
         const vb = Math.min(b.votes.length, 2);
         return vb - va;
       });
-    } else if (sortOrder === "distance" && userLocation) {
+    } else if (sortOrder === "distance" && effectiveLocation) {
       result.sort((a, b) => {
         const da = a.latitude != null && a.longitude != null
-          ? haversineKm(userLocation.lat, userLocation.lng, a.latitude, a.longitude)
+          ? haversineKm(effectiveLocation.lat, effectiveLocation.lng, a.latitude, a.longitude)
           : Infinity;
         const db = b.latitude != null && b.longitude != null
-          ? haversineKm(userLocation.lat, userLocation.lng, b.latitude, b.longitude)
+          ? haversineKm(effectiveLocation.lat, effectiveLocation.lng, b.latitude, b.longitude)
           : Infinity;
         return da - db;
       });
@@ -259,18 +267,19 @@ export default function ListPage() {
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, showFavoriteOnly, sortOrder, userLocation, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
+  }, [wishes, statusTab, situationTab, showFavoriteOnly, sortOrder, effectiveLocation, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
 
   const distanceMap = useMemo(() => {
-    if (sortOrder !== "distance" || !userLocation) return null;
+    const loc = stationLocation ?? (sortOrder === "distance" ? userLocation : null);
+    if (!loc) return null;
     const map = new Map<string, number>();
     for (const w of filtered) {
       if (w.latitude != null && w.longitude != null) {
-        map.set(w.id, haversineKm(userLocation.lat, userLocation.lng, w.latitude, w.longitude));
+        map.set(w.id, haversineKm(loc.lat, loc.lng, w.latitude, w.longitude));
       }
     }
     return map;
-  }, [sortOrder, userLocation, filtered]);
+  }, [sortOrder, userLocation, stationLocation, filtered]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);
@@ -474,22 +483,26 @@ export default function ListPage() {
           onClick={() => {
             const next: SortOrder = sortOrder === "priority" ? "createdAt" : sortOrder === "createdAt" ? "distance" : "priority";
             if (next === "distance") {
-              if (!navigator.geolocation) {
-                toast.error("このブラウザは位置情報に対応していません");
-                return;
-              }
-              setLocationLoading(true);
-              navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                  setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                  setSortOrder("distance");
-                  setLocationLoading(false);
-                },
-                () => {
-                  toast.error("位置情報の取得を許可してください");
-                  setLocationLoading(false);
+              if (stationLocation) {
+                setSortOrder("distance");
+              } else {
+                if (!navigator.geolocation) {
+                  toast.error("このブラウザは位置情報に対応していません");
+                  return;
                 }
-              );
+                setLocationLoading(true);
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    setSortOrder("distance");
+                    setLocationLoading(false);
+                  },
+                  () => {
+                    toast.error("位置情報の取得を許可してください");
+                    setLocationLoading(false);
+                  }
+                );
+              }
             } else {
               setSortOrder(next);
             }
@@ -521,6 +534,11 @@ export default function ListPage() {
           {filtered.length !== totalInTab
             ? `${totalInTab}件中 ${filtered.length}件を表示`
             : `${totalInTab}件`}
+        </p>
+      )}
+      {fStationName && stationLocation && (
+        <p className="px-4 pb-1 text-xs text-blue-500 dark:text-blue-400">
+          📍 {fStationName}駅からの距離を表示中
         </p>
       )}
 
