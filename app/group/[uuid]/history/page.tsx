@@ -365,6 +365,12 @@ export default function HistoryPage() {
 
       <FilterSummary genres={genres} regions={regions} members={group?.members ?? []} />
 
+      {fUseCurrentLocation && userLocation && (
+        <p className="px-4 pb-1 text-xs text-blue-500 dark:text-blue-400">
+          📍 現在地からの距離を表示中
+        </p>
+      )}
+
       {!loading && (
         <p className="px-4 pb-1 text-xs text-muted-foreground">
           {filtered.length !== wishes.length

@@ -5,7 +5,7 @@ import { StationSearch } from "@/components/common/StationSearch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
 import {
   GroupMember,
   Genre,
@@ -256,12 +256,77 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl px-5">
         <SheetHeader className="mt-5 mb-1 p-0">
-          <SheetTitle className="text-base">絞り込み</SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base">絞り込み</SheetTitle>
+            <div className="flex gap-1.5">
+              {hasFilters && (
+                <Button variant="ghost" size="sm" onClick={reset} className="h-8 px-3 text-xs text-muted-foreground">
+                  リセット
+                </Button>
+              )}
+              <Button size="sm" onClick={onClose} className="h-8 px-4 text-xs">
+                適用
+              </Button>
+            </div>
+          </div>
         </SheetHeader>
 
         <div className="flex flex-col">
+          {/* 地域タグ — 含む/除外タブ */}
+          {(broadRegions.length > 0 || specificRegions.length > 0) && (
+            <IncludeExcludeSection title="地域タグ" count={regionCount} noDivider>
+              {(mode) => {
+                if (mode === "include") {
+                  const broadIds = broadRegions.map((r) => r.id);
+                  const hasBroad = regionIds.some((id) => broadIds.includes(id));
+                  const specificIds = specificRegions.map((r) => r.id);
+                  const hasSpecific = regionIds.some((id) => specificIds.includes(id));
+                  return (
+                    <>
+                      {broadRegions.map((r) => (
+                        <FilterChip
+                          key={r.id}
+                          selected={regionIds.includes(r.id)}
+                          onClick={() => setRegionIds(toggle(regionIds, r.id))}
+                          label={r.name}
+                        />
+                      ))}
+                      {specificRegions.length > 0 && (
+                        <SpecificRegionExpander
+                          regions={specificRegions}
+                          selectedIds={regionIds}
+                          onToggle={(id) => setRegionIds(toggle(regionIds, id))}
+                          onClear={hasSpecific ? () => setRegionIds(regionIds.filter((id) => !specificIds.includes(id))) : undefined}
+                        />
+                      )}
+                      {hasBroad && (
+                        <button
+                          type="button"
+                          onClick={() => setRegionIds(regionIds.filter((id) => !broadIds.includes(id)))}
+                          className="text-xs text-primary hover:text-primary/80 font-medium ml-auto mt-1"
+                        >
+                          中地域クリア
+                        </button>
+                      )}
+                    </>
+                  );
+                } else {
+                  return broadRegions.map((r) => (
+                    <FilterChip
+                      key={r.id}
+                      selected={excludeRegionIds.includes(r.id)}
+                      onClick={() => setExcludeRegionIds(toggle(excludeRegionIds, r.id))}
+                      label={r.name}
+                      variant="exclude"
+                    />
+                  ));
+                }
+              }}
+            </IncludeExcludeSection>
+          )}
+
           {/* 実施済み */}
-          <FilterSection title="実施済み" noDivider count={statuses.includes("DONE") ? 1 : 0}>
+          <FilterSection title="実施済み" count={statuses.includes("DONE") ? 1 : 0}>
             <FilterChip
               selected={statuses.includes("DONE") && statuses.some((s) => s !== "DONE")}
               onClick={() => {
@@ -283,41 +348,44 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
           {/* 距離 */}
           <FilterSection title="距離で絞り込み" count={(nearbyKm !== null && (stationName || useCurrentLocation)) ? 1 : 0}>
             <div className="w-full flex flex-col gap-3">
-              {useCurrentLocation ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <span className="text-sm text-blue-600 dark:text-blue-400 flex-1 font-medium">📍 現在地を使用中</span>
+              {/* チェックボックス: 現在地を使う */}
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => useCurrentLocation ? setUseCurrentLocation(false) : onRequestLocation?.()}
+                  disabled={locationLoading}
+                  className="flex items-center gap-2.5 disabled:opacity-50"
+                >
+                  <div className={cn(
+                    "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0",
+                    useCurrentLocation
+                      ? "bg-primary border-primary"
+                      : "border-muted-foreground/40"
+                  )}>
+                    {useCurrentLocation && <Check size={12} className="text-primary-foreground" strokeWidth={3} />}
+                  </div>
+                  <span className="text-sm">
+                    {locationLoading ? "位置情報を取得中..." : "📍 現在地を使う"}
+                  </span>
+                </button>
+                {useCurrentLocation && (
                   <button
                     type="button"
                     onClick={onReacquireLocation}
                     disabled={locationLoading}
-                    className="text-xs text-primary hover:text-primary/80 font-medium disabled:opacity-50 transition-colors"
+                    className="text-xs text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
                   >
-                    {locationLoading ? "取得中..." : "再取得"}
+                    再取得
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setUseCurrentLocation(false)}
-                    className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <StationSearch
-                    value={stationName || null}
-                    onChange={(name) => setStationName(name ?? "")}
-                  />
-                  <button
-                    type="button"
-                    onClick={onRequestLocation}
-                    disabled={locationLoading}
-                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50 transition-colors"
-                  >
-                    {locationLoading ? "位置情報取得中..." : userLocation ? "📍 現在地を使う（取得済み）" : "📍 現在地を使う"}
-                  </button>
-                </>
-              )}
+                )}
+              </div>
+              {/* 駅名検索: 現在地使用中はグレーアウト */}
+              <div className={cn("transition-opacity", useCurrentLocation && "opacity-40 pointer-events-none")}>
+                <StationSearch
+                  value={stationName || null}
+                  onChange={(name) => setStationName(name ?? "")}
+                />
+              </div>
               <div className="flex items-center justify-between">
                 <span className={cn("text-sm font-semibold", nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
                   {distanceLabel}
@@ -499,59 +567,6 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
               />
             ))}
           </FilterSection>
-
-          {/* 地域タグ — 含む/除外タブ */}
-          {(broadRegions.length > 0 || specificRegions.length > 0) && (
-            <IncludeExcludeSection title="地域タグ" count={regionCount}>
-              {(mode) => {
-                if (mode === "include") {
-                  const broadIds = broadRegions.map((r) => r.id);
-                  const hasBroad = regionIds.some((id) => broadIds.includes(id));
-                  const specificIds = specificRegions.map((r) => r.id);
-                  const hasSpecific = regionIds.some((id) => specificIds.includes(id));
-                  return (
-                    <>
-                      {broadRegions.map((r) => (
-                        <FilterChip
-                          key={r.id}
-                          selected={regionIds.includes(r.id)}
-                          onClick={() => setRegionIds(toggle(regionIds, r.id))}
-                          label={r.name}
-                        />
-                      ))}
-                      {specificRegions.length > 0 && (
-                        <SpecificRegionExpander
-                          regions={specificRegions}
-                          selectedIds={regionIds}
-                          onToggle={(id) => setRegionIds(toggle(regionIds, id))}
-                          onClear={hasSpecific ? () => setRegionIds(regionIds.filter((id) => !specificIds.includes(id))) : undefined}
-                        />
-                      )}
-                      {(hasBroad) && (
-                        <button
-                          type="button"
-                          onClick={() => setRegionIds(regionIds.filter((id) => !broadIds.includes(id)))}
-                          className="text-xs text-primary hover:text-primary/80 font-medium ml-auto mt-1"
-                        >
-                          中地域クリア
-                        </button>
-                      )}
-                    </>
-                  );
-                } else {
-                  return broadRegions.map((r) => (
-                    <FilterChip
-                      key={r.id}
-                      selected={excludeRegionIds.includes(r.id)}
-                      onClick={() => setExcludeRegionIds(toggle(excludeRegionIds, r.id))}
-                      label={r.name}
-                      variant="exclude"
-                    />
-                  ));
-                }
-              }}
-            </IncludeExcludeSection>
-          )}
 
           {/* 予算 */}
           <FilterSection title="予算" collapsible defaultOpen={budgets.length > 0} count={budgets.length}>

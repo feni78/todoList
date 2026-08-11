@@ -564,9 +564,9 @@ export default function ListPage() {
           📍 {fStationName}駅からの距離を表示中
         </p>
       )}
-      {fUseCurrentLocation && fNearbyKm !== null && userLocation && (
+      {fUseCurrentLocation && userLocation && (
         <p className="px-4 pb-1 text-xs text-blue-500 dark:text-blue-400">
-          📍 現在地 {fNearbyKm}km以内で絞り込み中
+          📍 現在地からの距離を表示中
         </p>
       )}
 
