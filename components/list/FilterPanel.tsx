@@ -238,7 +238,6 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
     seasons.length > 0 ||
     genreIds.length > 0 ||
     regionIds.length > 0 ||
-    excludeRegionIds.length > 0 ||
     nearbyKm !== null ||
     useCurrentLocation ||
     scoreFilter !== null ||
@@ -258,7 +257,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
         <SheetHeader className="mt-5 mb-1 p-0">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-base">絞り込み</SheetTitle>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 mr-8">
               {hasFilters && (
                 <Button variant="ghost" size="sm" onClick={reset} className="h-8 px-3 text-xs text-muted-foreground">
                   リセット
@@ -274,7 +273,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
         <div className="flex flex-col">
           {/* 地域タグ — 含む/除外タブ */}
           {(broadRegions.length > 0 || specificRegions.length > 0) && (
-            <IncludeExcludeSection title="地域タグ" count={regionCount} noDivider>
+            <IncludeExcludeSection title="地域で絞り込み" count={regionCount} noDivider>
               {(mode) => {
                 if (mode === "include") {
                   const broadIds = broadRegions.map((r) => r.id);
@@ -325,48 +324,23 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
             </IncludeExcludeSection>
           )}
 
-          {/* 実施済み */}
-          <FilterSection title="実施済み" count={statuses.includes("DONE") ? 1 : 0}>
-            <FilterChip
-              selected={statuses.includes("DONE") && statuses.some((s) => s !== "DONE")}
-              onClick={() => {
-                const both = statuses.includes("DONE") && statuses.some((s) => s !== "DONE");
-                setStatuses(both ? [] : ["PENDING", "HOLD", "DONE"] as Status[]);
-              }}
-              label="実施済みを含む"
-            />
-            <FilterChip
-              selected={statuses.length === 1 && statuses[0] === "DONE"}
-              onClick={() => {
-                const doneOnly = statuses.length === 1 && statuses[0] === "DONE";
-                setStatuses(doneOnly ? [] : ["DONE"] as Status[]);
-              }}
-              label="実施済みのみ"
-            />
-          </FilterSection>
-
           {/* 距離 */}
-          <FilterSection title="距離で絞り込み" count={(nearbyKm !== null && (stationName || useCurrentLocation)) ? 1 : 0}>
+          <FilterSection title="距離で絞り込み" count={(nearbyKm !== null || useCurrentLocation) && (stationName || useCurrentLocation) ? 1 : 0}>
             <div className="w-full flex flex-col gap-3">
-              {/* チェックボックス: 現在地を使う */}
-              <div className="flex items-center justify-between">
+              {/* 現在地を使う — FilterChipスタイル */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => useCurrentLocation ? setUseCurrentLocation(false) : onRequestLocation?.()}
                   disabled={locationLoading}
-                  className="flex items-center gap-2.5 disabled:opacity-50"
-                >
-                  <div className={cn(
-                    "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0",
+                  className={cn(
+                    "px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50",
                     useCurrentLocation
-                      ? "bg-primary border-primary"
-                      : "border-muted-foreground/40"
-                  )}>
-                    {useCurrentLocation && <Check size={12} className="text-primary-foreground" strokeWidth={3} />}
-                  </div>
-                  <span className="text-sm">
-                    {locationLoading ? "位置情報を取得中..." : "📍 現在地を使う"}
-                  </span>
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  )}
+                >
+                  {locationLoading ? "位置情報を取得中..." : "📍 現在地を使う"}
                 </button>
                 {useCurrentLocation && (
                   <button
@@ -412,6 +386,26 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
                 <span>100km</span>
               </div>
             </div>
+          </FilterSection>
+
+          {/* 実施済み */}
+          <FilterSection title="実施済み" count={statuses.includes("DONE") ? 1 : 0}>
+            <FilterChip
+              selected={statuses.includes("DONE") && statuses.some((s) => s !== "DONE")}
+              onClick={() => {
+                const both = statuses.includes("DONE") && statuses.some((s) => s !== "DONE");
+                setStatuses(both ? [] : ["PENDING", "HOLD", "DONE"] as Status[]);
+              }}
+              label="実施済みを含む"
+            />
+            <FilterChip
+              selected={statuses.length === 1 && statuses[0] === "DONE"}
+              onClick={() => {
+                const doneOnly = statuses.length === 1 && statuses[0] === "DONE";
+                setStatuses(doneOnly ? [] : ["DONE"] as Status[]);
+              }}
+              label="実施済みのみ"
+            />
           </FilterSection>
 
           {/* ジャンル — 含む/除外タブ */}

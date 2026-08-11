@@ -81,14 +81,23 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
   }
 
   // 距離
-  if (nearbyKm !== null && (stationName || useCurrentLocation)) {
+  if (stationName || useCurrentLocation) {
     const locationLabel = stationName ? `${stationName}駅` : "現在地";
-    chips.push({
-      key: "distance",
-      label: `📍 ${locationLabel} ${nearbyKm}km以内`,
-      variant: "distance",
-      onRemove: () => { setNearbyKm(null); if (useCurrentLocation) setUseCurrentLocation(false); },
-    });
+    if (nearbyKm !== null) {
+      chips.push({
+        key: "distance",
+        label: `📍 ${locationLabel} ${nearbyKm}km以内`,
+        variant: "distance",
+        onRemove: () => { setNearbyKm(null); if (useCurrentLocation) setUseCurrentLocation(false); },
+      });
+    } else if (useCurrentLocation) {
+      chips.push({
+        key: "distance",
+        label: "📍 現在地を使用中",
+        variant: "distance",
+        onRemove: () => setUseCurrentLocation(false),
+      });
+    }
   }
 
   // 地域タグ（含む）
