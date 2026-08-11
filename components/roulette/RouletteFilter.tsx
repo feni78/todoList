@@ -96,17 +96,18 @@ function FilterSection({ title, children, collapsible = false, defaultOpen = tru
   );
 }
 
-function IncludeExcludeSection({ title, children, count = 0, onClearInclude, onClearExclude }: {
+function IncludeExcludeSection({ title, children, count = 0, noDivider = false, onClearInclude, onClearExclude }: {
   title: string;
   children: (mode: "include" | "exclude") => React.ReactNode;
   count?: number;
+  noDivider?: boolean;
   onClearInclude?: () => void;
   onClearExclude?: () => void;
 }) {
   const [mode, setMode] = useState<"include" | "exclude">("include");
   const onClear = mode === "include" ? onClearInclude : onClearExclude;
   return (
-    <div className="flex flex-col gap-3 py-4 border-t border-border/60">
+    <div className={cn("flex flex-col gap-3 py-4", !noDivider && "border-t border-border/60")}>
       <div className="flex items-center gap-1.5">
         <div className="flex items-center gap-1.5 flex-1">
           <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -188,7 +189,11 @@ const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
 const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100];
 
 export function RouletteFilter({ open, onClose, members, genres = [], regions = [] }: RouletteFilterProps) {
-  const filter = useRouletteStore(useShallow((s) => s.filter));
+  const { filter, defaultExcludeGenreIds, defaultExcludeRegionIds } = useRouletteStore(useShallow((s) => ({
+    filter: s.filter,
+    defaultExcludeGenreIds: s.defaultExcludeGenreIds,
+    defaultExcludeRegionIds: s.defaultExcludeRegionIds,
+  })));
   const { setFilter, resetFilter } = useRouletteStore.getState();
   const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
 
@@ -209,6 +214,12 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
     setFilter({ nearbyKm: pos === 0 ? null : DISTANCE_VALUES[pos - 1] });
   };
 
+  const excludeChanged =
+    filter.excludeGenreIds.some((id) => !defaultExcludeGenreIds.includes(id)) ||
+    defaultExcludeGenreIds.some((id) => !filter.excludeGenreIds.includes(id)) ||
+    filter.excludeRegionIds.some((id) => !defaultExcludeRegionIds.includes(id)) ||
+    defaultExcludeRegionIds.some((id) => !filter.excludeRegionIds.includes(id));
+
   const hasFilters =
     filter.memberIds.length > 0 ||
     filter.situations.length > 0 ||
@@ -217,21 +228,140 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
     filter.durations.length > 0 ||
     filter.seasons.length > 0 ||
     filter.genreIds.length > 0 ||
-    filter.excludeGenreIds.length > 0 ||
     filter.regionIds.length > 0 ||
-    filter.excludeRegionIds.length > 0 ||
     filter.nearbyKm !== null ||
     filter.scoreFilter !== null ||
-    filter.favoriteOnly;
+    filter.favoriteOnly ||
+    excludeChanged;
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl px-5">
         <SheetHeader className="mt-5 mb-1 p-0">
-          <SheetTitle className="text-base">ルーレット絞り込み</SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-base">ルーレット絞り込み</SheetTitle>
+            <div className="flex gap-1.5 mr-8">
+              {hasFilters && (
+                <Button variant="ghost" size="sm" onClick={resetFilter} className="h-8 px-3 text-xs text-muted-foreground">
+                  リセット
+                </Button>
+              )}
+              <Button size="sm" onClick={onClose} className="h-8 px-4 text-xs">
+                適用
+              </Button>
+            </div>
+          </div>
         </SheetHeader>
 
         <div className="flex flex-col">
+          {/* 地域で絞り込み */}
+          {(broadRegions.length > 0 || specificRegions.length > 0) && (
+            <IncludeExcludeSection
+              title="地域で絞り込み"
+              count={filter.regionIds.length + filter.excludeRegionIds.filter((id) => !defaultExcludeRegionIds.includes(id)).length}
+              noDivider
+              onClearInclude={filter.regionIds.length > 0 ? () => setFilter({ regionIds: [] }) : undefined}
+              onClearExclude={filter.excludeRegionIds.some((id) => !defaultExcludeRegionIds.includes(id)) ? () => setFilter({ excludeRegionIds: [...defaultExcludeRegionIds] }) : undefined}
+            >
+              {(mode) =>
+                mode === "include" ? (
+                  <>
+                    {broadRegions.map((r) => (
+                      <FilterChip
+                        key={r.id}
+                        selected={filter.regionIds.includes(r.id)}
+                        onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
+                        label={r.name}
+                      />
+                    ))}
+                    {specificRegions.length > 0 && (
+                      <SpecificRegionExpander
+                        regions={specificRegions}
+                        selectedIds={filter.regionIds}
+                        onToggle={(id) => setFilter({ regionIds: toggle(filter.regionIds, id) })}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {broadRegions.map((r) => (
+                      <FilterChip
+                        key={r.id}
+                        selected={filter.excludeRegionIds.includes(r.id)}
+                        onClick={() => setFilter({ excludeRegionIds: toggle(filter.excludeRegionIds, r.id) })}
+                        label={r.name}
+                        variant="exclude"
+                      />
+                    ))}
+                    {specificRegions.length > 0 && (
+                      <SpecificRegionExpander
+                        regions={specificRegions}
+                        selectedIds={filter.excludeRegionIds}
+                        onToggle={(id) => setFilter({ excludeRegionIds: toggle(filter.excludeRegionIds, id) })}
+                      />
+                    )}
+                  </>
+                )
+              }
+            </IncludeExcludeSection>
+          )}
+
+          {/* 距離 */}
+          <FilterSection title="距離で絞り込み" count={filter.nearbyKm !== null ? 1 : 0}>
+            <div className="w-full flex flex-col gap-3">
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFilter({ stationName: null })}
+                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", filter.stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  現在地
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter({ stationName: filter.stationName ?? "" })}
+                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", filter.stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  駅名
+                </button>
+              </div>
+              {filter.stationName !== null && (
+                <StationSearch
+                  value={filter.stationName || null}
+                  onChange={(name) => setFilter({ stationName: name ?? "" })}
+                />
+              )}
+              <div className="flex items-center justify-between">
+                <span className={cn("text-sm font-semibold", filter.nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
+                  {distanceLabel}
+                </span>
+                {filter.nearbyKm !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setFilter({ nearbyKm: null })}
+                    className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                  >
+                    クリア
+                  </button>
+                )}
+              </div>
+              <Slider
+                min={0}
+                max={DISTANCE_VALUES.length}
+                step={1}
+                value={[sliderPos]}
+                onValueChange={handleSlider}
+              />
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>指定なし</span>
+                <span>100km</span>
+              </div>
+            </div>
+          </FilterSection>
+
+          {/* Block separator: 場所 → 実施済み */}
+          <div className="border-t border-border -mx-5" />
+
           {/* 実施済み */}
           <FilterSection title="実施済み" noDivider>
             <FilterChip
@@ -261,13 +391,17 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
             />
           </FilterSection>
 
+          {/* Block separator: 実施済み → コンテンツ */}
+          <div className="border-t border-border -mx-5" />
+
           {/* ジャンル */}
           {genres.length > 0 && (
             <IncludeExcludeSection
               title="ジャンル"
-              count={filter.genreIds.length + filter.excludeGenreIds.length}
+              count={filter.genreIds.length + filter.excludeGenreIds.filter((id) => !defaultExcludeGenreIds.includes(id)).length}
+              noDivider
               onClearInclude={filter.genreIds.length > 0 ? () => setFilter({ genreIds: [] }) : undefined}
-              onClearExclude={filter.excludeGenreIds.length > 0 ? () => setFilter({ excludeGenreIds: [] }) : undefined}
+              onClearExclude={filter.excludeGenreIds.some((id) => !defaultExcludeGenreIds.includes(id)) ? () => setFilter({ excludeGenreIds: [...defaultExcludeGenreIds] }) : undefined}
             >
               {(mode) =>
                 mode === "include" ? (
@@ -391,170 +525,6 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
             </IncludeExcludeSection>
           )}
 
-          {/* シチュエーション — 単一選択 */}
-          <FilterSection title="シチュエーション" count={filter.situations.length}>
-            {SITUATIONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={filter.situations.includes(s)}
-                onClick={() => setFilter({ situations: filter.situations.includes(s) ? [] : [s] })}
-                label={SITUATION_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* 距離 */}
-          <FilterSection title="距離で絞り込み" count={filter.nearbyKm !== null ? 1 : 0}>
-            <div className="w-full flex flex-col gap-3">
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setFilter({ stationName: null })}
-                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", filter.stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                >
-                  現在地
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilter({ stationName: filter.stationName ?? "" })}
-                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", filter.stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                >
-                  駅名
-                </button>
-              </div>
-              {filter.stationName !== null && (
-                <StationSearch
-                  value={filter.stationName || null}
-                  onChange={(name) => setFilter({ stationName: name ?? "" })}
-                />
-              )}
-              <div className="flex items-center justify-between">
-                <span className={cn("text-sm font-semibold", filter.nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
-                  {distanceLabel}
-                </span>
-                {filter.nearbyKm !== null && (
-                  <button
-                    type="button"
-                    onClick={() => setFilter({ nearbyKm: null })}
-                    className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
-                  >
-                    クリア
-                  </button>
-                )}
-              </div>
-              <Slider
-                min={0}
-                max={DISTANCE_VALUES.length}
-                step={1}
-                value={[sliderPos]}
-                onValueChange={handleSlider}
-              />
-              <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span>指定なし</span>
-                <span>100km</span>
-              </div>
-            </div>
-          </FilterSection>
-
-          {/* 地域タグ */}
-          {(broadRegions.length > 0 || specificRegions.length > 0) && (
-            <IncludeExcludeSection
-              title="地域タグ"
-              count={filter.regionIds.length + filter.excludeRegionIds.length}
-              onClearInclude={filter.regionIds.length > 0 ? () => setFilter({ regionIds: [] }) : undefined}
-              onClearExclude={filter.excludeRegionIds.length > 0 ? () => setFilter({ excludeRegionIds: [] }) : undefined}
-            >
-              {(mode) =>
-                mode === "include" ? (
-                  <>
-                    {broadRegions.map((r) => (
-                      <FilterChip
-                        key={r.id}
-                        selected={filter.regionIds.includes(r.id)}
-                        onClick={() => setFilter({ regionIds: toggle(filter.regionIds, r.id) })}
-                        label={r.name}
-                      />
-                    ))}
-                    {specificRegions.length > 0 && (
-                      <SpecificRegionExpander
-                        regions={specificRegions}
-                        selectedIds={filter.regionIds}
-                        onToggle={(id) => setFilter({ regionIds: toggle(filter.regionIds, id) })}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {broadRegions.map((r) => (
-                      <FilterChip
-                        key={r.id}
-                        selected={filter.excludeRegionIds.includes(r.id)}
-                        onClick={() => setFilter({ excludeRegionIds: toggle(filter.excludeRegionIds, r.id) })}
-                        label={r.name}
-                        variant="exclude"
-                      />
-                    ))}
-                    {specificRegions.length > 0 && (
-                      <SpecificRegionExpander
-                        regions={specificRegions}
-                        selectedIds={filter.excludeRegionIds}
-                        onToggle={(id) => setFilter({ excludeRegionIds: toggle(filter.excludeRegionIds, id) })}
-                      />
-                    )}
-                  </>
-                )
-              }
-            </IncludeExcludeSection>
-          )}
-
-          {/* 予算 */}
-          <FilterSection title="予算" count={filter.budgets.length}>
-            {BUDGETS.map((b) => (
-              <FilterChip
-                key={b}
-                selected={filter.budgets.includes(b)}
-                onClick={() => setFilter({ budgets: toggle(filter.budgets, b) })}
-                label={BUDGET_LABELS[b]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* 所要時間 */}
-          <FilterSection title="所要時間" count={filter.durations.length}>
-            {DURATIONS.map((d) => (
-              <FilterChip
-                key={d}
-                selected={filter.durations.includes(d)}
-                onClick={() => setFilter({ durations: toggle(filter.durations, d) })}
-                label={DURATION_LABELS[d]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* やりたい度 */}
-          <FilterSection title="やりたい度" collapsible defaultOpen={filter.scoreFilter !== null} count={filter.scoreFilter !== null ? 1 : 0}>
-            {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
-              <FilterChip
-                key={f}
-                selected={filter.scoreFilter === f}
-                onClick={() => setFilter({ scoreFilter: filter.scoreFilter === f ? null : f })}
-                label={SCORE_FILTER_LABELS[f]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* 季節 */}
-          <FilterSection title="季節タグ" collapsible defaultOpen={filter.seasons.length > 0} count={filter.seasons.length}>
-            {SEASONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={filter.seasons.includes(s)}
-                onClick={() => setFilter({ seasons: toggle(filter.seasons, s) })}
-                label={SEASON_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
           {/* 登録者 */}
           {members.length > 0 && (
             <FilterSection title="登録者" collapsible defaultOpen={filter.memberIds.length > 0} count={filter.memberIds.length}>
@@ -568,6 +538,66 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
               ))}
             </FilterSection>
           )}
+
+          {/* やりたい度 */}
+          <FilterSection title="やりたい度" collapsible defaultOpen={filter.scoreFilter !== null} count={filter.scoreFilter !== null ? 1 : 0}>
+            {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
+              <FilterChip
+                key={f}
+                selected={filter.scoreFilter === f}
+                onClick={() => setFilter({ scoreFilter: filter.scoreFilter === f ? null : f })}
+                label={SCORE_FILTER_LABELS[f]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* シチュエーション */}
+          <FilterSection title="シチュエーション" collapsible defaultOpen={filter.situations.length > 0} count={filter.situations.length}>
+            {SITUATIONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={filter.situations.includes(s)}
+                onClick={() => setFilter({ situations: filter.situations.includes(s) ? [] : [s] })}
+                label={SITUATION_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 季節タグ */}
+          <FilterSection title="季節タグ" collapsible defaultOpen={filter.seasons.length > 0} count={filter.seasons.length}>
+            {SEASONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={filter.seasons.includes(s)}
+                onClick={() => setFilter({ seasons: toggle(filter.seasons, s) })}
+                label={SEASON_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 予算 */}
+          <FilterSection title="予算" collapsible defaultOpen={filter.budgets.length > 0} count={filter.budgets.length}>
+            {BUDGETS.map((b) => (
+              <FilterChip
+                key={b}
+                selected={filter.budgets.includes(b)}
+                onClick={() => setFilter({ budgets: toggle(filter.budgets, b) })}
+                label={BUDGET_LABELS[b]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 所要時間 */}
+          <FilterSection title="所要時間" collapsible defaultOpen={filter.durations.length > 0} count={filter.durations.length}>
+            {DURATIONS.map((d) => (
+              <FilterChip
+                key={d}
+                selected={filter.durations.includes(d)}
+                onClick={() => setFilter({ durations: toggle(filter.durations, d) })}
+                label={DURATION_LABELS[d]}
+              />
+            ))}
+          </FilterSection>
         </div>
 
         <div className="flex gap-2 mt-4 pb-8">

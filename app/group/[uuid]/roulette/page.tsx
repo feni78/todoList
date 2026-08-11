@@ -33,7 +33,7 @@ export default function RoulettePage() {
   const doneLoadingRef = useRef(false);
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
-  const { mode, setMode, settings, devMode, filter, setSettings, setFilter, setDefaultExcludeGenreIds, setDefaultExcludeRegionIds } = useRouletteStore();
+  const { mode, setMode, settings, devMode, filter, defaultExcludeGenreIds, defaultExcludeRegionIds, setSettings, setFilter, setDefaultExcludeGenreIds, setDefaultExcludeRegionIds } = useRouletteStore();
   const { fetchRouletteSettings } = useGroup();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -114,6 +114,12 @@ export default function RoulettePage() {
     );
   }, [filter.nearbyKm, filter.stationName]);
 
+  const excludeChanged =
+    filter.excludeGenreIds.some((id) => !defaultExcludeGenreIds.includes(id)) ||
+    defaultExcludeGenreIds.some((id) => !filter.excludeGenreIds.includes(id)) ||
+    filter.excludeRegionIds.some((id) => !defaultExcludeRegionIds.includes(id)) ||
+    defaultExcludeRegionIds.some((id) => !filter.excludeRegionIds.includes(id));
+
   const hasActiveFilters =
     filter.memberIds.length > 0 ||
     filter.situations.length > 0 ||
@@ -122,10 +128,11 @@ export default function RoulettePage() {
     filter.durations.length > 0 ||
     filter.seasons.length > 0 ||
     filter.genreIds.length > 0 ||
-    filter.excludeGenreIds.length > 0 ||
     filter.regionIds.length > 0 ||
     filter.nearbyKm !== null ||
-    filter.favoriteOnly;
+    filter.scoreFilter !== null ||
+    filter.favoriteOnly ||
+    excludeChanged;
 
   const handleSetMode = (m: RouletteMode) => {
     if (isSpinning) completeNow();
