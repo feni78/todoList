@@ -280,12 +280,77 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
             />
           </FilterSection>
 
+          {/* 距離 */}
+          <FilterSection title="距離で絞り込み" count={(nearbyKm !== null && (stationName || useCurrentLocation)) ? 1 : 0}>
+            <div className="w-full flex flex-col gap-3">
+              {useCurrentLocation ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
+                  <span className="text-sm text-blue-600 dark:text-blue-400 flex-1 font-medium">📍 現在地を使用中</span>
+                  <button
+                    type="button"
+                    onClick={onReacquireLocation}
+                    disabled={locationLoading}
+                    className="text-xs text-primary hover:text-primary/80 font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {locationLoading ? "取得中..." : "再取得"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUseCurrentLocation(false)}
+                    className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <StationSearch
+                    value={stationName || null}
+                    onChange={(name) => setStationName(name ?? "")}
+                  />
+                  <button
+                    type="button"
+                    onClick={onRequestLocation}
+                    disabled={locationLoading}
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50 transition-colors"
+                  >
+                    {locationLoading ? "位置情報取得中..." : userLocation ? "📍 現在地を使う（取得済み）" : "📍 現在地を使う"}
+                  </button>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <span className={cn("text-sm font-semibold", nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
+                  {distanceLabel}
+                </span>
+                {nearbyKm !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setNearbyKm(null)}
+                    className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                  >
+                    クリア
+                  </button>
+                )}
+              </div>
+              <Slider
+                min={0}
+                max={DISTANCE_VALUES.length}
+                step={1}
+                value={[sliderPos]}
+                onValueChange={handleSlider}
+              />
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>指定なし</span>
+                <span>100km</span>
+              </div>
+            </div>
+          </FilterSection>
+
           {/* ジャンル — 含む/除外タブ */}
           {genres.length > 0 && (
             <IncludeExcludeSection
               title="ジャンル"
               count={genreIds.length + excludeGenreIds.filter((id) => !defaultExcludeGenreIds.includes(id)).length}
-              noDivider
               onClearInclude={genreIds.length > 0 ? () => setGenreIds([]) : undefined}
               onClearExclude={excludeGenreIds.some((id) => !defaultExcludeGenreIds.includes(id)) ? () => setExcludeGenreIds([...defaultExcludeGenreIds]) : undefined}
             >
@@ -423,86 +488,16 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
             </IncludeExcludeSection>
           )}
 
-          {/* シチュエーション — 単一選択 */}
-          <FilterSection title="シチュエーション" count={situations.length}>
+          {/* シチュエーション */}
+          <FilterSection title="シチュエーション" collapsible defaultOpen={situations.length > 0} count={situations.length}>
             {SITUATIONS.map((s) => (
               <FilterChip
                 key={s}
                 selected={situations.includes(s)}
-                onClick={() =>
-                  setSituations(
-                    situations.includes(s) ? [] : [s]
-                  )
-                }
+                onClick={() => setSituations(situations.includes(s) ? [] : [s])}
                 label={SITUATION_LABELS[s]}
               />
             ))}
-          </FilterSection>
-
-          {/* 距離 */}
-          <FilterSection title="距離で絞り込み" count={(nearbyKm !== null && (stationName || useCurrentLocation)) ? 1 : 0}>
-            <div className="w-full flex flex-col gap-3">
-              {useCurrentLocation ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <span className="text-sm text-blue-600 dark:text-blue-400 flex-1 font-medium">📍 現在地を使用中</span>
-                  <button
-                    type="button"
-                    onClick={onReacquireLocation}
-                    disabled={locationLoading}
-                    className="text-xs text-primary hover:text-primary/80 font-medium disabled:opacity-50 transition-colors"
-                  >
-                    {locationLoading ? "取得中..." : "再取得"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUseCurrentLocation(false)}
-                    className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <StationSearch
-                    value={stationName || null}
-                    onChange={(name) => setStationName(name ?? "")}
-                  />
-                  <button
-                    type="button"
-                    onClick={onRequestLocation}
-                    disabled={locationLoading}
-                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50 transition-colors"
-                  >
-                    {locationLoading ? "位置情報取得中..." : userLocation ? "📍 現在地を使う（取得済み）" : "📍 現在地を使う"}
-                  </button>
-                </>
-              )}
-              <div className="flex items-center justify-between">
-                <span className={cn("text-sm font-semibold", nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
-                  {distanceLabel}
-                </span>
-                {nearbyKm !== null && (
-                  <button
-                    type="button"
-                    onClick={() => setNearbyKm(null)}
-                    className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
-                  >
-                    クリア
-                  </button>
-                )}
-              </div>
-              <Slider
-                min={0}
-                max={DISTANCE_VALUES.length}
-                step={1}
-                value={[sliderPos]}
-                onValueChange={handleSlider}
-              />
-              <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span>指定なし</span>
-                <span>100km</span>
-              </div>
-            </div>
           </FilterSection>
 
           {/* 地域タグ — 含む/除外タブ */}
@@ -559,7 +554,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
           )}
 
           {/* 予算 */}
-          <FilterSection title="予算" count={budgets.length}>
+          <FilterSection title="予算" collapsible defaultOpen={budgets.length > 0} count={budgets.length}>
             {BUDGETS.map((b) => (
               <FilterChip
                 key={b}
@@ -571,7 +566,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
           </FilterSection>
 
           {/* 所要時間 */}
-          <FilterSection title="所要時間" count={durations.length}>
+          <FilterSection title="所要時間" collapsible defaultOpen={durations.length > 0} count={durations.length}>
             {DURATIONS.map((d) => (
               <FilterChip
                 key={d}
