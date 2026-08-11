@@ -388,8 +388,11 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
             </div>
           </FilterSection>
 
+          {/* Block separator: 場所 → 実施済み */}
+          <div className="border-t border-border -mx-5" />
+
           {/* 実施済み */}
-          <FilterSection title="実施済み" count={statuses.includes("DONE") ? 1 : 0}>
+          <FilterSection title="実施済み" count={statuses.includes("DONE") ? 1 : 0} noDivider>
             <FilterChip
               selected={statuses.includes("DONE") && statuses.some((s) => s !== "DONE")}
               onClick={() => {
@@ -408,10 +411,14 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
             />
           </FilterSection>
 
+          {/* Block separator: 実施済み → コンテンツ */}
+          <div className="border-t border-border -mx-5" />
+
           {/* ジャンル — 含む/除外タブ */}
           {genres.length > 0 && (
             <IncludeExcludeSection
               title="ジャンル"
+              noDivider
               count={genreIds.length + excludeGenreIds.filter((id) => !defaultExcludeGenreIds.includes(id)).length}
               onClearInclude={genreIds.length > 0 ? () => setGenreIds([]) : undefined}
               onClearExclude={excludeGenreIds.some((id) => !defaultExcludeGenreIds.includes(id)) ? () => setExcludeGenreIds([...defaultExcludeGenreIds]) : undefined}
@@ -550,6 +557,31 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
             </IncludeExcludeSection>
           )}
 
+          {members.length > 0 && (
+            <FilterSection title="登録者" collapsible defaultOpen={memberIds.length > 0} count={memberIds.length}>
+              {members.map((m) => (
+                <FilterChip
+                  key={m.id}
+                  selected={memberIds.includes(m.id)}
+                  onClick={() => setMemberIds(toggle(memberIds, m.id))}
+                  label={m.nickname}
+                />
+              ))}
+            </FilterSection>
+          )}
+
+          {/* やりたい度 */}
+          <FilterSection title="やりたい度" collapsible defaultOpen={scoreFilter !== null} count={scoreFilter !== null ? 1 : 0}>
+            {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
+              <FilterChip
+                key={f}
+                selected={scoreFilter === f}
+                onClick={() => setScoreFilter(scoreFilter === f ? null : f)}
+                label={SCORE_FILTER_LABELS[f]}
+              />
+            ))}
+          </FilterSection>
+
           {/* シチュエーション */}
           <FilterSection title="シチュエーション" collapsible defaultOpen={situations.length > 0} count={situations.length}>
             {SITUATIONS.map((s) => (
@@ -558,6 +590,18 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
                 selected={situations.includes(s)}
                 onClick={() => setSituations(situations.includes(s) ? [] : [s])}
                 label={SITUATION_LABELS[s]}
+              />
+            ))}
+          </FilterSection>
+
+          {/* 季節タグ */}
+          <FilterSection title="季節タグ" collapsible defaultOpen={seasons.length > 0} count={seasons.length}>
+            {SEASONS.map((s) => (
+              <FilterChip
+                key={s}
+                selected={seasons.includes(s)}
+                onClick={() => setSeasons(toggle(seasons, s))}
+                label={SEASON_LABELS[s]}
               />
             ))}
           </FilterSection>
@@ -585,43 +629,6 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
               />
             ))}
           </FilterSection>
-
-          {/* やりたい度 */}
-          <FilterSection title="やりたい度" collapsible defaultOpen={scoreFilter !== null} count={scoreFilter !== null ? 1 : 0}>
-            {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
-              <FilterChip
-                key={f}
-                selected={scoreFilter === f}
-                onClick={() => setScoreFilter(scoreFilter === f ? null : f)}
-                label={SCORE_FILTER_LABELS[f]}
-              />
-            ))}
-          </FilterSection>
-
-          {/* 季節・登録者 — 折りたたみ */}
-          <FilterSection title="季節タグ" collapsible defaultOpen={seasons.length > 0} count={seasons.length}>
-            {SEASONS.map((s) => (
-              <FilterChip
-                key={s}
-                selected={seasons.includes(s)}
-                onClick={() => setSeasons(toggle(seasons, s))}
-                label={SEASON_LABELS[s]}
-              />
-            ))}
-          </FilterSection>
-
-          {members.length > 0 && (
-            <FilterSection title="登録者" collapsible defaultOpen={memberIds.length > 0} count={memberIds.length}>
-              {members.map((m) => (
-                <FilterChip
-                  key={m.id}
-                  selected={memberIds.includes(m.id)}
-                  onClick={() => setMemberIds(toggle(memberIds, m.id))}
-                  label={m.nickname}
-                />
-              ))}
-            </FilterSection>
-          )}
         </div>
 
         <div className="flex gap-2 mt-4 pb-8">
