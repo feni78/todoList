@@ -17,6 +17,10 @@ function toLocalDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function formatDistance(km: number): string {
+  return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
+}
+
 interface WishItemProps {
   wish: Wish;
   genres?: Genre[];
@@ -28,9 +32,10 @@ interface WishItemProps {
   selectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
+  distance?: number;
 }
 
-export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, isSelected, onToggleSelect }: WishItemProps) {
+export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, isSelected, onToggleSelect, distance }: WishItemProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const currentMemberId = getGroupMember(wish.groupId)?.memberId;
@@ -105,6 +110,9 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className="text-xs text-muted-foreground">{wish.member.nickname}</span>
+            {distance != null && (
+              <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">{formatDistance(distance)}</span>
+            )}
             {wish.status === "DONE" && (
               <input
                 type="date"

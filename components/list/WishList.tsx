@@ -16,10 +16,11 @@ interface WishListProps {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  distanceMap?: Map<string, number>;
   emptyMessage?: string;
 }
 
-export function WishList({ wishes, genres = [], regions = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, selectedIds, onToggleSelect, emptyMessage }: WishListProps) {
+export function WishList({ wishes, genres = [], regions = [], onUpdate, onDelete, onStatusChange, onToggleFavorite, selectionMode, selectedIds, onToggleSelect, distanceMap, emptyMessage }: WishListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
 
@@ -81,6 +82,7 @@ export function WishList({ wishes, genres = [], regions = [], onUpdate, onDelete
                 selectionMode={selectionMode}
                 isSelected={selectedIds?.has(wish.id)}
                 onToggleSelect={onToggleSelect}
+                distance={distanceMap?.get(wish.id)}
               />
             </div>
           );

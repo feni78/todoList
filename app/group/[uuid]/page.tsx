@@ -29,9 +29,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { findStation } from "@/lib/utils/station";
+import { haversineKm } from "@/lib/utils/distance";
 
 type TabValue = "PENDING" | "HOLD";
-type SortOrder = "priority" | "createdAt";
+type SortOrder = "priority" | "createdAt" | "distance";
 
 
 const SITUATION_TABS: { value: Situation | "ALL"; label: string }[] = [
@@ -110,6 +111,8 @@ export default function ListPage() {
 
   const [situationTab, setSituationTab] = useState<"ALL" | Situation>("ALL");
   const [sortOrder, setSortOrder] = useState<SortOrder>("priority");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -239,14 +242,35 @@ export default function ListPage() {
         if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
         const va = Math.min(a.votes.length, 2);
         const vb = Math.min(b.votes.length, 2);
-        return vb - va; // 同スコアならふたりとも > ひとり > 未入力
+        return vb - va;
       });
-    } else {
+    } else if (sortOrder === "distance" && userLocation) {
+      result.sort((a, b) => {
+        const da = a.latitude != null && a.longitude != null
+          ? haversineKm(userLocation.lat, userLocation.lng, a.latitude, a.longitude)
+          : Infinity;
+        const db = b.latitude != null && b.longitude != null
+          ? haversineKm(userLocation.lat, userLocation.lng, b.latitude, b.longitude)
+          : Infinity;
+        return da - db;
+      });
+    } else if (sortOrder !== "distance") {
       result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, showFavoriteOnly, sortOrder, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
+  }, [wishes, statusTab, situationTab, showFavoriteOnly, sortOrder, userLocation, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
+
+  const distanceMap = useMemo(() => {
+    if (sortOrder !== "distance" || !userLocation) return null;
+    const map = new Map<string, number>();
+    for (const w of filtered) {
+      if (w.latitude != null && w.longitude != null) {
+        map.set(w.id, haversineKm(userLocation.lat, userLocation.lng, w.latitude, w.longitude));
+      }
+    }
+    return map;
+  }, [sortOrder, userLocation, filtered]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);
@@ -447,11 +471,34 @@ export default function ListPage() {
           お気に入り
         </button>
         <button
-          onClick={() => setSortOrder((s) => s === "priority" ? "createdAt" : "priority")}
-          className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
+          onClick={() => {
+            const next: SortOrder = sortOrder === "priority" ? "createdAt" : sortOrder === "createdAt" ? "distance" : "priority";
+            if (next === "distance") {
+              if (!navigator.geolocation) {
+                toast.error("このブラウザは位置情報に対応していません");
+                return;
+              }
+              setLocationLoading(true);
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                  setSortOrder("distance");
+                  setLocationLoading(false);
+                },
+                () => {
+                  toast.error("位置情報の取得を許可してください");
+                  setLocationLoading(false);
+                }
+              );
+            } else {
+              setSortOrder(next);
+            }
+          }}
+          disabled={locationLoading}
+          className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50"
         >
           <ArrowUpDown size={11} />
-          {sortOrder === "priority" ? "やりたい度順" : "新着順"}
+          {locationLoading ? "取得中..." : sortOrder === "priority" ? "やりたい度順" : sortOrder === "createdAt" ? "新着順" : "距離順"}
         </button>
         <button
           onClick={() => setFilterOpen(true)}
@@ -493,6 +540,7 @@ export default function ListPage() {
           selectionMode={selectionMode !== null}
           selectedIds={selectedIds}
           onToggleSelect={handleToggleSelect}
+          distanceMap={distanceMap ?? undefined}
           emptyMessage={showFavoriteOnly ? "お気に入りのアイテムはありません" : statusTab === "PENDING" ? "やりたいことを追加しよう！" : "保留中のアイテムはありません"}
         />
       )}
