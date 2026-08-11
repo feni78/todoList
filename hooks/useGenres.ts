@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Genre, GenreType, GENRE_TYPE_ORDER } from "@/types";
+import { toast } from "sonner";
 
 export function useGenres(groupId: string) {
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -57,11 +58,13 @@ export function useGenres(groupId: string) {
 
   const reorderGenres = useCallback(async (orderedIds: string[]) => {
     const supabase = createClient();
-    await Promise.all(
+    const results = await Promise.allSettled(
       orderedIds.map((id, idx) =>
         supabase.from("genres").update({ sort_order: idx }).eq("id", id)
       )
     );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    if (failed > 0) toast.error(`並び替えの保存に失敗しました（${failed}件）`);
     await fetchGenres();
   }, [fetchGenres]);
 

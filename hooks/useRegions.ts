@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Region } from "@/types";
+import { toast } from "sonner";
 
 export function useRegions(groupId: string) {
   const [regions, setRegions] = useState<Region[]>([]);
@@ -48,11 +49,13 @@ export function useRegions(groupId: string) {
 
   const reorderRegions = useCallback(async (orderedIds: string[]) => {
     const supabase = createClient();
-    await Promise.all(
+    const results = await Promise.allSettled(
       orderedIds.map((id, idx) =>
         supabase.from("regions").update({ sort_order: idx }).eq("id", id)
       )
     );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    if (failed > 0) toast.error(`並び替えの保存に失敗しました（${failed}件）`);
     await fetchRegions();
   }, [fetchRegions]);
 
