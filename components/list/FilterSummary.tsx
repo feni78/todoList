@@ -43,12 +43,13 @@ function SummaryChip({ label, onRemove, variant = "default" }: {
 
 export function FilterSummary({ genres = [], regions = [], members = [], className }: FilterSummaryProps) {
   const {
-    nearbyKm, stationName, statuses, regionIds, excludeRegionIds, defaultExcludeRegionIds,
+    nearbyKm, stationName, useCurrentLocation, statuses, regionIds, excludeRegionIds, defaultExcludeRegionIds,
     situations, seasons, scoreFilter, budgets, durations, genreIds, excludeGenreIds,
     defaultExcludeGenreIds, memberIds,
   } = useFilterStore(useShallow((s) => ({
     nearbyKm: s.nearbyKm,
     stationName: s.stationName,
+    useCurrentLocation: s.useCurrentLocation,
     statuses: s.statuses,
     regionIds: s.regionIds,
     excludeRegionIds: s.excludeRegionIds,
@@ -63,7 +64,7 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
     defaultExcludeGenreIds: s.defaultExcludeGenreIds,
     memberIds: s.memberIds,
   })));
-  const { setNearbyKm, setStatuses, setRegionIds, setExcludeRegionIds, setSituations, setSeasons, setScoreFilter,
+  const { setNearbyKm, setUseCurrentLocation, setStatuses, setRegionIds, setExcludeRegionIds, setSituations, setSeasons, setScoreFilter,
     setBudgets, setDurations, setGenreIds, setExcludeGenreIds, setMemberIds, reset,
   } = useFilterStore.getState();
 
@@ -80,13 +81,13 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
   }
 
   // 距離
-  if (nearbyKm !== null) {
+  if (nearbyKm !== null && (stationName || useCurrentLocation)) {
     const locationLabel = stationName ? `${stationName}駅` : "現在地";
     chips.push({
       key: "distance",
       label: `📍 ${locationLabel} ${nearbyKm}km以内`,
       variant: "distance",
-      onRemove: () => setNearbyKm(null),
+      onRemove: () => { setNearbyKm(null); if (useCurrentLocation) setUseCurrentLocation(false); },
     });
   }
 

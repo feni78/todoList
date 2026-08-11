@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -44,6 +44,7 @@ export default function HistoryPage() {
     excludeRegionIds: fExcludeRegionIds,
     nearbyKm: fNearbyKm,
     stationName: fStationName,
+    useCurrentLocation: fUseCurrentLocation,
     defaultExcludeGenreIds: fDefaultExcludeGenreIds,
     defaultExcludeRegionIds: fDefaultExcludeRegionIds,
     historySearchQuery,
@@ -62,6 +63,7 @@ export default function HistoryPage() {
     excludeRegionIds: s.excludeRegionIds,
     nearbyKm: s.nearbyKm,
     stationName: s.stationName,
+    useCurrentLocation: s.useCurrentLocation,
     defaultExcludeGenreIds: s.defaultExcludeGenreIds,
     defaultExcludeRegionIds: s.defaultExcludeRegionIds,
     historySearchQuery: s.historySearchQuery,
@@ -78,64 +80,90 @@ export default function HistoryPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
   const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
   const nearbyKmRef = useRef<number | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(() => !!historySearchQuery);
   const [selectionMode, setSelectionMode] = useState<"genre" | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const km = fNearbyKm;
-    const stationName = fStationName;
     nearbyKmRef.current = km;
     if (km === null) { setNearbyWishIds(null); return; }
 
-    if (stationName !== null) {
-      const station = findStation(stationName);
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    if (fStationName) {
+      const station = findStation(fStationName);
       if (!station) { setNearbyWishIds(null); return; }
-      (async () => {
-        if (nearbyKmRef.current !== km) return;
-        try {
-          const supabase = createClient();
-          const { data, error } = await supabase.rpc("get_wishes_by_distance", {
-            p_group_id: uuid, p_lat: station.lat, p_lng: station.lng, p_max_km: km, p_limit: 500,
-          });
-          if (nearbyKmRef.current !== km) return;
-          if (error) throw error;
-          setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
-        } catch {
-          if (nearbyKmRef.current !== km) return;
-          toast.error("距離フィルターの取得に失敗しました");
-          setNearbyWishIds(null);
-        }
-      })();
+      lat = station.lat;
+      lng = station.lng;
+    } else if (fUseCurrentLocation && userLocation) {
+      lat = userLocation.lat;
+      lng = userLocation.lng;
+    } else {
+      setNearbyWishIds(null);
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(async (pos) => {
+    const capLat = lat;
+    const capLng = lng;
+    (async () => {
       if (nearbyKmRef.current !== km) return;
       try {
         const supabase = createClient();
         const { data, error } = await supabase.rpc("get_wishes_by_distance", {
-          p_group_id: uuid, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude, p_max_km: km, p_limit: 500,
+          p_group_id: uuid, p_lat: capLat, p_lng: capLng, p_max_km: km, p_limit: 500,
         });
         if (nearbyKmRef.current !== km) return;
         if (error) throw error;
         setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
       } catch {
         if (nearbyKmRef.current !== km) return;
-        toast.error("現在地の取得に失敗しました");
+        toast.error("距離フィルターの取得に失敗しました");
         setNearbyWishIds(null);
       }
-    }, () => {
-      toast.error("位置情報の取得を許可してください");
-      setNearbyWishIds(null);
-    });
-  }, [fNearbyKm, fStationName, uuid]);
+    })();
+  }, [fNearbyKm, fStationName, fUseCurrentLocation, userLocation, uuid]);
 
   const excludeChanged =
     fExcludeGenreIds.some((id) => !fDefaultExcludeGenreIds.includes(id)) ||
     fDefaultExcludeGenreIds.some((id) => !fExcludeGenreIds.includes(id)) ||
     fExcludeRegionIds.some((id) => !fDefaultExcludeRegionIds.includes(id)) ||
     fDefaultExcludeRegionIds.some((id) => !fExcludeRegionIds.includes(id));
+
+  const acquireLocation = useCallback((onSuccess: (loc: { lat: number; lng: number }) => void) => {
+    if (!navigator.geolocation) {
+      toast.error("このブラウザは位置情報に対応していません");
+      return;
+    }
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        setLocationLoading(false);
+        onSuccess(loc);
+      },
+      () => {
+        toast.error("位置情報の取得を許可してください");
+        setLocationLoading(false);
+      }
+    );
+  }, []);
+
+  const handleRequestLocation = useCallback(() => {
+    if (userLocation) {
+      useFilterStore.getState().setUseCurrentLocation(true);
+      return;
+    }
+    acquireLocation(() => useFilterStore.getState().setUseCurrentLocation(true));
+  }, [userLocation, acquireLocation]);
+
+  const handleReacquireLocation = useCallback(() => {
+    acquireLocation(() => {});
+  }, [acquireLocation]);
 
   const hasFilter =
     fMemberIds.length > 0 ||
@@ -146,6 +174,7 @@ export default function HistoryPage() {
     fGenreIds.length > 0 ||
     fRegionIds.length > 0 ||
     fNearbyKm !== null ||
+    fUseCurrentLocation ||
     fScoreFilter !== null ||
     excludeChanged;
 
@@ -397,6 +426,10 @@ export default function HistoryPage() {
         members={group?.members ?? []}
         genres={genres}
         regions={regions}
+        userLocation={userLocation}
+        locationLoading={locationLoading}
+        onRequestLocation={handleRequestLocation}
+        onReacquireLocation={handleReacquireLocation}
       />
 
       <BottomNav groupId={uuid} />

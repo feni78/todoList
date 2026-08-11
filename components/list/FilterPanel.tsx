@@ -5,6 +5,7 @@ import { StationSearch } from "@/components/common/StationSearch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { X } from "lucide-react";
 import {
   GroupMember,
   Genre,
@@ -35,6 +36,10 @@ interface FilterPanelProps {
   members: GroupMember[];
   genres?: Genre[];
   regions?: Region[];
+  userLocation?: { lat: number; lng: number } | null;
+  locationLoading?: boolean;
+  onRequestLocation?: () => void;
+  onReacquireLocation?: () => void;
 }
 
 function FilterChip({ selected, onClick, label, variant = "default" }: {
@@ -170,12 +175,12 @@ const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
 const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100];
 
-export function FilterPanel({ open, onClose, members, genres = [], regions = [] }: FilterPanelProps) {
+export function FilterPanel({ open, onClose, members, genres = [], regions = [], userLocation, locationLoading, onRequestLocation, onReacquireLocation }: FilterPanelProps) {
   const {
     memberIds, situations, statuses, budgets, durations, seasons, scoreFilter,
     genreIds, genreSearchMode, excludeGenreIds,
     regionIds, excludeRegionIds, defaultExcludeRegionIds, defaultExcludeGenreIds,
-    nearbyKm, stationName,
+    nearbyKm, stationName, useCurrentLocation,
   } = useFilterStore(useShallow((s) => ({
     memberIds: s.memberIds,
     situations: s.situations,
@@ -193,11 +198,12 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     defaultExcludeGenreIds: s.defaultExcludeGenreIds,
     nearbyKm: s.nearbyKm,
     stationName: s.stationName,
+    useCurrentLocation: s.useCurrentLocation,
   })));
   const {
     setMemberIds, setSituations, setStatuses, setBudgets, setDurations, setSeasons, setScoreFilter,
     setGenreIds, setGenreSearchMode, setExcludeGenreIds,
-    setRegionIds, setExcludeRegionIds, setNearbyKm, setStationName, reset,
+    setRegionIds, setExcludeRegionIds, setNearbyKm, setStationName, setUseCurrentLocation, reset,
   } = useFilterStore.getState();
 
   const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
@@ -234,6 +240,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
     regionIds.length > 0 ||
     excludeRegionIds.length > 0 ||
     nearbyKm !== null ||
+    useCurrentLocation ||
     scoreFilter !== null ||
     excludeChanged;
 
@@ -433,29 +440,42 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [] 
           </FilterSection>
 
           {/* 距離 */}
-          <FilterSection title="距離で絞り込み" count={nearbyKm !== null ? 1 : 0}>
+          <FilterSection title="距離で絞り込み" count={(nearbyKm !== null && (stationName || useCurrentLocation)) ? 1 : 0}>
             <div className="w-full flex flex-col gap-3">
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setStationName(null)}
-                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", stationName === null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                >
-                  現在地
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStationName(stationName ?? "")}
-                  className={cn("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", stationName !== null ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                >
-                  駅名
-                </button>
-              </div>
-              {stationName !== null && (
-                <StationSearch
-                  value={stationName || null}
-                  onChange={(name) => setStationName(name ?? "")}
-                />
+              {useCurrentLocation ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800">
+                  <span className="text-sm text-blue-600 dark:text-blue-400 flex-1 font-medium">📍 現在地を使用中</span>
+                  <button
+                    type="button"
+                    onClick={onReacquireLocation}
+                    disabled={locationLoading}
+                    className="text-xs text-primary hover:text-primary/80 font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {locationLoading ? "取得中..." : "再取得"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUseCurrentLocation(false)}
+                    className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <StationSearch
+                    value={stationName || null}
+                    onChange={(name) => setStationName(name ?? "")}
+                  />
+                  <button
+                    type="button"
+                    onClick={onRequestLocation}
+                    disabled={locationLoading}
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50 transition-colors"
+                  >
+                    {locationLoading ? "位置情報取得中..." : userLocation ? "📍 現在地を使う（取得済み）" : "📍 現在地を使う"}
+                  </button>
+                </>
               )}
               <div className="flex items-center justify-between">
                 <span className={cn("text-sm font-semibold", nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>

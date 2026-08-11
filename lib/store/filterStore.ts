@@ -23,6 +23,7 @@ interface FilterStore extends FilterState {
   setHistorySearchQuery: (q: string) => void;
   setNearbyKm: (km: number | null) => void;
   setStationName: (name: string | null) => void;
+  setUseCurrentLocation: (b: boolean) => void;
   reset: () => void;
 }
 
@@ -42,6 +43,7 @@ const initialState: FilterState = {
   searchQuery: "",
   nearbyKm: null,
   stationName: null,
+  useCurrentLocation: false,
 };
 
 export const useFilterStore = create<FilterStore>((set) => ({
@@ -66,7 +68,8 @@ export const useFilterStore = create<FilterStore>((set) => ({
   historySearchQuery: "",
   setHistorySearchQuery: (historySearchQuery) => set({ historySearchQuery }),
   setNearbyKm: (nearbyKm) => set({ nearbyKm }),
-  setStationName: (stationName) => set({ stationName }),
+  setStationName: (stationName) => set(stationName ? { stationName, useCurrentLocation: false } : { stationName }),
+  setUseCurrentLocation: (useCurrentLocation) => set(useCurrentLocation ? { useCurrentLocation, stationName: null } : { useCurrentLocation }),
   reset: () => set((state) => ({
     ...initialState,
     defaultExcludeGenreIds: state.defaultExcludeGenreIds,

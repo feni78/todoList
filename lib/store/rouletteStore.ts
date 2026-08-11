@@ -53,6 +53,7 @@ const defaultFilter: RouletteFilter = {
   excludeRegionIds: [],
   nearbyKm: null,
   stationName: null,
+  useCurrentLocation: false,
   favoriteOnly: false,
 };
 

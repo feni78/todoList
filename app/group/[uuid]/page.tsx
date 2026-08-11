@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -67,6 +67,7 @@ export default function ListPage() {
     searchQuery: fSearchQuery,
     nearbyKm: fNearbyKm,
     stationName: fStationName,
+    useCurrentLocation: fUseCurrentLocation,
     defaultExcludeGenreIds: fDefaultExcludeGenreIds,
     defaultExcludeRegionIds: fDefaultExcludeRegionIds,
   } = useFilterStore(useShallow((s) => ({
@@ -85,6 +86,7 @@ export default function ListPage() {
     searchQuery: s.searchQuery,
     nearbyKm: s.nearbyKm,
     stationName: s.stationName,
+    useCurrentLocation: s.useCurrentLocation,
     defaultExcludeGenreIds: s.defaultExcludeGenreIds,
     defaultExcludeRegionIds: s.defaultExcludeRegionIds,
   })));
@@ -137,44 +139,35 @@ export default function ListPage() {
 
   useEffect(() => {
     const km = fNearbyKm;
-    const stationName = fStationName;
     nearbyKmRef.current = km;
     if (km === null) { setNearbyWishIds(null); return; }
 
-    if (stationName !== null) {
-      const station = findStation(stationName);
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    if (fStationName) {
+      const station = findStation(fStationName);
       if (!station) { setNearbyWishIds(null); return; }
-      (async () => {
-        if (nearbyKmRef.current !== km) return;
-        try {
-          const supabase = createClient();
-          const { data, error } = await supabase.rpc("get_wishes_by_distance", {
-            p_group_id: uuid,
-            p_lat: station.lat,
-            p_lng: station.lng,
-            p_max_km: km,
-            p_limit: 500,
-          });
-          if (nearbyKmRef.current !== km) return;
-          if (error) throw error;
-          setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
-        } catch {
-          if (nearbyKmRef.current !== km) return;
-          toast.error("距離フィルターの取得に失敗しました");
-          setNearbyWishIds(null);
-        }
-      })();
+      lat = station.lat;
+      lng = station.lng;
+    } else if (fUseCurrentLocation && userLocation) {
+      lat = userLocation.lat;
+      lng = userLocation.lng;
+    } else {
+      setNearbyWishIds(null);
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(async (pos) => {
+    const capLat = lat;
+    const capLng = lng;
+    (async () => {
       if (nearbyKmRef.current !== km) return;
       try {
         const supabase = createClient();
         const { data, error } = await supabase.rpc("get_wishes_by_distance", {
           p_group_id: uuid,
-          p_lat: pos.coords.latitude,
-          p_lng: pos.coords.longitude,
+          p_lat: capLat,
+          p_lng: capLng,
           p_max_km: km,
           p_limit: 500,
         });
@@ -183,14 +176,11 @@ export default function ListPage() {
         setNearbyWishIds(new Set((data as { id: string }[]).map((r) => r.id)));
       } catch {
         if (nearbyKmRef.current !== km) return;
-        toast.error("現在地の取得に失敗しました");
+        toast.error("距離フィルターの取得に失敗しました");
         setNearbyWishIds(null);
       }
-    }, () => {
-      toast.error("位置情報の取得を許可してください");
-      setNearbyWishIds(null);
-    });
-  }, [fNearbyKm, fStationName, uuid]);
+    })();
+  }, [fNearbyKm, fStationName, fUseCurrentLocation, userLocation, uuid]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -270,7 +260,7 @@ export default function ListPage() {
   }, [wishes, statusTab, situationTab, showFavoriteOnly, sortOrder, effectiveLocation, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
 
   const distanceMap = useMemo(() => {
-    const loc = stationLocation ?? (sortOrder === "distance" ? userLocation : null);
+    const loc = stationLocation ?? ((sortOrder === "distance" || fUseCurrentLocation) ? userLocation : null);
     if (!loc) return null;
     const map = new Map<string, number>();
     for (const w of filtered) {
@@ -279,7 +269,7 @@ export default function ListPage() {
       }
     }
     return map;
-  }, [sortOrder, userLocation, stationLocation, filtered]);
+  }, [sortOrder, userLocation, stationLocation, filtered, fUseCurrentLocation]);
 
   const handleCreate = async (data: Parameters<typeof createWish>[0]) => {
     setAdding(true);
@@ -385,6 +375,38 @@ export default function ListPage() {
     }
   };
 
+  const acquireLocation = useCallback((onSuccess: (loc: { lat: number; lng: number }) => void) => {
+    if (!navigator.geolocation) {
+      toast.error("このブラウザは位置情報に対応していません");
+      return;
+    }
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        setLocationLoading(false);
+        onSuccess(loc);
+      },
+      () => {
+        toast.error("位置情報の取得を許可してください");
+        setLocationLoading(false);
+      }
+    );
+  }, []);
+
+  const handleRequestLocation = useCallback(() => {
+    if (userLocation) {
+      useFilterStore.getState().setUseCurrentLocation(true);
+      return;
+    }
+    acquireLocation(() => useFilterStore.getState().setUseCurrentLocation(true));
+  }, [userLocation, acquireLocation]);
+
+  const handleReacquireLocation = useCallback(() => {
+    acquireLocation(() => {});
+  }, [acquireLocation]);
+
   const totalInTab = useMemo(() => {
     if (doneOnly) return wishes.filter((w) => w.status === "DONE").length;
     if (includeDone) return wishes.filter((w) => w.status === statusTab || w.status === "DONE").length;
@@ -408,6 +430,7 @@ export default function ListPage() {
     fGenreIds.length > 0 ||
     fRegionIds.length > 0 ||
     fNearbyKm !== null ||
+    fUseCurrentLocation ||
     excludeChanged;
 
   return (
@@ -539,6 +562,11 @@ export default function ListPage() {
       {fStationName && stationLocation && (
         <p className="px-4 pb-1 text-xs text-blue-500 dark:text-blue-400">
           📍 {fStationName}駅からの距離を表示中
+        </p>
+      )}
+      {fUseCurrentLocation && fNearbyKm !== null && userLocation && (
+        <p className="px-4 pb-1 text-xs text-blue-500 dark:text-blue-400">
+          📍 現在地 {fNearbyKm}km以内で絞り込み中
         </p>
       )}
 
@@ -676,6 +704,10 @@ export default function ListPage() {
         members={group?.members ?? []}
         genres={genres}
         regions={regions}
+        userLocation={userLocation}
+        locationLoading={locationLoading}
+        onRequestLocation={handleRequestLocation}
+        onReacquireLocation={handleReacquireLocation}
       />
 
       <CsvImportDialog

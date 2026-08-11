@@ -142,6 +142,7 @@ export interface FilterState {
   searchQuery: string;
   nearbyKm: number | null;
   stationName: string | null;
+  useCurrentLocation: boolean;
 }
 
 export const SITUATION_LABELS: Record<Situation, string> = {
