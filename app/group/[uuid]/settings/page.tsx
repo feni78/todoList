@@ -1150,37 +1150,6 @@ export default function SettingsPage() {
 
       <div className="flex-1 flex flex-col gap-6 p-4 pb-8 max-w-md mx-auto w-full">
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <h2 className="font-semibold">グループ</h2>
-          {editingGroupName ? (
-            <div className="flex items-center gap-2">
-              <input
-                className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-background"
-                value={groupNameInput}
-                onChange={(e) => setGroupNameInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleUpdateGroupName(); if (e.key === "Escape") setEditingGroupName(false); }}
-                autoFocus
-              />
-              <button onClick={handleUpdateGroupName} className="p-1.5 text-primary transition-colors">
-                <Check size={15} />
-              </button>
-              <button onClick={() => setEditingGroupName(false)} className="p-1.5 text-muted-foreground transition-colors">
-                <X size={15} />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-sm">{group?.name}</span>
-              <button
-                onClick={() => { setGroupNameInput(group?.name ?? ""); setEditingGroupName(true); }}
-                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Pencil size={15} />
-              </button>
-            </div>
-          )}
-        </section>
-
-        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">ルーレット設定</h2>
 
           <div className="flex flex-col gap-3">
@@ -1204,6 +1173,11 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <div className="flex items-center justify-between">
+            <Label htmlFor="dev-mode">ルーレット確率を表示</Label>
+            <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} />
+          </div>
+
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving ? "保存中..." : "ルーレット設定を保存"}
           </Button>
@@ -1218,29 +1192,6 @@ export default function SettingsPage() {
               checked={darkMode}
               onCheckedChange={handleDarkMode}
             />
-          </div>
-        </section>
-
-        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <h2 className="font-semibold">データ</h2>
-          {group?.lastExportedAt && (
-            <p className="text-xs text-muted-foreground">最終エクスポート: {new Date(group.lastExportedAt).toLocaleString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</p>
-          )}
-          <div className="flex flex-col gap-2">
-            <Button variant="outline" onClick={handleFullExport} className="w-full gap-2" disabled={wishesLoadingLocal}>
-              <Upload size={16} />
-              {wishesLoadingLocal ? "読み込み中..." : `バックアップ エクスポート（${wishCount ?? "..."}件）`}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => fullFileInputRef.current?.click()}
-              disabled={fullImporting}
-              className="w-full gap-2"
-            >
-              <Download size={16} />
-              {fullImporting ? "インポート中..." : "バックアップ インポート"}
-            </Button>
-            <input ref={fullFileInputRef} type="file" accept=".json" className="hidden" onChange={handleFullImport} />
           </div>
         </section>
 
@@ -1276,82 +1227,6 @@ export default function SettingsPage() {
               </Button>
             </div>
           )}
-        </section>
-
-        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">メンバー管理</h2>
-            <button
-              onClick={() => { setAddingMember(true); setNewNickname(""); }}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {(group?.members ?? []).map((m) => (
-              <div key={m.id} className="flex items-center gap-2 py-1">
-                {editingMemberId === m.id ? (
-                  <>
-                    <input
-                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                      value={editingNickname}
-                      onChange={(e) => setEditingNickname(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleEditMember(m.id); if (e.key === "Escape") setEditingMemberId(null); }}
-                      autoFocus
-                    />
-                    <button onClick={() => handleEditMember(m.id)} className="p-1.5 text-primary transition-colors">
-                      <Check size={15} />
-                    </button>
-                    <button onClick={() => setEditingMemberId(null)} className="p-1.5 text-muted-foreground transition-colors">
-                      <X size={15} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm">
-                      {m.nickname}
-                      {m.id === currentMemberId && (
-                        <span className="ml-2 text-xs text-muted-foreground">（あなた）</span>
-                      )}
-                    </span>
-                    <button
-                      onClick={() => { setEditingMemberId(m.id); setEditingNickname(m.nickname); }}
-                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    {m.id !== currentMemberId && (
-                      <button
-                        onClick={() => handleDeleteMember(m.id, m.nickname)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-            {addingMember && (
-              <div className="flex items-center gap-2 py-1">
-                <input
-                  className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                  placeholder="ニックネーム"
-                  value={newNickname}
-                  onChange={(e) => setNewNickname(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddMember(); if (e.key === "Escape") setAddingMember(false); }}
-                  autoFocus
-                />
-                <button onClick={handleAddMember} className="p-1.5 text-primary transition-colors">
-                  <Check size={15} />
-                </button>
-                <button onClick={() => setAddingMember(false)} className="p-1.5 text-muted-foreground transition-colors">
-                  <X size={15} />
-                </button>
-              </div>
-            )}
-          </div>
         </section>
 
         {(["LARGE", "MEDIUM", "SMALL"] as GenreType[]).map((gtype) => {
@@ -1548,6 +1423,181 @@ export default function SettingsPage() {
           </section>
         )}
 
+        {(() => {
+          const broadRegions = regions.filter((r) => r.isBroad);
+          if (broadRegions.length === 0) return null;
+          return (
+            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <h2 className="font-semibold">デフォルト非表示中地域タグ</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">タップした中地域タグはデフォルトで除外されます</p>
+                </div>
+                <span className="p-1.5 invisible"><Plus size={16} /></span>
+                <button
+                  type="button"
+                  className="p-1.5"
+                  onClick={() => setDefaultExcludeRegionSectionOpen((v) => !v)}
+                >
+                  {defaultExcludeRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
+                </button>
+              </div>
+              {defaultExcludeRegionSectionOpen && (
+                <div className="flex flex-wrap gap-2">
+                  {broadRegions.map((r) => {
+                    const excluded = defaultExcludeRegionIds.includes(r.id);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => toggleDefaultExcludeRegion(r.id)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                          excluded
+                            ? "bg-destructive text-destructive-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/70"
+                        )}
+                      >
+                        {excluded ? `✕ ${r.name}` : r.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <h2 className="font-semibold">グループ</h2>
+          {editingGroupName ? (
+            <div className="flex items-center gap-2">
+              <input
+                className="flex-1 text-sm border border-border rounded-lg px-2 py-1.5 bg-background"
+                value={groupNameInput}
+                onChange={(e) => setGroupNameInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleUpdateGroupName(); if (e.key === "Escape") setEditingGroupName(false); }}
+                autoFocus
+              />
+              <button onClick={handleUpdateGroupName} className="p-1.5 text-primary transition-colors">
+                <Check size={15} />
+              </button>
+              <button onClick={() => setEditingGroupName(false)} className="p-1.5 text-muted-foreground transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{group?.name}</span>
+              <button
+                onClick={() => { setGroupNameInput(group?.name ?? ""); setEditingGroupName(true); }}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
+          )}
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <h2 className="font-semibold">データ</h2>
+          {group?.lastExportedAt && (
+            <p className="text-xs text-muted-foreground">最終エクスポート: {new Date(group.lastExportedAt).toLocaleString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</p>
+          )}
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={handleFullExport} className="w-full gap-2" disabled={wishesLoadingLocal}>
+              <Upload size={16} />
+              {wishesLoadingLocal ? "読み込み中..." : `バックアップ エクスポート（${wishCount ?? "..."}件）`}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => fullFileInputRef.current?.click()}
+              disabled={fullImporting}
+              className="w-full gap-2"
+            >
+              <Download size={16} />
+              {fullImporting ? "インポート中..." : "バックアップ インポート"}
+            </Button>
+            <input ref={fullFileInputRef} type="file" accept=".json" className="hidden" onChange={handleFullImport} />
+          </div>
+        </section>
+
+        <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">メンバー管理</h2>
+            <button
+              onClick={() => { setAddingMember(true); setNewNickname(""); }}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {(group?.members ?? []).map((m) => (
+              <div key={m.id} className="flex items-center gap-2 py-1">
+                {editingMemberId === m.id ? (
+                  <>
+                    <input
+                      className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                      value={editingNickname}
+                      onChange={(e) => setEditingNickname(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleEditMember(m.id); if (e.key === "Escape") setEditingMemberId(null); }}
+                      autoFocus
+                    />
+                    <button onClick={() => handleEditMember(m.id)} className="p-1.5 text-primary transition-colors">
+                      <Check size={15} />
+                    </button>
+                    <button onClick={() => setEditingMemberId(null)} className="p-1.5 text-muted-foreground transition-colors">
+                      <X size={15} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm">
+                      {m.nickname}
+                      {m.id === currentMemberId && (
+                        <span className="ml-2 text-xs text-muted-foreground">（あなた）</span>
+                      )}
+                    </span>
+                    <button
+                      onClick={() => { setEditingMemberId(m.id); setEditingNickname(m.nickname); }}
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    {m.id !== currentMemberId && (
+                      <button
+                        onClick={() => handleDeleteMember(m.id, m.nickname)}
+                        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+            {addingMember && (
+              <div className="flex items-center gap-2 py-1">
+                <input
+                  className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                  placeholder="ニックネーム"
+                  value={newNickname}
+                  onChange={(e) => setNewNickname(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddMember(); if (e.key === "Escape") setAddingMember(false); }}
+                  autoFocus
+                />
+                <button onClick={handleAddMember} className="p-1.5 text-primary transition-colors">
+                  <Check size={15} />
+                </button>
+                <button onClick={() => setAddingMember(false)} className="p-1.5 text-muted-foreground transition-colors">
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* 中地域タグ管理 */}
         {(() => {
           const broadRegions = regions.filter((r) => r.isBroad);
@@ -1663,51 +1713,6 @@ export default function SettingsPage() {
                   {broadRegions.length === 0 && !addingBroadRegion && (
                     <p className="text-sm text-muted-foreground">+ボタンで中地域タグを追加できます</p>
                   )}
-                </div>
-              )}
-            </section>
-          );
-        })()}
-
-        {(() => {
-          const broadRegions = regions.filter((r) => r.isBroad);
-          if (broadRegions.length === 0) return null;
-          return (
-            <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-              <div className="flex items-center">
-                <div className="flex-1">
-                  <h2 className="font-semibold">デフォルト非表示中地域タグ</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">タップした中地域タグはデフォルトで除外されます</p>
-                </div>
-                <span className="p-1.5 invisible"><Plus size={16} /></span>
-                <button
-                  type="button"
-                  className="p-1.5"
-                  onClick={() => setDefaultExcludeRegionSectionOpen((v) => !v)}
-                >
-                  {defaultExcludeRegionSectionOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
-                </button>
-              </div>
-              {defaultExcludeRegionSectionOpen && (
-                <div className="flex flex-wrap gap-2">
-                  {broadRegions.map((r) => {
-                    const excluded = defaultExcludeRegionIds.includes(r.id);
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => toggleDefaultExcludeRegion(r.id)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                          excluded
-                            ? "bg-destructive text-destructive-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/70"
-                        )}
-                      >
-                        {excluded ? `✕ ${r.name}` : r.name}
-                      </button>
-                    );
-                  })}
                 </div>
               )}
             </section>
@@ -2283,10 +2288,6 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             <Code2 size={16} className="text-muted-foreground" />
             <h2 className="font-semibold text-muted-foreground">開発者向け</h2>
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="dev-mode">ルーレット確率を表示</Label>
-            <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} />
           </div>
           <Button
             variant="outline"
