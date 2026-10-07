@@ -165,15 +165,12 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
     lngInput: initial?.longitude?.toString() ?? "",
   });
 
+  const [situationOpen, setSituationOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(!!(initial?.budget));
   const [durationOpen, setDurationOpen] = useState(!!(initial?.duration));
   const [seasonsOpen, setSeasonsOpen] = useState(!!(initial?.seasons?.length));
-  const [broadRegionOpen, setBroadRegionOpen] = useState(
-    !!(initial?.regions?.some((r) => r.isBroad))
-  );
-  const [locationOpen, setLocationOpen] = useState(
-    !!(initial?.latitude || initial?.longitude)
-  );
+  const [broadRegionOpen, setBroadRegionOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
 
   const toggleSeason = (season: Season) => {
     setForm((f) => ({
@@ -304,22 +301,6 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label>シチュエーション *</Label>
-        <div className="flex gap-1.5">
-          {SITUATIONS.map((s) => (
-            <SegmentButton
-              key={s}
-              value={s}
-              selected={form.situation === s}
-              onClick={(v) => setForm((f) => ({ ...f, situation: v }))}
-              label={SITUATION_LABELS[s]}
-              icon={SITUATION_ICONS[s]}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
         <Label>ステータス *</Label>
         <div className="flex gap-1.5">
           {STATUSES.map((s) => (
@@ -344,6 +325,31 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
           rows={3}
           className="break-all"
         />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <button
+          type="button"
+          className="flex items-center gap-1 text-left"
+          onClick={() => setSituationOpen((v) => !v)}
+        >
+          <Label className="pointer-events-none">シチュエーション *</Label>
+          {situationOpen ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
+        </button>
+        {situationOpen && (
+          <div className="flex gap-1.5">
+            {SITUATIONS.map((s) => (
+              <SegmentButton
+                key={s}
+                value={s}
+                selected={form.situation === s}
+                onClick={(v) => setForm((f) => ({ ...f, situation: v }))}
+                label={SITUATION_LABELS[s]}
+                icon={SITUATION_ICONS[s]}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
