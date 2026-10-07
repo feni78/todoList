@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WishForm } from "./WishForm";
 import { Trash2, Pencil, ExternalLink, Star, MapPin } from "lucide-react";
-import { getGroupMember } from "@/lib/utils/localStorage";
+import { getGroupMember, getShowMemoInList } from "@/lib/utils/localStorage";
 import { useGroupStore } from "@/lib/store/groupStore";
 
 type WishUpdateData = (Parameters<typeof WishForm>[0]["onSubmit"] extends (d: infer D) => Promise<void> ? D : never) & { doneAt?: string | null };
@@ -41,6 +41,8 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
   const { group } = useGroupStore();
   const members = group?.members ?? [];
   const hasMyVote = wish.votes.some((v) => v.memberId === currentMemberId);
+  const showMemo = getShowMemoInList(wish.groupId);
+  const showMemberName = group?.showMemberName ?? true;
   const memoUrls = wish.memo?.match(/https?:\/\/[^\s]+/g) ?? [];
   const googleUrl = memoUrls.find((u) => u.includes("google")) ?? null;
   const otherUrl = memoUrls.find((u) => !u.includes("google")) ?? null;
@@ -107,8 +109,16 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
               <span className="text-xs shrink-0" title="やりたい度が未設定">⚠️</span>
             )}
           </div>
+          {showMemo && (() => {
+            const memoText = wish.memo?.replace(/https?:\/\/[^\s]+/g, "").trim();
+            return memoText ? (
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                {memoText}
+              </p>
+            ) : null;
+          })()}
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className="text-xs text-muted-foreground">{wish.member.nickname}</span>
+            {showMemberName && <span className="text-xs text-muted-foreground">{wish.member.nickname}</span>}
             {distance != null && (
               <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">{formatDistance(distance)}</span>
             )}

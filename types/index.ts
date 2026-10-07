@@ -105,6 +105,7 @@ export interface Group {
   name: string;
   members: GroupMember[];
   lastExportedAt?: string | null;
+  showMemberName: boolean;
 }
 
 export interface GroupMember {

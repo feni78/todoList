@@ -132,3 +132,18 @@ export function saveSmallGenreSubGroups(groupId: string, data: SmallGenreSubGrou
   if (typeof window === "undefined") return;
   localStorage.setItem(`futari_small_genre_subgroups_${groupId}`, JSON.stringify(data));
 }
+
+export function getShowMemoInList(groupId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(`futari_show_memo_in_list_${groupId}`);
+    return raw === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function saveShowMemoInList(groupId: string, value: boolean): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`futari_show_memo_in_list_${groupId}`, String(value));
+}

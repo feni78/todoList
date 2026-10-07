@@ -14,7 +14,7 @@ import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
-import { Situation, SITUATION_LABELS, SITUATION_ICONS, meetsScoreFilter } from "@/types";
+import { meetsScoreFilter } from "@/types";
 import { findStation } from "@/lib/utils/station";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -74,7 +74,6 @@ export default function HistoryPage() {
   const SORT_CYCLE: SortOrder[] = ["priority", "createdAt", "doneAt"];
 
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
-  const [situationTab, setSituationTab] = useState<"ALL" | Situation>("ALL");
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("doneAt");
   const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
@@ -180,7 +179,6 @@ export default function HistoryPage() {
   const filtered = useMemo(() => {
     let result = [...wishes];
     if (showFavoriteOnly) result = result.filter((w) => w.isFavorite);
-    if (situationTab !== "ALL") result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
     if (fMemberIds.length > 0) result = result.filter((w) => fMemberIds.includes(w.memberId));
     if (fSituations.length > 0) {
       result = result.filter((w) => fSituations.includes(w.situation) || w.situation === "EITHER");
@@ -215,7 +213,7 @@ export default function HistoryPage() {
       result.sort((a, b) => new Date(b.doneAt ?? b.updatedAt).getTime() - new Date(a.doneAt ?? a.updatedAt).getTime());
     }
     return result;
-  }, [wishes, showFavoriteOnly, situationTab, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, historySearchQuery, regions]);
+  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, historySearchQuery, regions]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -274,60 +272,9 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-16">
-      <TopBar
-        title="実施済み"
-        right={
-          <button
-            onClick={() => { if (historySearchQuery) return; setSearchOpen((v) => !v); }}
-            className={cn(
-              "p-2 rounded-lg transition-colors",
-              searchOpen || historySearchQuery
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {searchOpen ? <X size={18} /> : <Search size={18} />}
-          </button>
-        }
-      />
-
-      {searchOpen && (
-        <div className="px-4 py-2 border-b border-border relative">
-          <Input
-            placeholder="タイトルを検索..."
-            value={historySearchQuery}
-            onChange={(e) => setHistorySearchQuery(e.target.value)}
-            autoFocus
-            className="pr-8"
-          />
-          {historySearchQuery && (
-            <button
-              type="button"
-              onClick={() => setHistorySearchQuery("")}
-              className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-      )}
+      <TopBar title="実施済み" />
 
       <div className="flex items-center gap-1.5 px-3 pt-3 pb-1 overflow-x-auto scrollbar-none">
-        {(["ALL", "HOME", "OUTSIDE"] as const).map((v) => {
-          const label = v === "ALL" ? "すべて" : `${SITUATION_ICONS[v]} ${SITUATION_LABELS[v]}`;
-          return (
-            <button
-              key={v}
-              onClick={() => setSituationTab(v)}
-              className={cn(
-                "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                situationTab === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
         <div className="flex-1" />
         <button
           onClick={() => setShowFavoriteOnly((v) => !v)}
@@ -360,7 +307,38 @@ export default function HistoryPage() {
           <SlidersHorizontal size={13} />
           絞り込み{hasFilter ? "中" : ""}
         </button>
+        <button
+          onClick={() => { if (historySearchQuery) return; setSearchOpen((v) => !v); }}
+          className={cn(
+            "shrink-0 p-1.5 rounded-full border transition-colors",
+            searchOpen || historySearchQuery
+              ? "border-primary text-primary bg-primary/10"
+              : "border-border text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {searchOpen ? <X size={13} /> : <Search size={13} />}
+        </button>
       </div>
+      {searchOpen && (
+        <div className="px-4 pb-2 relative">
+          <Input
+            placeholder="タイトルを検索..."
+            value={historySearchQuery}
+            onChange={(e) => setHistorySearchQuery(e.target.value)}
+            autoFocus
+            className="pr-8"
+          />
+          {historySearchQuery && (
+            <button
+              type="button"
+              onClick={() => setHistorySearchQuery("")}
+              className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      )}
 
       <FilterSummary genres={genres} regions={regions} members={group?.members ?? []} />
 

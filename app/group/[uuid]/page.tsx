@@ -19,7 +19,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useShallow } from "zustand/react/shallow";
 import { getGroupMember } from "@/lib/utils/localStorage";
-import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS, meetsScoreFilter } from "@/types";
+import { Status, meetsScoreFilter } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag, Star } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
 import { BulkDeleteBar } from "@/components/list/BulkDeleteBar";
@@ -32,13 +32,6 @@ import { haversineKm } from "@/lib/utils/distance";
 
 type TabValue = "PENDING" | "HOLD";
 type SortOrder = "priority" | "createdAt" | "distance";
-
-
-const SITUATION_TABS: { value: Situation | "ALL"; label: string }[] = [
-  { value: "ALL", label: "すべて" },
-  { value: "HOME", label: `${SITUATION_ICONS.HOME} ${SITUATION_LABELS.HOME}` },
-  { value: "OUTSIDE", label: `${SITUATION_ICONS.OUTSIDE} ${SITUATION_LABELS.OUTSIDE}` },
-];
 
 export default function ListPage() {
   const { uuid } = useParams<{ uuid: string }>();
@@ -110,7 +103,6 @@ export default function ListPage() {
 
   const [statusTab, setStatusTab] = useState<TabValue>("PENDING");
 
-  const [situationTab, setSituationTab] = useState<"ALL" | Situation>("ALL");
   const [sortOrder, setSortOrder] = useState<SortOrder>("priority");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -203,10 +195,6 @@ export default function ListPage() {
 
     if (showFavoriteOnly) result = result.filter((w) => w.isFavorite);
 
-    if (situationTab !== "ALL") {
-      result = result.filter((w) => w.situation === situationTab || w.situation === "EITHER");
-    }
-
     if (fMemberIds.length > 0) result = result.filter((w) => fMemberIds.includes(w.memberId));
     if (fSituations.length > 0) {
       result = result.filter((w) => fSituations.includes(w.situation) || w.situation === "EITHER");
@@ -256,7 +244,7 @@ export default function ListPage() {
     }
 
     return result;
-  }, [wishes, statusTab, situationTab, showFavoriteOnly, sortOrder, effectiveLocation, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
+  }, [wishes, statusTab, showFavoriteOnly, sortOrder, effectiveLocation, nearbyWishIds, includeDone, doneOnly, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, fSearchQuery]);
 
   const distanceMap = useMemo(() => {
     const loc = stationLocation ?? ((sortOrder === "distance" || fUseCurrentLocation) ? userLocation : null);
@@ -434,60 +422,11 @@ export default function ListPage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-40">
-      <TopBar
-        right={
-          <button
-            onClick={() => { if (fSearchQuery) return; setSearchOpen((v) => !v); }}
-            className={cn(
-              "p-2 rounded-lg transition-colors",
-              searchOpen || fSearchQuery
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {searchOpen ? <X size={18} /> : <Search size={18} />}
-          </button>
-        }
-      />
-
-      {searchOpen && (
-        <div className="px-4 py-2 border-b border-border relative">
-          <Input
-            placeholder="タイトルを検索..."
-            value={fSearchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            autoFocus
-            className="pr-8"
-          />
-          {fSearchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-      )}
+      <TopBar />
 
       <StatusTabs value={statusTab} onChange={handleStatusTabChange} />
 
       <div className="flex items-center gap-1.5 px-3 py-3 mt-2 mb-1 overflow-x-auto scrollbar-none">
-        {SITUATION_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setSituationTab(tab.value)}
-            className={cn(
-              "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-              situationTab === tab.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/70"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
         <div className="flex-1" />
         <button
           onClick={() => setShowFavoriteOnly((v) => !v)}
@@ -547,7 +486,38 @@ export default function ListPage() {
           <SlidersHorizontal size={13} />
           絞り込み{hasActiveFilters ? "中" : ""}
         </button>
+        <button
+          onClick={() => { if (fSearchQuery) return; setSearchOpen((v) => !v); }}
+          className={cn(
+            "shrink-0 p-1.5 rounded-full border transition-colors",
+            searchOpen || fSearchQuery
+              ? "border-primary text-primary bg-primary/10"
+              : "border-border text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {searchOpen ? <X size={13} /> : <Search size={13} />}
+        </button>
       </div>
+      {searchOpen && (
+        <div className="px-4 pb-2 relative">
+          <Input
+            placeholder="タイトルを検索..."
+            value={fSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+            className="pr-8"
+          />
+          {fSearchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-7 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+      )}
 
       <FilterSummary genres={genres} regions={regions} members={group?.members ?? []} />
 

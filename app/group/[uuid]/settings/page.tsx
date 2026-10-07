@@ -20,7 +20,7 @@ import { useCsvImport } from "@/hooks/useCsvImport";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
-import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds, SmallGenreSubGroups } from "@/lib/utils/localStorage";
+import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds, SmallGenreSubGroups, getShowMemoInList, saveShowMemoInList } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish, GenreType, GENRE_TYPE_LABELS } from "@/types";
 import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin, GitMerge } from "lucide-react";
@@ -37,9 +37,10 @@ export default function SettingsPage() {
   const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
   const { wishes, wishesRef, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false, skip: true });
-  const { group, setGroup, setCurrentMember, setLastExportedAt } = useGroupStore();
+  const { group, setGroup, setCurrentMember, setLastExportedAt, setShowMemberName } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
+  const [showMemoInList, setShowMemoInListState] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fullImporting, setFullImporting] = useState(false);
@@ -150,6 +151,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setDarkModeState(getDarkMode());
+    setShowMemoInListState(getShowMemoInList(uuid));
     fetchRouletteSettings(uuid).then((data) => {
       if (data) {
         setSettings({
@@ -1195,6 +1197,30 @@ export default function SettingsPage() {
               id="dark-mode"
               checked={darkMode}
               onCheckedChange={handleDarkMode}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show-memo-in-list">タスクにメモを表示</Label>
+            <Switch
+              id="show-memo-in-list"
+              checked={showMemoInList}
+              onCheckedChange={(v) => {
+                setShowMemoInListState(v);
+                saveShowMemoInList(uuid, v);
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show-member-name">登録者名を表示</Label>
+            <Switch
+              id="show-member-name"
+              checked={group?.showMemberName ?? true}
+              onCheckedChange={async (v) => {
+                const supabase = createClient();
+                const { error } = await supabase.from("groups").update({ show_member_name: v }).eq("id", uuid);
+                if (error) { toast.error("更新に失敗しました"); return; }
+                setShowMemberName(v);
+              }}
             />
           </div>
         </section>
