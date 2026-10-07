@@ -195,6 +195,7 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
   })));
   const { setFilter, resetFilter } = useRouletteStore.getState();
   const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
+  const scoreLabel = useGroupStore((s) => s.group?.useIkitaiLabel ? "行きたい度" : "やりたい度");
 
   const broadRegions = regions.filter((r) => r.isBroad);
   const specificRegions = [...regions.filter((r) => !r.isBroad)]
@@ -524,7 +525,7 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
           )}
 
           {/* やりたい度 */}
-          <FilterSection title="やりたい度" collapsible defaultOpen={filter.scoreFilter !== null} count={filter.scoreFilter !== null ? 1 : 0}>
+          <FilterSection title={scoreLabel} collapsible defaultOpen={filter.scoreFilter !== null} count={filter.scoreFilter !== null ? 1 : 0}>
             {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
               <FilterChip
                 key={f}

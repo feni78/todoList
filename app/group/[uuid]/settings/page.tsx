@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
   const { wishes, wishesRef, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false, skip: true });
-  const { group, setGroup, setCurrentMember, setLastExportedAt, setShowMemberName, setShowFabButtons } = useGroupStore();
+  const { group, setGroup, setCurrentMember, setLastExportedAt, setShowMemberName, setShowFabButtons, setUseIkitaiLabel } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
   const [showMemoInList, setShowMemoInListState] = useState(false);
@@ -2329,6 +2329,19 @@ export default function SettingsPage() {
             {devSectionOpen ? <ChevronUp size={15} className="text-muted-foreground" /> : <ChevronDown size={15} className="text-muted-foreground" />}
           </button>
           {devSectionOpen && <>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="use-ikitai-label">「やりたい度」を「行きたい度」に変更</Label>
+              <Switch
+                id="use-ikitai-label"
+                checked={group?.useIkitaiLabel ?? false}
+                onCheckedChange={async (v) => {
+                  const supabase = createClient();
+                  const { error } = await supabase.from("groups").update({ use_ikitai_label: v }).eq("id", uuid);
+                  if (error) { toast.error("更新に失敗しました"); return; }
+                  setUseIkitaiLabel(v);
+                }}
+              />
+            </div>
             <Button
               variant="outline"
               className="w-full"

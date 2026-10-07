@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useCsvImport";
 import { Upload, X, FileText, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useGroupStore } from "@/lib/store/groupStore";
 
 interface FileEntry {
   file: File;
@@ -63,6 +64,7 @@ function DetailList({ items, label }: { items: { title: string }[]; label: strin
 
 function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label: string }) {
   const [open, setOpen] = useState(false);
+  const scoreLabel = useGroupStore((s) => s.group?.useIkitaiLabel ? "行きたい度" : "やりたい度");
   if (items.length === 0) return null;
   return (
     <div className="rounded-xl border border-border text-sm">
@@ -93,7 +95,7 @@ function UpdateDetailList({ items, label }: { items: UpdatePreviewItem[]; label:
                 <p className="break-all text-muted-foreground">追記: {item.memoAddition}</p>
               )}
               {item.newScoreLabel !== undefined && (
-                <p className="text-muted-foreground">やりたい度: {item.newScoreLabel}</p>
+                <p className="text-muted-foreground">{scoreLabel}: {item.newScoreLabel}</p>
               )}
             </div>
           ))}

@@ -107,6 +107,7 @@ export interface Group {
   lastExportedAt?: string | null;
   showMemberName: boolean;
   showFabButtons: boolean;
+  useIkitaiLabel: boolean;
 }
 
 export interface GroupMember {

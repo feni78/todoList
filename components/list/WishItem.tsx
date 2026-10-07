@@ -106,7 +106,7 @@ export function WishItem({ wish, genres = [], regions = [], onUpdate, onDelete, 
               {wish.title}
             </span>
             {!hasMyVote && wish.status !== "DONE" && (
-              <span className="text-xs shrink-0" title="やりたい度が未設定">⚠️</span>
+              <span className="text-xs shrink-0" title={`${group?.useIkitaiLabel ? "行きたい度" : "やりたい度"}が未設定`}>⚠️</span>
             )}
           </div>
           {showMemo && (() => {

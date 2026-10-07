@@ -472,7 +472,7 @@ export default function ListPage() {
           className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50"
         >
           <ArrowUpDown size={11} />
-          {locationLoading ? "取得中..." : sortOrder === "priority" ? "やりたい度順" : sortOrder === "createdAt" ? "新着順" : "距離順"}
+          {locationLoading ? "取得中..." : sortOrder === "priority" ? `${group?.useIkitaiLabel ? "行きたい度" : "やりたい度"}順` : sortOrder === "createdAt" ? "新着順" : "距離順"}
         </button>
         <button
           onClick={() => setFilterOpen(true)}
@@ -640,7 +640,7 @@ export default function ListPage() {
             <DialogTitle>一括追加</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">1行に1件ずつ入力してください。シチュエーションは「外」、やりたい度は後で設定できます。</p>
+            <p className="text-sm text-muted-foreground">1行に1件ずつ入力してください。シチュエーションは「外」、{group?.useIkitaiLabel ? "行きたい度" : "やりたい度"}は後で設定できます。</p>
             <textarea
               className="w-full h-48 rounded-xl border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder={"温泉旅行\n映画を見る\nディズニーランド"}

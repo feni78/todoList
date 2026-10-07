@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { ChevronLeft } from "lucide-react";
+import { useGroupStore } from "@/lib/store/groupStore";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -30,6 +31,7 @@ function Divider() {
 export default function HelpPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const router = useRouter();
+  const scoreLabel = useGroupStore((s) => s.group?.useIkitaiLabel ? "行きたい度" : "やりたい度");
 
   return (
     <div className="flex flex-col min-h-screen pb-16">
@@ -53,7 +55,7 @@ export default function HelpPage() {
             右下の ＋ ボタンからひとつずつ追加できます。「一括」ボタンで1行1件ずつまとめて追加もできます。
           </Item>
           <Divider />
-          <Item label="やりたい度を設定する">
+          <Item label={`${scoreLabel}を設定する`}>
             タスクをタップして編集画面を開き、🏆MAX・🥇金・🥈銀・🥉銅の4段階で評価します。メンバー全員の平均点が高いものほど上に表示されます。⚠️マークは自分がまだ評価していないサインです。
           </Item>
           <Divider />
@@ -62,7 +64,7 @@ export default function HelpPage() {
           </Item>
           <Divider />
           <Item label="ソート・絞り込み・検索">
-            「やりたい度順 / 新着順 / 距離順」ボタンでソートを切り替えられます。スライダーアイコン（≡）で詳細な絞り込み（ジャンル・場所・季節など）ができます。虫眼鏡アイコンでタイトルのテキスト検索ができます。
+            「{scoreLabel}順 / 新着順 / 距離順」ボタンでソートを切り替えられます。スライダーアイコン（≡）で詳細な絞り込み（ジャンル・場所・季節など）ができます。虫眼鏡アイコンでタイトルのテキスト検索ができます。
           </Item>
           <Divider />
           <Item label="距離で絞り込む">
@@ -77,7 +79,7 @@ export default function HelpPage() {
         {/* ルーレット */}
         <Section title="🎰 ルーレット">
           <Item label="次にやることを決める">
-            リストからランダムに1件を選びます。やりたい度が高いタスクほど選ばれやすくなっています。
+            リストからランダムに1件を選びます。{scoreLabel}が高いタスクほど選ばれやすくなっています。
           </Item>
           <Divider />
           <Item label="通常 / スペシャル">
@@ -115,7 +117,7 @@ export default function HelpPage() {
         {/* 設定 */}
         <Section title="⚙️ 設定">
           <Item label="ユーザー切り替え">
-            複数のメンバーで同じグループを使うときは「ログインユーザー」から自分の名前に切り替えてください。やりたい度はメンバーごとに管理されます。
+            複数のメンバーで同じグループを使うときは「ログインユーザー」から自分の名前に切り替えてください。{scoreLabel}はメンバーごとに管理されます。
           </Item>
           <Divider />
           <Item label="表示設定">
@@ -136,7 +138,7 @@ export default function HelpPage() {
         </Section>
 
         {/* スコア早見表 */}
-        <Section title="🏆 やりたい度の目安">
+        <Section title={`🏆 ${scoreLabel}の目安`}>
           <div className="flex flex-col gap-2">
             {[
               { icon: "🏆", label: "MAX", desc: "絶対やりたい！最優先" },

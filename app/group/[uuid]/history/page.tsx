@@ -71,7 +71,8 @@ export default function HistoryPage() {
   })));
 
   type SortOrder = "priority" | "createdAt" | "doneAt" | "distance";
-  const SORT_LABELS: Record<SortOrder, string> = { priority: "やりたい度順", createdAt: "登録日順", doneAt: "実施日順", distance: "距離順" };
+  const scoreLabel = group?.useIkitaiLabel ? "行きたい度" : "やりたい度";
+  const SORT_LABELS: Record<SortOrder, string> = { priority: `${scoreLabel}順`, createdAt: "登録日順", doneAt: "実施日順", distance: "距離順" };
   const SORT_CYCLE: SortOrder[] = ["priority", "createdAt", "doneAt", "distance"];
 
   const stationLocation = useMemo(() => {

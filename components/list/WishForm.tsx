@@ -146,6 +146,7 @@ function SegmentButton<T extends string>({
 
 export function WishForm({ initial, currentMemberId, members = [], genres = [], regions = [], onSubmit, onCancel, loading }: WishFormProps) {
   const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
+  const scoreLabel = useGroupStore((s) => s.group?.useIkitaiLabel ? "行きたい度" : "やりたい度");
   const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
   const scoreRequired = !initial || initial.memberId === currentMemberId;
 
@@ -252,7 +253,7 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>{scoreRequired ? "やりたい度（あなたの評価） *" : "やりたい度（あなたの評価）"}</Label>
+        <Label>{scoreRequired ? `${scoreLabel}（あなたの評価） *` : `${scoreLabel}（あなたの評価）`}</Label>
         <div className="flex gap-1.5">
           {SCORE_OPTIONS.map((opt) => (
             <button

@@ -18,6 +18,7 @@ interface GroupState {
   setSmallGenreSubGroups: (data: SmallGenreSubGroups) => void;
   setShowMemberName: (value: boolean) => void;
   setShowFabButtons: (value: boolean) => void;
+  setUseIkitaiLabel: (value: boolean) => void;
   reset: () => void;
 }
 
@@ -31,5 +32,6 @@ export const useGroupStore = create<GroupState>((set) => ({
   setSmallGenreSubGroups: (data) => set({ smallGenreSubGroups: data }),
   setShowMemberName: (value) => set((s) => ({ group: s.group ? { ...s.group, showMemberName: value } : null })),
   setShowFabButtons: (value) => set((s) => ({ group: s.group ? { ...s.group, showFabButtons: value } : null })),
+  setUseIkitaiLabel: (value) => set((s) => ({ group: s.group ? { ...s.group, useIkitaiLabel: value } : null })),
   reset: () => set({ group: null, currentMember: null, smallGenreSubGroups: DEFAULT_SUBGROUPS }),
 }));

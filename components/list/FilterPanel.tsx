@@ -207,6 +207,8 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
   } = useFilterStore.getState();
 
   const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
+  const useIkitaiLabel = useGroupStore((s) => s.group?.useIkitaiLabel ?? false);
+  const scoreLabel = useIkitaiLabel ? "行きたい度" : "やりたい度";
 
   const broadRegions = regions.filter((r) => r.isBroad);
   const specificRegions = [...regions.filter((r) => !r.isBroad)]
@@ -560,7 +562,7 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
           )}
 
           {/* やりたい度 */}
-          <FilterSection title="やりたい度" collapsible defaultOpen={scoreFilter !== null} count={scoreFilter !== null ? 1 : 0}>
+          <FilterSection title={scoreLabel} collapsible defaultOpen={scoreFilter !== null} count={scoreFilter !== null ? 1 : 0}>
             {(["BRONZE", "SILVER", "GOLD", "TROPHY"] as ScoreFilter[]).map((f) => (
               <FilterChip
                 key={f}
