@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
   const { wishes, wishesRef, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false, skip: true });
-  const { group, setGroup, setCurrentMember, setLastExportedAt, setShowMemberName } = useGroupStore();
+  const { group, setGroup, setCurrentMember, setLastExportedAt, setShowMemberName, setShowFabButtons } = useGroupStore();
   const currentMemberId = getGroupMember(uuid)?.memberId;
   const [darkMode, setDarkModeState] = useState(false);
   const [showMemoInList, setShowMemoInListState] = useState(false);
@@ -615,12 +615,14 @@ export default function SettingsPage() {
     await reorderGenres(next.map((g) => g.id));
   };
 
-  const moveRegion = async (index: number, dir: -1 | 1) => {
-    const next = [...regions];
-    const target = index + dir;
+  const moveRegion = async (broadIdx: number, dir: -1 | 1) => {
+    const broadRegs = regions.filter((r) => r.isBroad);
+    const specificRegs = regions.filter((r) => !r.isBroad);
+    const next = [...broadRegs];
+    const target = broadIdx + dir;
     if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    await reorderRegions(next.map((r) => r.id));
+    [next[broadIdx], next[target]] = [next[target], next[broadIdx]];
+    await reorderRegions([...next, ...specificRegs].map((r) => r.id));
   };
 
   const saveRegionTags = async (wishId: string, regionIds: string[]) => {
@@ -1201,6 +1203,19 @@ export default function SettingsPage() {
               }}
             />
           </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="show-fab-buttons">追加ボタンを表示</Label>
+            <Switch
+              id="show-fab-buttons"
+              checked={group?.showFabButtons ?? true}
+              onCheckedChange={async (v) => {
+                const supabase = createClient();
+                const { error } = await supabase.from("groups").update({ show_fab_buttons: v }).eq("id", uuid);
+                if (error) { toast.error("更新に失敗しました"); return; }
+                setShowFabButtons(v);
+              }}
+            />
+          </div>
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
@@ -1658,8 +1673,8 @@ export default function SettingsPage() {
                         ) : (
                           <>
                             <div className="flex flex-col -my-1">
-                              <button onClick={() => moveRegion(regions.indexOf(r), -1)} disabled={idx === 0} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={14} /></button>
-                              <button onClick={() => moveRegion(regions.indexOf(r), 1)} disabled={idx === broadRegions.length - 1} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={14} /></button>
+                              <button onClick={() => moveRegion(idx, -1)} disabled={idx === 0} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={14} /></button>
+                              <button onClick={() => moveRegion(idx, 1)} disabled={idx === broadRegions.length - 1} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={14} /></button>
                             </div>
                             <span className="flex-1 text-sm">{r.name}</span>
                             <button

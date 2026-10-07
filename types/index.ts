@@ -106,6 +106,7 @@ export interface Group {
   members: GroupMember[];
   lastExportedAt?: string | null;
   showMemberName: boolean;
+  showFabButtons: boolean;
 }
 
 export interface GroupMember {

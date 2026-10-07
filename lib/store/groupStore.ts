@@ -17,6 +17,7 @@ interface GroupState {
   setCurrentMember: (member: GroupMember) => void;
   setSmallGenreSubGroups: (data: SmallGenreSubGroups) => void;
   setShowMemberName: (value: boolean) => void;
+  setShowFabButtons: (value: boolean) => void;
   reset: () => void;
 }
 
@@ -29,5 +30,6 @@ export const useGroupStore = create<GroupState>((set) => ({
   setCurrentMember: (member) => set({ currentMember: member }),
   setSmallGenreSubGroups: (data) => set({ smallGenreSubGroups: data }),
   setShowMemberName: (value) => set((s) => ({ group: s.group ? { ...s.group, showMemberName: value } : null })),
+  setShowFabButtons: (value) => set((s) => ({ group: s.group ? { ...s.group, showFabButtons: value } : null })),
   reset: () => set({ group: null, currentMember: null, smallGenreSubGroups: DEFAULT_SUBGROUPS }),
 }));

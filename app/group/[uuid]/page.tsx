@@ -560,7 +560,7 @@ export default function ListPage() {
         />
       )}
 
-      {selectionMode === null && (
+      {selectionMode === null && (group?.showFabButtons ?? true) && (
         <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
           <button
             onClick={() => setCsvOpen(true)}
