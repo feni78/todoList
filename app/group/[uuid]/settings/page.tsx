@@ -783,8 +783,10 @@ export default function SettingsPage() {
   const handleAddPrefectureRule = async (broadRegionId: string, prefecture: string) => {
     try {
       await addPrefectureRule(broadRegionId, prefecture);
-    } catch {
-      toast.error("都道府県の追加に失敗しました（既に別の中地域に割り当て済みの可能性があります）");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
+      console.error("addPrefectureRule error:", e);
+      toast.error(`都道府県の追加に失敗しました: ${msg}`);
     }
   };
 
