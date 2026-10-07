@@ -707,6 +707,7 @@ export default function ListPage() {
         locationLoading={locationLoading}
         onRequestLocation={handleRequestLocation}
         onReacquireLocation={handleReacquireLocation}
+        onSetDistanceSort={() => setSortOrder("distance")}
       />
 
       <CsvImportDialog

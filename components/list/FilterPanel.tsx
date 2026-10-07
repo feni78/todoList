@@ -4,7 +4,6 @@ import { Fragment, useState } from "react";
 import { StationSearch } from "@/components/common/StationSearch";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Check } from "lucide-react";
 import {
   GroupMember,
@@ -40,6 +39,7 @@ interface FilterPanelProps {
   locationLoading?: boolean;
   onRequestLocation?: () => void;
   onReacquireLocation?: () => void;
+  onSetDistanceSort?: () => void;
 }
 
 function FilterChip({ selected, onClick, label, variant = "default" }: {
@@ -173,9 +173,9 @@ const SITUATIONS: Situation[] = ["HOME", "OUTSIDE"];
 const BUDGETS: Budget[] = ["FREE", "UNDER_3000", "UNDER_10000", "OVER_10000"];
 const DURATIONS: Duration[] = ["WITHIN_30MIN", "ONE_TWO_HOUR", "HALF_DAY", "FULL_DAY"];
 const SEASONS: Season[] = ["SPRING", "SUMMER", "AUTUMN", "WINTER"];
-const DISTANCE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100];
+const DISTANCE_VALUES = [0.5, 1, 2, 3, 5, 10, 20, 30, 50, 100];
 
-export function FilterPanel({ open, onClose, members, genres = [], regions = [], userLocation, locationLoading, onRequestLocation, onReacquireLocation }: FilterPanelProps) {
+export function FilterPanel({ open, onClose, members, genres = [], regions = [], userLocation, locationLoading, onRequestLocation, onReacquireLocation, onSetDistanceSort }: FilterPanelProps) {
   const {
     memberIds, situations, statuses, budgets, durations, seasons, scoreFilter,
     genreIds, genreSearchMode, excludeGenreIds,
@@ -243,13 +243,6 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
     scoreFilter !== null ||
     excludeChanged;
 
-  const sliderPos = nearbyKm === null ? 0 : DISTANCE_VALUES.indexOf(nearbyKm) + 1;
-  const distanceLabel = nearbyKm === null ? "指定なし" : `${nearbyKm}km以内`;
-
-  const handleSlider = (vals: number | readonly number[]) => {
-    const pos = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
-    setNearbyKm(pos === 0 ? null : DISTANCE_VALUES[pos - 1]);
-  };
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -360,30 +353,26 @@ export function FilterPanel({ open, onClose, members, genres = [], regions = [],
                   onChange={(name) => setStationName(name ?? "")}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <span className={cn("text-sm font-semibold", nearbyKm !== null ? "text-primary" : "text-muted-foreground")}>
-                  {distanceLabel}
-                </span>
-                {nearbyKm !== null && (
+              <div className="flex flex-wrap gap-2">
+                {DISTANCE_VALUES.map((km) => (
                   <button
+                    key={km}
                     type="button"
-                    onClick={() => setNearbyKm(null)}
-                    className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                    onClick={() => {
+                      const newVal = nearbyKm === km ? null : km;
+                      setNearbyKm(newVal);
+                      if (newVal !== null) onSetDistanceSort?.();
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                      nearbyKm === km
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/70"
+                    )}
                   >
-                    クリア
+                    {km === 0.5 ? "500m" : `${km}km`}
                   </button>
-                )}
-              </div>
-              <Slider
-                min={0}
-                max={DISTANCE_VALUES.length}
-                step={1}
-                value={[sliderPos]}
-                onValueChange={handleSlider}
-              />
-              <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span>指定なし</span>
-                <span>100km</span>
+                ))}
               </div>
             </div>
           </FilterSection>

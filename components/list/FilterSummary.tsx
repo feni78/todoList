@@ -86,7 +86,7 @@ export function FilterSummary({ genres = [], regions = [], members = [], classNa
     if (nearbyKm !== null) {
       chips.push({
         key: "distance",
-        label: `📍 ${locationLabel} ${nearbyKm}km以内`,
+        label: `📍 ${locationLabel} ${nearbyKm === 0.5 ? "500m" : `${nearbyKm}km`}以内`,
         variant: "distance",
         onRemove: () => { setNearbyKm(null); if (useCurrentLocation) setUseCurrentLocation(false); },
       });
