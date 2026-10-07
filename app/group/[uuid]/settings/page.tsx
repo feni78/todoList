@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
-import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses, toBroadRegionTag, toSpecificRegionTag, BROAD_TAG_NAMES } from "@/lib/utils/regionTag";
+import { specificRegionSortKey, specificRegionColorClasses, ALL_PREFECTURES } from "@/lib/utils/regionTag";
 import { useTrash } from "@/hooks/useTrash";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useCsvImportLogs } from "@/hooks/useCsvImportLogs";
@@ -58,7 +58,7 @@ export default function SettingsPage() {
   const [addingMember, setAddingMember] = useState(false);
   const [newNickname, setNewNickname] = useState("");
   const { genres, loading: genresLoading, createGenre, updateGenre, deleteGenre, reorderGenres } = useGenres(uuid);
-  const { regions, loading: regionsLoading, createRegion, updateRegion, deleteRegion, reorderRegions } = useRegions(uuid);
+  const { regions, prefixRules, loading: regionsLoading, createRegion, createBroadRegion, updateRegion, deleteRegion, reorderRegions, addPrefectureRule, removePrefectureRule, applyBroadRegionRules } = useRegions(uuid);
   const { items: trashItems, loading: trashLoading, fetchTrash, restoreWish, permanentDelete, emptyTrash } = useTrash(uuid);
   const { logs: importLogs, loading: logsLoading, error: logsError, fetchLogs } = useCsvImportLogs(uuid);
   const { retryLocationEnrichment } = useCsvImport(uuid);
@@ -85,6 +85,8 @@ export default function SettingsPage() {
   const subGroupNameComposing = useRef(false);
   const [broadRegionSectionOpen, setBroadRegionSectionOpen] = useState(false);
   const [specificRegionSectionOpen, setSpecificRegionSectionOpen] = useState(false);
+  const [broadRegionRulesOpen, setBroadRegionRulesOpen] = useState<Record<string, boolean>>({});
+  const [applyingBroadRegionId, setApplyingBroadRegionId] = useState<string | null>(null);
   const [editingRegionId, setEditingRegionId] = useState<string | null>(null);
   const [editingRegionName, setEditingRegionName] = useState("");
   const [addingBroadRegion, setAddingBroadRegion] = useState(false);
@@ -171,16 +173,16 @@ export default function SettingsPage() {
       .or("latitude.is.null,longitude.is.null")
       .then(({ count }) => setLocationlessCount(count ?? 0));
 
-    // 地域タグ未設定の件数（IDと地域名のみ取得してクライアントで分類）
+    // 地域タグ未設定の件数（IDと地域タグのみ取得してクライアントで分類）
     (async () => {
-      type WishWithRegions = { id: string; wish_regions: Array<{ region: { name: string } | null }> };
+      type WishWithRegions = { id: string; wish_regions: Array<{ region: { name: string; is_broad: boolean } | null }> };
       let allData: WishWithRegions[] = [];
       let from = 0;
       const PAGE = 1000;
       while (true) {
         const { data, error } = await supabase
           .from("wishes")
-          .select("id, wish_regions(region:regions(name))")
+          .select("id, wish_regions(region:regions(name, is_broad))")
           .eq("group_id", uuid)
           .is("deleted_at", null)
           .order("id")
@@ -191,11 +193,9 @@ export default function SettingsPage() {
         from += PAGE;
       }
       const count = allData.filter((w) => {
-        const names = (w.wish_regions ?? [])
-          .map((wr) => wr.region?.name)
-          .filter((n): n is string => Boolean(n));
-        const hasBroad = names.some((n) => isBroadRegionTag(n));
-        const hasSpecific = names.some((n) => !isBroadRegionTag(n));
+        const regs = (w.wish_regions ?? []).map((wr) => wr.region).filter((r): r is NonNullable<typeof r> => r !== null);
+        const hasBroad = regs.some((r) => r.is_broad);
+        const hasSpecific = regs.some((r) => !r.is_broad);
         return !hasBroad || !hasSpecific;
       }).length;
       setRegionlessCount(count);
@@ -739,7 +739,7 @@ export default function SettingsPage() {
       }
     };
 
-    const broadRegs = regions.filter((r) => isBroadRegionTag(r.name));
+    const broadRegs = regions.filter((r) => r.isBroad);
     const broadNameGroups = new Map<string, typeof regions>();
     for (const r of broadRegs) {
       const key = r.name.trim().normalize("NFC");
@@ -749,7 +749,7 @@ export default function SettingsPage() {
     }
     for (const group of broadNameGroups.values()) { await mergeRegionGroup(group); }
 
-    const specificRegs = regions.filter((r) => !isBroadRegionTag(r.name));
+    const specificRegs = regions.filter((r) => !r.isBroad);
     const regionNameGroups = new Map<string, typeof regions>();
     for (const r of specificRegs) {
       const key = r.name.trim().normalize("NFC");
@@ -771,12 +771,36 @@ export default function SettingsPage() {
   const handleAddBroadRegion = async () => {
     if (!newBroadRegionName.trim()) return;
     try {
-      await createRegion(newBroadRegionName.trim());
+      await createBroadRegion(newBroadRegionName.trim());
       setAddingBroadRegion(false);
       setNewBroadRegionName("");
       toast.success("地域タグを追加しました");
     } catch {
       toast.error("追加に失敗しました");
+    }
+  };
+
+  const handleAddPrefectureRule = async (broadRegionId: string, prefecture: string) => {
+    try {
+      await addPrefectureRule(broadRegionId, prefecture);
+    } catch {
+      toast.error("都道府県の追加に失敗しました（既に別の中地域に割り当て済みの可能性があります）");
+    }
+  };
+
+  const handleApplyBroadRegionRules = async (broadRegionId: string) => {
+    setApplyingBroadRegionId(broadRegionId);
+    try {
+      const count = await applyBroadRegionRules(broadRegionId);
+      if (count === 0) {
+        toast.info("対象アイテムがありませんでした");
+      } else {
+        toast.success(`${count}件のアイテムの中地域タグを書き換えました`);
+      }
+    } catch {
+      toast.error("適用に失敗しました");
+    } finally {
+      setApplyingBroadRegionId(null);
     }
   };
 
@@ -967,7 +991,7 @@ export default function SettingsPage() {
         const lat = w.latitude;
         const lng = w.longitude;
         const currentNames = (w.wish_regions ?? []).map((wr) => wr.region?.name).filter((n): n is string => Boolean(n));
-        const broadTags = currentNames.filter((n) => BROAD_TAG_NAMES.has(n));
+        const broadTags = currentNames.filter((n) => regions.some((r) => r.name === n && r.isBroad));
         if (broadTags.length === 0) continue; // 中地域タグなし → 判定不能
 
         let mismatch = false;
@@ -991,7 +1015,7 @@ export default function SettingsPage() {
 
         // 小地域タグから都道府県名を抽出して座標と照合
         if (!mismatch) {
-          const specificTags = currentNames.filter((n) => !BROAD_TAG_NAMES.has(n));
+          const specificTags = currentNames.filter((n) => !regions.some((r) => r.name === n && r.isBroad));
           for (const tag of specificTags) {
             const pref = Object.keys(PREF_BOUNDS).find((p) => tag.startsWith(p));
             if (!pref) continue;
@@ -1097,8 +1121,8 @@ export default function SettingsPage() {
 
   const regionlessWishes = useMemo(() =>
     wishes.filter((w) => {
-      const hasBroad = w.regions.some((r) => isBroadRegionTag(r.name));
-      const hasSpecific = w.regions.some((r) => !isBroadRegionTag(r.name));
+      const hasBroad = w.regions.some((r) => r.isBroad);
+      const hasSpecific = w.regions.some((r) => !r.isBroad);
       return !hasBroad || !hasSpecific;
     }).sort((a, b) => a.id.localeCompare(b.id)),
     [wishes]
@@ -1524,7 +1548,7 @@ export default function SettingsPage() {
 
         {/* 中地域タグ管理 */}
         {(() => {
-          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+          const broadRegions = regions.filter((r) => r.isBroad);
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
               <div className="flex items-center">
@@ -1546,30 +1570,78 @@ export default function SettingsPage() {
               {broadRegionSectionOpen && (
                 <div className="flex flex-col gap-2">
                   {broadRegions.map((r, idx) => (
-                    <div key={r.id} className="flex items-center gap-2 py-1">
-                      {editingRegionId === r.id ? (
-                        <>
-                          <input
-                            className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
-                            value={editingRegionName}
-                            onChange={(e) => setEditingRegionName(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleEditRegion(r.id); if (e.key === "Escape") setEditingRegionId(null); }}
-                            autoFocus
-                          />
-                          <button onClick={() => handleEditRegion(r.id)} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
-                          <button onClick={() => setEditingRegionId(null)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex flex-col -my-1">
-                            <button onClick={() => moveRegion(regions.indexOf(r), -1)} disabled={idx === 0} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={14} /></button>
-                            <button onClick={() => moveRegion(regions.indexOf(r), 1)} disabled={idx === broadRegions.length - 1} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={14} /></button>
+                    <div key={r.id} className="flex flex-col">
+                      <div className="flex items-center gap-2 py-1">
+                        {editingRegionId === r.id ? (
+                          <>
+                            <input
+                              className="flex-1 text-sm border border-border rounded-lg px-2 py-1 bg-background"
+                              value={editingRegionName}
+                              onChange={(e) => setEditingRegionName(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") handleEditRegion(r.id); if (e.key === "Escape") setEditingRegionId(null); }}
+                              autoFocus
+                            />
+                            <button onClick={() => handleEditRegion(r.id)} className="p-1.5 text-primary transition-colors"><Check size={15} /></button>
+                            <button onClick={() => setEditingRegionId(null)} className="p-1.5 text-muted-foreground transition-colors"><X size={15} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex flex-col -my-1">
+                              <button onClick={() => moveRegion(regions.indexOf(r), -1)} disabled={idx === 0} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowUp size={14} /></button>
+                              <button onClick={() => moveRegion(regions.indexOf(r), 1)} disabled={idx === broadRegions.length - 1} className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-colors"><ArrowDown size={14} /></button>
+                            </div>
+                            <span className="flex-1 text-sm">{r.name}</span>
+                            <button
+                              onClick={() => setBroadRegionRulesOpen((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
+                              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                              title="対応都道府県を設定"
+                            >
+                              {broadRegionRulesOpen[r.id] ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                            </button>
+                            <button onClick={() => { setEditingRegionId(r.id); setEditingRegionName(r.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></button>
+                            <button onClick={() => handleDeleteRegion(r.id, r.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={15} /></button>
+                          </>
+                        )}
+                      </div>
+                      {broadRegionRulesOpen[r.id] && (() => {
+                        const myRules = prefixRules.filter((rule) => rule.broadRegionId === r.id);
+                        const usedPrefectures = new Set(prefixRules.map((rule) => rule.prefecture));
+                        const availablePrefectures = ALL_PREFECTURES.filter((p) => !usedPrefectures.has(p));
+                        return (
+                          <div className="ml-8 mb-2 flex flex-col gap-2">
+                            <p className="text-xs text-muted-foreground">対応都道府県（小地域タグのプレフィックスとして照合）</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {myRules.map((rule) => (
+                                <span key={rule.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs">
+                                  {rule.prefecture}
+                                  <button onClick={() => removePrefectureRule(rule.id)} className="text-muted-foreground hover:text-destructive transition-colors"><X size={11} /></button>
+                                </span>
+                              ))}
+                              {availablePrefectures.length > 0 && (
+                                <select
+                                  className="text-xs border border-border rounded-full px-2 py-0.5 bg-background text-muted-foreground"
+                                  value=""
+                                  onChange={(e) => { if (e.target.value) handleAddPrefectureRule(r.id, e.target.value); e.target.value = ""; }}
+                                >
+                                  <option value="">+ 都道府県を追加</option>
+                                  {availablePrefectures.map((p) => (
+                                    <option key={p} value={p}>{p}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            {myRules.length > 0 && (
+                              <button
+                                onClick={() => handleApplyBroadRegionRules(r.id)}
+                                disabled={applyingBroadRegionId === r.id}
+                                className="self-start text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 transition-colors"
+                              >
+                                {applyingBroadRegionId === r.id ? "適用中..." : "既存データに適用する"}
+                              </button>
+                            )}
                           </div>
-                          <span className="flex-1 text-sm">{r.name}</span>
-                          <button onClick={() => { setEditingRegionId(r.id); setEditingRegionName(r.name); }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></button>
-                          <button onClick={() => handleDeleteRegion(r.id, r.name)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={15} /></button>
-                        </>
-                      )}
+                        );
+                      })()}
                     </div>
                   ))}
                   {addingBroadRegion && (
@@ -1596,7 +1668,7 @@ export default function SettingsPage() {
         })()}
 
         {(() => {
-          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
+          const broadRegions = regions.filter((r) => r.isBroad);
           if (broadRegions.length === 0) return null;
           return (
             <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
@@ -1642,7 +1714,7 @@ export default function SettingsPage() {
 
         {/* 小地域タグ管理 */}
         {(() => {
-          const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+          const specificRegions = [...regions.filter((r) => !r.isBroad)]
             .sort((a, b) => {
               const [ga, na] = specificRegionSortKey(a.name);
               const [gb, nb] = specificRegionSortKey(b.name);
@@ -1717,8 +1789,8 @@ export default function SettingsPage() {
 
         {/* 地域タグ未設定アイテム */}
         {(() => {
-          const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
-          const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+          const broadRegions = regions.filter((r) => r.isBroad);
+          const specificRegions = [...regions.filter((r) => !r.isBroad)]
             .sort((a, b) => {
               const [ga, na] = specificRegionSortKey(a.name);
               const [gb, nb] = specificRegionSortKey(b.name);
@@ -2382,8 +2454,8 @@ export default function SettingsPage() {
                       {(() => {
                         const tagOpen = !!(mismatchRegionSelections[item.id]);
                         const selected = mismatchRegionSelections[item.id] ?? item.currentRegions.map((name) => regions.find((r) => r.name === name)?.id).filter((id): id is string => Boolean(id));
-                        const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
-                        const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))].sort((a, b) => {
+                        const broadRegions = regions.filter((r) => r.isBroad);
+                        const specificRegions = [...regions.filter((r) => !r.isBroad)].sort((a, b) => {
                           const [ga, na] = specificRegionSortKey(a.name);
                           const [gb, nb] = specificRegionSortKey(b.name);
                           return ga !== gb ? ga - gb : na.localeCompare(nb, "ja");

@@ -4,7 +4,8 @@ import { useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ScoreValue } from "@/types";
 import { getGroupMember } from "@/lib/utils/localStorage";
-import { toBroadRegionTag, toSpecificRegionTag, isBroadRegionTag } from "@/lib/utils/regionTag";
+import { toSpecificRegionTag } from "@/lib/utils/regionTag";
+import { fetchPrefixRulesForGroup, resolveBroadTag } from "@/hooks/useRegions";
 import type { PlaceLookupResult } from "@/app/api/places/lookup/route";
 
 export interface CsvRow {
@@ -133,14 +134,15 @@ async function getOrCreateRegion(
   supabase: ReturnType<typeof createClient>,
   groupId: string,
   name: string,
-  cache: Map<string, string>
+  cache: Map<string, string>,
+  isBroad: boolean = false
 ): Promise<string> {
   if (cache.has(name)) return cache.get(name)!;
   const { data: existing } = await supabase
     .from("regions").select("id").eq("group_id", groupId).eq("name", name).maybeSingle();
   if (existing) { cache.set(name, existing.id as string); return existing.id as string; }
   const { data: created, error } = await supabase
-    .from("regions").insert({ group_id: groupId, name }).select("id").single();
+    .from("regions").insert({ group_id: groupId, name, is_broad: isBroad }).select("id").single();
   if (error) throw error;
   const id = (created as { id: string }).id;
   cache.set(name, id);
@@ -155,7 +157,8 @@ async function enrichWithPlaces(
   supabase: ReturnType<typeof createClient>,
   groupId: string,
   items: { wishId: string; url: string; title: string }[],
-  regionCache = new Map<string, string>()
+  regionCache = new Map<string, string>(),
+  prefixRules: { prefecture: string; broadName: string }[] = []
 ): Promise<LocationEnrichResult> {
   const CONCURRENCY = 3;
   const result: LocationEnrichResult = { attempted: items.length, succeeded: 0, failed: [] };
@@ -194,12 +197,12 @@ async function enrichWithPlaces(
         // 地域タグを生成・付与
         if (place.prefecture && place.city) {
           const specificTag = toSpecificRegionTag(place.prefecture, place.city);
-          const broadTag = toBroadRegionTag(place.prefecture, place.city);
+          const broadTag = resolveBroadTag(place.prefecture, place.city, prefixRules);
 
-          const tagNames = [specificTag, broadTag].filter(Boolean);
-          const regionIds = await Promise.all(
-            tagNames.map((name) => getOrCreateRegion(supabase, groupId, name, regionCache))
-          );
+          const regionIds = await Promise.all([
+            getOrCreateRegion(supabase, groupId, specificTag, regionCache, false),
+            getOrCreateRegion(supabase, groupId, broadTag, regionCache, true),
+          ]);
 
           // 重複しないようにupsert
           await supabase.from("wish_regions").upsert(
@@ -374,7 +377,8 @@ async function reverseGeocodeRegions(
   groupId: string,
   items: { wishId: string; title: string; lat: number; lng: number }[],
   regionCache: Map<string, string>,
-  result: LocationEnrichResult
+  result: LocationEnrichResult,
+  prefixRules: { prefecture: string; broadName: string }[] = []
 ): Promise<void> {
   const CONCURRENCY = 3;
   for (let i = 0; i < items.length; i += CONCURRENCY) {
@@ -393,10 +397,12 @@ async function reverseGeocodeRegions(
         }
         const { prefecture, city } = await resp.json() as { prefecture: string | null; city: string | null };
         if (prefecture && city) {
-          const tagNames = [toSpecificRegionTag(prefecture, city), toBroadRegionTag(prefecture, city)].filter(Boolean);
-          const regionIds = await Promise.all(
-            tagNames.map((name) => getOrCreateRegion(supabase, groupId, name, regionCache))
-          );
+          const specificTag = toSpecificRegionTag(prefecture, city);
+          const broadTag = resolveBroadTag(prefecture, city, prefixRules);
+          const regionIds = await Promise.all([
+            getOrCreateRegion(supabase, groupId, specificTag, regionCache, false),
+            getOrCreateRegion(supabase, groupId, broadTag, regionCache, true),
+          ]);
           await supabase.from("wish_regions").upsert(
             regionIds.map((region_id) => ({ wish_id: wishId, region_id })),
             { onConflict: "wish_id,region_id", ignoreDuplicates: true }
@@ -416,6 +422,7 @@ async function retryLocationEnrichmentImpl(
 ): Promise<LocationEnrichResult | null> {
   const PAGE = 200;
   const regionCache = new Map<string, string>();
+  const prefixRules = await fetchPrefixRulesForGroup(supabase, groupId);
 
   // Phase 1: 緯度経度なし → Google Maps URL があれば Places API で取得
   let phase1Rows: { id: string; title: string; memo: string | null }[] = [];
@@ -472,14 +479,14 @@ async function retryLocationEnrichmentImpl(
     // グループの全地域タグを取得して broad/specific を分類
     const { data: allRegions, error: regionsError } = await supabase
       .from("regions")
-      .select("id, name")
+      .select("id, name, is_broad")
       .eq("group_id", groupId);
     if (regionsError) throw regionsError;
 
-    const regionNameMap = new Map<string, string>(
-      (allRegions ?? []).map((r) => [(r as { id: string; name: string }).id, (r as { id: string; name: string }).name])
+    const regionIsBroadMap = new Map<string, boolean>(
+      (allRegions ?? []).map((r) => [(r as { id: string; is_broad: boolean }).id, (r as { id: string; is_broad: boolean }).is_broad])
     );
-    const groupHasBroadTags = [...regionNameMap.values()].some((name) => isBroadRegionTag(name));
+    const groupHasBroadTags = [...regionIsBroadMap.values()].some(Boolean);
 
     // candidateIds を小バッチに分割して wish_regions を取得（URL長さ制限回避）
     const ID_BATCH = 50;
@@ -503,9 +510,9 @@ async function retryLocationEnrichmentImpl(
     const hasBroad = new Set<string>();
     const hasSpecific = new Set<string>();
     for (const row of allWishRegions) {
-      const name = regionNameMap.get(row.region_id);
-      if (!name) continue;
-      if (isBroadRegionTag(name)) hasBroad.add(row.wish_id);
+      const broad = regionIsBroadMap.get(row.region_id);
+      if (broad === undefined) continue;
+      if (broad) hasBroad.add(row.wish_id);
       else hasSpecific.add(row.wish_id);
     }
 
@@ -527,13 +534,13 @@ async function retryLocationEnrichmentImpl(
   const result: LocationEnrichResult = { attempted: phase1Items.length + phase2Items.length, succeeded: 0, failed: [] };
 
   if (phase1Items.length > 0) {
-    const p1 = await enrichWithPlaces(supabase, groupId, phase1Items, regionCache);
+    const p1 = await enrichWithPlaces(supabase, groupId, phase1Items, regionCache, prefixRules);
     result.succeeded += p1.succeeded;
     result.failed.push(...p1.failed);
   }
 
   if (phase2Items.length > 0) {
-    await reverseGeocodeRegions(supabase, groupId, phase2Items, regionCache, result);
+    await reverseGeocodeRegions(supabase, groupId, phase2Items, regionCache, result, prefixRules);
   }
 
   return result;
@@ -663,6 +670,7 @@ export function useCsvImport(groupId: string) {
       const supabase = createClient();
       const importMode: ImportMode = configs[0]?.importMode ?? "normal";
       const doneAt = importMode === "done" ? new Date().toISOString() : null;
+      const prefixRules = await fetchPrefixRulesForGroup(supabase, groupId);
 
       interface ParsedItem { row: CsvRow; genreIds: string[]; }
       const allItems: ParsedItem[] = [];
@@ -825,7 +833,7 @@ export function useCsvImport(groupId: string) {
               wishId: "id" in i ? (i as typeof toInsertWithIds[0]).id : (i as typeof toUpdate[0]).wishId,
               url: i.row.url,
               title: i.row.title,
-            })));
+            })), undefined, prefixRules);
           }
         }
 

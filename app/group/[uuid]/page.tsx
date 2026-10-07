@@ -19,7 +19,6 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useShallow } from "zustand/react/shallow";
 import { getGroupMember } from "@/lib/utils/localStorage";
-import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { Status, Situation, SITUATION_LABELS, SITUATION_ICONS, meetsScoreFilter } from "@/types";
 import { Plus, SlidersHorizontal, Search, X, ArrowUpDown, Tag, Star } from "lucide-react";
 import { BulkGenreBar } from "@/components/list/BulkGenreBar";
@@ -224,8 +223,8 @@ export default function ListPage() {
       }
     }
     if (fExcludeGenreIds.length > 0) result = result.filter((w) => !w.genres.some((g) => fExcludeGenreIds.includes(g.id)));
-    const fBroadIds = fRegionIds.filter((id) => regions.some((r) => r.id === id && isBroadRegionTag(r.name)));
-    const fSpecificIds = fRegionIds.filter((id) => regions.some((r) => r.id === id && !isBroadRegionTag(r.name)));
+    const fBroadIds = fRegionIds.filter((id) => regions.some((r) => r.id === id && r.isBroad));
+    const fSpecificIds = fRegionIds.filter((id) => regions.some((r) => r.id === id && !r.isBroad));
     if (fBroadIds.length > 0) result = result.filter((w) => w.regions.some((r) => fBroadIds.includes(r.id)));
     if (fSpecificIds.length > 0) result = result.filter((w) => w.regions.some((r) => fSpecificIds.includes(r.id)));
     if (fExcludeRegionIds.length > 0) result = result.filter((w) => !w.regions.some((r) => fExcludeRegionIds.includes(r.id)));

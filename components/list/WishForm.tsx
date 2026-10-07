@@ -26,7 +26,7 @@ import {
   ScoreValue,
 } from "@/types";
 import { cn } from "@/lib/utils";
-import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
+import { specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useGroupStore } from "@/lib/store/groupStore";
 
@@ -182,10 +182,10 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
         return { ...f, regionIds: f.regionIds.filter((id) => id !== regionId) };
       }
       if (isBroad) {
-        const specificIds = f.regionIds.filter((id) => !regions.some((r) => isBroadRegionTag(r.name) && r.id === id));
+        const specificIds = f.regionIds.filter((id) => !regions.some((r) => r.isBroad && r.id === id));
         return { ...f, regionIds: [...specificIds, regionId] };
       } else {
-        const broadIds = f.regionIds.filter((id) => regions.some((r) => isBroadRegionTag(r.name) && r.id === id));
+        const broadIds = f.regionIds.filter((id) => regions.some((r) => r.isBroad && r.id === id));
         return { ...f, regionIds: [...broadIds, regionId] };
       }
     });
@@ -455,8 +455,8 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       )}
 
       {regions.length > 0 && (() => {
-        const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
-        const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+        const broadRegions = regions.filter((r) => r.isBroad);
+        const specificRegions = [...regions.filter((r) => !r.isBroad)]
           .sort((a, b) => {
             const [ga, na] = specificRegionSortKey(a.name);
             const [gb, nb] = specificRegionSortKey(b.name);

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { drawWish } from "@/lib/utils/roulette";
 import { haversineKm } from "@/lib/utils/distance";
-import { isBroadRegionTag } from "@/lib/utils/regionTag";
 import { Wish, Region, meetsScoreFilter } from "@/types";
 
 export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: number } | null, regions: Region[] = []) {
@@ -40,8 +39,8 @@ export function useRoulette(wishes: Wish[], userLocation?: { lat: number; lng: n
     if (filter.excludeGenreIds.length > 0) {
       if (w.genres.some((g) => filter.excludeGenreIds.includes(g.id))) return false;
     }
-    const fBroadIds = filter.regionIds.filter((id) => regions.some((r) => r.id === id && isBroadRegionTag(r.name)));
-    const fSpecificIds = filter.regionIds.filter((id) => regions.some((r) => r.id === id && !isBroadRegionTag(r.name)));
+    const fBroadIds = filter.regionIds.filter((id) => regions.some((r) => r.id === id && r.isBroad));
+    const fSpecificIds = filter.regionIds.filter((id) => regions.some((r) => r.id === id && !r.isBroad));
     if (fBroadIds.length > 0 && !w.regions.some((r) => fBroadIds.includes(r.id))) return false;
     if (fSpecificIds.length > 0 && !w.regions.some((r) => fSpecificIds.includes(r.id))) return false;
     if (filter.excludeRegionIds.length > 0 && w.regions.some((r) => filter.excludeRegionIds.includes(r.id))) return false;

@@ -61,6 +61,7 @@ export interface Region {
   id: string;
   groupId: string;
   name: string;
+  isBroad: boolean;
 }
 
 export interface WishVote {

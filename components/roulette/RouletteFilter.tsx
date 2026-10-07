@@ -24,7 +24,7 @@ import {
 } from "@/types";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
 import { useShallow } from "zustand/react/shallow";
-import { isBroadRegionTag, specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
+import { specificRegionSortKey, specificRegionColorClasses } from "@/lib/utils/regionTag";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useGroupStore } from "@/lib/store/groupStore";
@@ -197,8 +197,8 @@ export function RouletteFilter({ open, onClose, members, genres = [], regions = 
   const { setFilter, resetFilter } = useRouletteStore.getState();
   const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
 
-  const broadRegions = regions.filter((r) => isBroadRegionTag(r.name));
-  const specificRegions = [...regions.filter((r) => !isBroadRegionTag(r.name))]
+  const broadRegions = regions.filter((r) => r.isBroad);
+  const specificRegions = [...regions.filter((r) => !r.isBroad)]
     .sort((a, b) => {
       const [ga, na] = specificRegionSortKey(a.name);
       const [gb, nb] = specificRegionSortKey(b.name);
