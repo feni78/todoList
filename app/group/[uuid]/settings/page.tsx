@@ -123,6 +123,8 @@ export default function SettingsPage() {
   const [mismatchRegionSelections, setMismatchRegionSelections] = useState<Record<string, string[]>>({});
   const [dismissingMismatchId, setDismissingMismatchId] = useState<string | null>(null);
   const [csvGenreAssignOpen, setCsvGenreAssignOpen] = useState(false);
+  const [detailSectionOpen, setDetailSectionOpen] = useState(false);
+  const [devSectionOpen, setDevSectionOpen] = useState(false);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { setDefaultExcludeGenreIds, setExcludeGenreIds, setDefaultExcludeRegionIds, setExcludeRegionIds } = useFilterStore();
 
@@ -1173,6 +1175,8 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <div className="border-t border-border" />
+
           <div className="flex items-center justify-between">
             <Label htmlFor="dev-mode">ルーレット確率を表示</Label>
             <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} />
@@ -1467,6 +1471,17 @@ export default function SettingsPage() {
             </section>
           );
         })()}
+
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setDetailSectionOpen((v) => !v)}
+        >
+          {detailSectionOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          詳細設定
+        </button>
+
+        {detailSectionOpen && <div className="flex flex-col gap-6">
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">グループ</h2>
@@ -2284,45 +2299,54 @@ export default function SettingsPage() {
           )}
         </section>
 
+        </div>}
+
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
-          <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="flex items-center gap-2 w-full text-left"
+            onClick={() => setDevSectionOpen((v) => !v)}
+          >
             <Code2 size={16} className="text-muted-foreground" />
-            <h2 className="font-semibold text-muted-foreground">開発者向け</h2>
-          </div>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => router.push(`/group/${uuid}?mode=delete`)}
-          >
-            タスクを選んで削除
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setRetryLocationDialogOpen(true)}
-            disabled={retryingLocation}
-            className="w-full gap-2"
-          >
-            <MapPin size={16} />
-            {retryingLocation ? "取得中..." : "位置情報を再取得"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={async () => { await ensureWishesLoaded(); setMergeDialogOpen(true); }}
-            disabled={merging || wishesLoadingLocal}
-            className="w-full gap-2"
-          >
-            <GitMerge size={16} />
-            {merging ? "統合中..." : wishesLoadingLocal ? "読み込み中..." : "重複を統合"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleCheckRegionMismatch}
-            disabled={checkingMismatch}
-            className="w-full gap-2"
-          >
-            <MapPin size={16} />
-            {checkingMismatch ? "チェック中..." : "地域タグ不一致をチェック"}
-          </Button>
+            <h2 className="font-semibold text-muted-foreground flex-1">開発者向け</h2>
+            {devSectionOpen ? <ChevronUp size={15} className="text-muted-foreground" /> : <ChevronDown size={15} className="text-muted-foreground" />}
+          </button>
+          {devSectionOpen && <>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push(`/group/${uuid}?mode=delete`)}
+            >
+              タスクを選んで削除
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setRetryLocationDialogOpen(true)}
+              disabled={retryingLocation}
+              className="w-full gap-2"
+            >
+              <MapPin size={16} />
+              {retryingLocation ? "取得中..." : "位置情報を再取得"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => { await ensureWishesLoaded(); setMergeDialogOpen(true); }}
+              disabled={merging || wishesLoadingLocal}
+              className="w-full gap-2"
+            >
+              <GitMerge size={16} />
+              {merging ? "統合中..." : wishesLoadingLocal ? "読み込み中..." : "重複を統合"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleCheckRegionMismatch}
+              disabled={checkingMismatch}
+              className="w-full gap-2"
+            >
+              <MapPin size={16} />
+              {checkingMismatch ? "チェック中..." : "地域タグ不一致をチェック"}
+            </Button>
+          </>}
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
