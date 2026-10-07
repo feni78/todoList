@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useGroup } from "@/hooks/useGroup";
 import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
 import { specificRegionSortKey, specificRegionColorClasses, ALL_PREFECTURES } from "@/lib/utils/regionTag";
@@ -20,7 +19,7 @@ import { useCsvImport } from "@/hooks/useCsvImport";
 import { Code2 } from "lucide-react";
 import { useWishes } from "@/hooks/useWishes";
 import { useGroupStore } from "@/lib/store/groupStore";
-import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds, SmallGenreSubGroups, getShowMemoInList, saveShowMemoInList } from "@/lib/utils/localStorage";
+import { getDarkMode, setDarkMode, getGroupMember, saveGroupMember, getDefaultExcludeGenreIds, saveDefaultExcludeGenreIds, getDefaultExcludeRegionIds, saveDefaultExcludeRegionIds, SmallGenreSubGroups, getShowMemoInList, saveShowMemoInList, getConsiderLevel, saveConsiderLevel } from "@/lib/utils/localStorage";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { RouletteSettings, Wish, GenreType, GENRE_TYPE_LABELS } from "@/types";
 import { Copy, Check, Download, Upload, Trash2, Pencil, Plus, X, ChevronDown, ChevronUp, ArrowUp, ArrowDown, MapPin, GitMerge } from "lucide-react";
@@ -34,7 +33,6 @@ import { cn } from "@/lib/utils";
 export default function SettingsPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const router = useRouter();
-  const { fetchRouletteSettings, saveRouletteSettings } = useGroup();
   const { settings, setSettings, devMode, setDevMode } = useRouletteStore();
   const { wishes, wishesRef, createWish, updateWish, deleteWish, refetch: refetchWishes } = useWishes(uuid, { statuses: ["PENDING", "HOLD", "DONE"], includeVotes: false, skip: true });
   const { group, setGroup, setCurrentMember, setLastExportedAt, setShowMemberName } = useGroupStore();
@@ -151,13 +149,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setDarkModeState(getDarkMode());
     setShowMemoInListState(getShowMemoInList(uuid));
-    fetchRouletteSettings(uuid).then((data) => {
-      if (data) {
-        setSettings({
-          considerLevel: (data as { consider_level: number }).consider_level,
-        });
-      }
-    });
+    setSettings({ considerLevel: getConsiderLevel(uuid) });
     // wishesの件数だけ軽量クエリで取得
     const supabase = createClient();
     supabase
@@ -203,7 +195,7 @@ export default function SettingsPage() {
       }).length;
       setRegionlessCount(count);
     })();
-  }, [uuid, fetchRouletteSettings, setSettings]);
+  }, [uuid, setSettings]);
 
   const ensureWishesLoaded = useCallback(async () => {
     if (wishesLoaded || wishesLoadingRef.current) return;
@@ -355,18 +347,18 @@ export default function SettingsPage() {
 
       // 忖度レベル・ルーレット重み
       if (typeof data.considerLevel === "number") {
+        saveConsiderLevel(uuid, data.considerLevel);
+        setSettings({ considerLevel: data.considerLevel });
         const weights = data.rouletteWeights;
-        await supabase.from("roulette_settings").upsert({
-          group_id: uuid,
-          consider_level: data.considerLevel,
-          ...(weights ? {
+        if (weights) {
+          await supabase.from("roulette_settings").upsert({
+            group_id: uuid,
             weight_max: weights.weightMax,
             weight_gold: weights.weightGold,
             weight_silver: weights.weightSilver,
             weight_bronze: weights.weightBronze,
-          } : {}),
-        }, { onConflict: "group_id" });
-        setSettings({ considerLevel: data.considerLevel });
+          }, { onConflict: "group_id" });
+        }
       }
 
       // 小ジャンルサブグループ
@@ -1156,13 +1148,9 @@ export default function SettingsPage() {
                 const v = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
                 setSettings({ ...settings, considerLevel: v });
               }}
-              onValueCommitted={async (vals) => {
+              onValueCommitted={(vals) => {
                 const v = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
-                try {
-                  await saveRouletteSettings(uuid, { ...settings, considerLevel: v });
-                } catch {
-                  toast.error("保存に失敗しました");
-                }
+                saveConsiderLevel(uuid, v);
               }}
             />
             <div className="flex justify-between text-xs text-muted-foreground">

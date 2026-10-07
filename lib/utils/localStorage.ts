@@ -134,16 +134,33 @@ export function saveSmallGenreSubGroups(groupId: string, data: SmallGenreSubGrou
 }
 
 export function getShowMemoInList(groupId: string): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return true;
   try {
     const raw = localStorage.getItem(`futari_show_memo_in_list_${groupId}`);
-    return raw === "true";
+    return raw !== "false";
   } catch {
-    return false;
+    return true;
   }
 }
 
 export function saveShowMemoInList(groupId: string, value: boolean): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(`futari_show_memo_in_list_${groupId}`, String(value));
+}
+
+export function getConsiderLevel(groupId: string): number {
+  if (typeof window === "undefined") return 50;
+  try {
+    const raw = localStorage.getItem(`futari_consider_level_${groupId}`);
+    if (raw === null) return 50;
+    const n = parseInt(raw, 10);
+    return isNaN(n) ? 50 : n;
+  } catch {
+    return 50;
+  }
+}
+
+export function saveConsiderLevel(groupId: string, value: number): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`futari_consider_level_${groupId}`, String(value));
 }

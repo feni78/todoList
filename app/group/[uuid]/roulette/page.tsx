@@ -14,8 +14,7 @@ import { useGenres } from "@/hooks/useGenres";
 import { useRegions } from "@/hooks/useRegions";
 import { useGroupStore } from "@/lib/store/groupStore";
 import { useRouletteStore } from "@/lib/store/rouletteStore";
-import { useGroup } from "@/hooks/useGroup";
-import { getDefaultExcludeGenreIds, getDefaultExcludeRegionIds } from "@/lib/utils/localStorage";
+import { getDefaultExcludeGenreIds, getDefaultExcludeRegionIds, getConsiderLevel } from "@/lib/utils/localStorage";
 import { SlidersHorizontal, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -34,16 +33,11 @@ export default function RoulettePage() {
   const { genres } = useGenres(uuid);
   const { regions } = useRegions(uuid);
   const { mode, setMode, settings, devMode, filter, defaultExcludeGenreIds, defaultExcludeRegionIds, setSettings, setFilter, setDefaultExcludeGenreIds, setDefaultExcludeRegionIds } = useRouletteStore();
-  const { fetchRouletteSettings } = useGroup();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    fetchRouletteSettings(uuid).then((data) => {
-      if (data) {
-        setSettings({ considerLevel: (data as { consider_level: number }).consider_level });
-      }
-    });
-  }, [uuid, fetchRouletteSettings, setSettings]);
+    setSettings({ considerLevel: getConsiderLevel(uuid) });
+  }, [uuid, setSettings]);
 
   useEffect(() => {
     const genreDefaults = getDefaultExcludeGenreIds(uuid);
