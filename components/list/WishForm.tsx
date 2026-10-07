@@ -147,7 +147,6 @@ function SegmentButton<T extends string>({
 export function WishForm({ initial, currentMemberId, members = [], genres = [], regions = [], onSubmit, onCancel, loading }: WishFormProps) {
   const smallGenreSubGroups = useGroupStore((s) => s.smallGenreSubGroups);
   const existingVote = initial?.votes.find((v) => v.memberId === currentMemberId);
-  // 新規作成 or 自分が登録したものの編集 → 必須
   const scoreRequired = !initial || initial.memberId === currentMemberId;
 
   const [form, setForm] = useState<WishFormData>({
@@ -165,6 +164,16 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
     latInput: initial?.latitude?.toString() ?? "",
     lngInput: initial?.longitude?.toString() ?? "",
   });
+
+  const [budgetOpen, setBudgetOpen] = useState(!!(initial?.budget));
+  const [durationOpen, setDurationOpen] = useState(!!(initial?.duration));
+  const [seasonsOpen, setSeasonsOpen] = useState(!!(initial?.seasons?.length));
+  const [broadRegionOpen, setBroadRegionOpen] = useState(
+    !!(initial?.regions?.some((r) => r.isBroad))
+  );
+  const [locationOpen, setLocationOpen] = useState(
+    !!(initial?.latitude || initial?.longitude)
+  );
 
   const toggleSeason = (season: Season) => {
     setForm((f) => ({
@@ -338,66 +347,93 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>予算（任意）</Label>
-        <div className="grid grid-cols-2 gap-1.5">
-          {BUDGETS.map((b) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, budget: f.budget === b ? "" : b }))}
-              className={cn(
-                "py-2 px-3 rounded-lg text-xs font-medium transition-colors",
-                form.budget === b
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {BUDGET_LABELS[b]}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          className="flex items-center gap-1 text-left"
+          onClick={() => setBudgetOpen((v) => !v)}
+        >
+          <Label className="pointer-events-none">予算（任意）</Label>
+          {budgetOpen ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
+        </button>
+        {budgetOpen && (
+          <div className="grid grid-cols-2 gap-1.5">
+            {BUDGETS.map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, budget: f.budget === b ? "" : b }))}
+                className={cn(
+                  "py-2 px-3 rounded-lg text-xs font-medium transition-colors",
+                  form.budget === b
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {BUDGET_LABELS[b]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>所要時間（任意）</Label>
-        <div className="grid grid-cols-2 gap-1.5">
-          {DURATIONS.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, duration: f.duration === d ? "" : d }))}
-              className={cn(
-                "py-2 px-3 rounded-lg text-xs font-medium transition-colors",
-                form.duration === d
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {DURATION_LABELS[d]}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          className="flex items-center gap-1 text-left"
+          onClick={() => setDurationOpen((v) => !v)}
+        >
+          <Label className="pointer-events-none">所要時間（任意）</Label>
+          {durationOpen ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
+        </button>
+        {durationOpen && (
+          <div className="grid grid-cols-2 gap-1.5">
+            {DURATIONS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, duration: f.duration === d ? "" : d }))}
+                className={cn(
+                  "py-2 px-3 rounded-lg text-xs font-medium transition-colors",
+                  form.duration === d
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {DURATION_LABELS[d]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label>季節タグ（任意・複数選択可）</Label>
-        <div className="flex gap-1.5">
-          {SEASONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => toggleSeason(s)}
-              className={cn(
-                "flex-1 py-2 rounded-lg text-xs font-medium transition-colors",
-                form.seasons.includes(s)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {SEASON_LABELS[s]}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          className="flex items-center gap-1 text-left"
+          onClick={() => setSeasonsOpen((v) => !v)}
+        >
+          <Label className="pointer-events-none">季節タグ（任意・複数選択可）</Label>
+          {seasonsOpen ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
+        </button>
+        {seasonsOpen && (
+          <div className="flex gap-1.5">
+            {SEASONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => toggleSeason(s)}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-xs font-medium transition-colors",
+                  form.seasons.includes(s)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {SEASON_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {genres.length > 0 && (
@@ -467,24 +503,33 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
           <div className="flex flex-col gap-3">
             {broadRegions.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <Label>中地域タグ（任意）</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {broadRegions.map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => toggleRegion(r.id, true)}
-                      className={cn(
-                        "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
-                        form.regionIds.includes(r.id)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                      )}
-                    >
-                      {r.name}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 text-left"
+                  onClick={() => setBroadRegionOpen((v) => !v)}
+                >
+                  <Label className="pointer-events-none">中地域タグ（任意）</Label>
+                  {broadRegionOpen ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
+                </button>
+                {broadRegionOpen && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {broadRegions.map((r) => (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => toggleRegion(r.id, true)}
+                        className={cn(
+                          "py-1.5 px-3 rounded-lg text-xs font-medium transition-colors",
+                          form.regionIds.includes(r.id)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        )}
+                      >
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {specificRegions.length > 0 && (
@@ -500,28 +545,39 @@ export function WishForm({ initial, currentMemberId, members = [], genres = [], 
 
       {initial && (
         <div className="flex flex-col gap-1.5">
-          <Label>緯度・経度（任意）</Label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="緯度（例: 35.6812）"
-              value={form.latInput}
-              onChange={(e) => setForm((f) => ({ ...f, latInput: e.target.value }))}
-              onPaste={(e) => {
-                const text = e.clipboardData.getData("text");
-                const m = text.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-                if (m) {
-                  e.preventDefault();
-                  setForm((f) => ({ ...f, latInput: m[1], lngInput: m[2] }));
-                }
-              }}
-            />
-            <Input
-              placeholder="経度（例: 139.7671）"
-              value={form.lngInput}
-              onChange={(e) => setForm((f) => ({ ...f, lngInput: e.target.value }))}
-            />
-          </div>
-          <p className="text-[11px] text-muted-foreground">「緯度, 経度」形式でペーストすると自動分割されます</p>
+          <button
+            type="button"
+            className="flex items-center gap-1 text-left"
+            onClick={() => setLocationOpen((v) => !v)}
+          >
+            <Label className="pointer-events-none">緯度・経度（任意）</Label>
+            {locationOpen ? <ChevronDown size={13} className="text-muted-foreground" /> : <ChevronRight size={13} className="text-muted-foreground" />}
+          </button>
+          {locationOpen && (
+            <>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="緯度（例: 35.6812）"
+                  value={form.latInput}
+                  onChange={(e) => setForm((f) => ({ ...f, latInput: e.target.value }))}
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData("text");
+                    const m = text.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+                    if (m) {
+                      e.preventDefault();
+                      setForm((f) => ({ ...f, latInput: m[1], lngInput: m[2] }));
+                    }
+                  }}
+                />
+                <Input
+                  placeholder="経度（例: 139.7671）"
+                  value={form.lngInput}
+                  onChange={(e) => setForm((f) => ({ ...f, lngInput: e.target.value }))}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">「緯度, 経度」形式でペーストすると自動分割されます</p>
+            </>
+          )}
         </div>
       )}
 
