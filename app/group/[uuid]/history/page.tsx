@@ -16,6 +16,7 @@ import { useGroupStore } from "@/lib/store/groupStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { meetsScoreFilter } from "@/types";
 import { findStation } from "@/lib/utils/station";
+import { haversineKm } from "@/lib/utils/distance";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Star, SlidersHorizontal, ArrowUpDown, Search, X, Tag } from "lucide-react";
@@ -69,9 +70,15 @@ export default function HistoryPage() {
     setHistorySearchQuery: s.setHistorySearchQuery,
   })));
 
-  type SortOrder = "priority" | "createdAt" | "doneAt";
-  const SORT_LABELS: Record<SortOrder, string> = { priority: "やりたい度順", createdAt: "登録日順", doneAt: "実施日順" };
-  const SORT_CYCLE: SortOrder[] = ["priority", "createdAt", "doneAt"];
+  type SortOrder = "priority" | "createdAt" | "doneAt" | "distance";
+  const SORT_LABELS: Record<SortOrder, string> = { priority: "やりたい度順", createdAt: "登録日順", doneAt: "実施日順", distance: "距離順" };
+  const SORT_CYCLE: SortOrder[] = ["priority", "createdAt", "doneAt", "distance"];
+
+  const stationLocation = useMemo(() => {
+    if (!fStationName) return null;
+    const s = findStation(fStationName);
+    return s ? { lat: s.lat, lng: s.lng } : null;
+  }, [fStationName]);
 
   const [showFavoriteOnly, setShowFavoriteOnly] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -79,6 +86,8 @@ export default function HistoryPage() {
   const [nearbyWishIds, setNearbyWishIds] = useState<Set<string> | null>(null);
   const nearbyKmRef = useRef<number | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  const effectiveLocation = stationLocation ?? userLocation;
   const [locationLoading, setLocationLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(() => !!historySearchQuery);
   const [selectionMode, setSelectionMode] = useState<"genre" | null>(null);
@@ -209,11 +218,33 @@ export default function HistoryPage() {
       result.sort((a, b) => b.avgScore - a.avgScore);
     } else if (sortOrder === "createdAt") {
       result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } else {
+    } else if (sortOrder === "distance" && effectiveLocation) {
+      result.sort((a, b) => {
+        const da = a.latitude != null && a.longitude != null
+          ? haversineKm(effectiveLocation.lat, effectiveLocation.lng, a.latitude, a.longitude)
+          : Infinity;
+        const db = b.latitude != null && b.longitude != null
+          ? haversineKm(effectiveLocation.lat, effectiveLocation.lng, b.latitude, b.longitude)
+          : Infinity;
+        return da - db;
+      });
+    } else if (sortOrder !== "distance") {
       result.sort((a, b) => new Date(b.doneAt ?? b.updatedAt).getTime() - new Date(a.doneAt ?? a.updatedAt).getTime());
     }
     return result;
-  }, [wishes, showFavoriteOnly, sortOrder, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, historySearchQuery, regions]);
+  }, [wishes, showFavoriteOnly, sortOrder, effectiveLocation, nearbyWishIds, fMemberIds, fSituations, fBudgets, fDurations, fSeasons, fScoreFilter, fGenreIds, fGenreSearchMode, fExcludeGenreIds, fRegionIds, fExcludeRegionIds, historySearchQuery, regions]);
+
+  const distanceMap = useMemo(() => {
+    const loc = stationLocation ?? (fUseCurrentLocation ? userLocation : null);
+    if (!loc) return null;
+    const map = new Map<string, number>();
+    for (const w of filtered) {
+      if (w.latitude != null && w.longitude != null) {
+        map.set(w.id, haversineKm(loc.lat, loc.lng, w.latitude, w.longitude));
+      }
+    }
+    return map;
+  }, [userLocation, stationLocation, filtered, fUseCurrentLocation]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -289,11 +320,39 @@ export default function HistoryPage() {
           お気に入り
         </button>
         <button
-          onClick={() => setSortOrder((s) => { const i = SORT_CYCLE.indexOf(s); return SORT_CYCLE[(i + 1) % SORT_CYCLE.length]; })}
-          className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70"
+          onClick={() => {
+            const i = SORT_CYCLE.indexOf(sortOrder);
+            const next = SORT_CYCLE[(i + 1) % SORT_CYCLE.length];
+            if (next === "distance") {
+              if (stationLocation) {
+                setSortOrder("distance");
+              } else {
+                if (!navigator.geolocation) {
+                  toast.error("このブラウザは位置情報に対応していません");
+                  return;
+                }
+                setLocationLoading(true);
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    setSortOrder("distance");
+                    setLocationLoading(false);
+                  },
+                  () => {
+                    toast.error("位置情報の取得を許可してください");
+                    setLocationLoading(false);
+                  }
+                );
+              }
+            } else {
+              setSortOrder(next);
+            }
+          }}
+          disabled={locationLoading}
+          className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/70 disabled:opacity-50"
         >
           <ArrowUpDown size={11} />
-          {SORT_LABELS[sortOrder]}
+          {locationLoading ? "取得中..." : SORT_LABELS[sortOrder]}
         </button>
         <button
           onClick={() => setFilterOpen(true)}
@@ -374,6 +433,7 @@ export default function HistoryPage() {
             selectedIds={selectedIds}
             onToggleSelect={handleToggleSelect}
             emptyMessage={showFavoriteOnly ? "お気に入りのアイテムはありません" : "実施済みのアイテムはありません"}
+            distanceMap={distanceMap ?? undefined}
           />
         )}
       </div>
@@ -413,6 +473,7 @@ export default function HistoryPage() {
         locationLoading={locationLoading}
         onRequestLocation={handleRequestLocation}
         onReacquireLocation={handleReacquireLocation}
+        onSetDistanceSort={() => setSortOrder("distance")}
       />
 
       <BottomNav groupId={uuid} />

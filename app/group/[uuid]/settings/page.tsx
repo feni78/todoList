@@ -42,7 +42,6 @@ export default function SettingsPage() {
   const [darkMode, setDarkModeState] = useState(false);
   const [showMemoInList, setShowMemoInListState] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [fullImporting, setFullImporting] = useState(false);
   const [wishCount, setWishCount] = useState<number | null>(null);
   const [regionlessCount, setRegionlessCount] = useState<number | null>(null);
@@ -225,19 +224,6 @@ export default function SettingsPage() {
       document.documentElement.classList.remove("dark");
     }
   };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await saveRouletteSettings(uuid, settings);
-      toast.success("設定を保存しました");
-    } catch {
-      toast.error("保存に失敗しました");
-    } finally {
-      setSaving(false);
-    }
-  };
-
 
   const handleFullExport = async () => {
     await ensureWishesLoaded();
@@ -1170,6 +1156,14 @@ export default function SettingsPage() {
                 const v = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
                 setSettings({ ...settings, considerLevel: v });
               }}
+              onValueCommitted={async (vals) => {
+                const v = Array.isArray(vals) ? (vals as number[])[0] : (vals as number);
+                try {
+                  await saveRouletteSettings(uuid, { ...settings, considerLevel: v });
+                } catch {
+                  toast.error("保存に失敗しました");
+                }
+              }}
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>完全ランダム</span>
@@ -1183,10 +1177,6 @@ export default function SettingsPage() {
             <Label htmlFor="dev-mode">ルーレット確率を表示</Label>
             <Switch id="dev-mode" checked={devMode} onCheckedChange={setDevMode} />
           </div>
-
-          <Button onClick={handleSave} disabled={saving} className="w-full">
-            {saving ? "保存中..." : "ルーレット設定を保存"}
-          </Button>
         </section>
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
@@ -2325,8 +2315,6 @@ export default function SettingsPage() {
           )}
         </section>
 
-        </div>}
-
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <button
             type="button"
@@ -2374,6 +2362,8 @@ export default function SettingsPage() {
             </Button>
           </>}
         </section>
+
+        </div>}
 
         <section className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-4">
           <h2 className="font-semibold">使い方</h2>
